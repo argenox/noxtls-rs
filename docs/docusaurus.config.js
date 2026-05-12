@@ -51,6 +51,11 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      // Without this, localStorage can pin "next" as preferred; navbar `doc` then
+      // resolves to `/docs/next/...` and versionless `/docs/intro` feels missing.
+      docs: {
+        versionPersistence: "none",
+      },
       navbar: {
         title: "NoxTLS Rust",
         logo: {
@@ -58,11 +63,12 @@ const config = {
           src: "img/logo.svg",
         },
         items: [
+          // Land on versionless `/docs/intro` (lastVersion alias), not `/docs/next/...`
           {
-            type: "docSidebar",
-            sidebarId: "docsSidebar",
-            position: "left",
+            type: "doc",
+            docId: "intro",
             label: "Documentation",
+            position: "left",
           },
           {
             type: "docsVersionDropdown",
