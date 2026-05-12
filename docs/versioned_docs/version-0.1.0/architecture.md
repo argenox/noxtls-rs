@@ -14,7 +14,7 @@ The workspace separates cryptographic primitives, certificate handling, transpor
 - `noxtls-x509` composes `noxtls-core`, `noxtls-crypto`, and `noxtls-pem`.
 - `noxtls-io` depends on `noxtls-core` (transport adapters).
 - `noxtls` composes `noxtls-core`, `noxtls-crypto`, `noxtls-x509`, `noxtls-io`, and `noxtls-platform`.
-- `noxtls-test` and integration crates sit at the top of the graph.
+- `noxtls-test` sits at the top of the graph.
 
 ## Workspace structure
 
@@ -28,7 +28,6 @@ Rust packages are under `noxtls/crates/` (workspace members are `noxtls/crates/*
 - `noxtls-platform/`
 - `noxtls/`
 - `noxtls-test/`
-- `noxsight-integration/`
 
 ## Configuration model
 

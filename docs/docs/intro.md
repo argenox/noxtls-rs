@@ -18,7 +18,6 @@ Crates live under `noxtls/crates/`:
 - **`noxtls-io`**: Transport traits and blocking/async adapters.
 - **`noxtls-platform`**: Portable time hooks (extensible for RNG/storage).
 - **`noxtls-test`**: Demo and integration binaries (`publish = false`).
-- **`noxsight-integration`**: Observability adapters (`publish = false`).
 
 ## Goals
 

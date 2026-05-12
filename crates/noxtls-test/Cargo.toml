@@ -4,14 +4,15 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
+# Workspace-only: never published to crates.io (see `cargo publish` docs for `publish = false`).
 publish = false
-description = "Demo binaries and basic test helpers for the noxtls Rust workspace."
-readme = "../../../README.md"
+description = "Workspace-only demo binaries and test helpers; not published to crates.io."
+readme = "../../README.md"
 rust-version = "1.75"
 
 [dependencies]
-noxtls = { version = "0.1.2", path = "../noxtls", default-features = false }
-noxtls-crypto = { version = "0.1.2", path = "../noxtls-crypto", default-features = false }
+noxtls = { version = "0.1.3", path = "../noxtls", default-features = false }
+noxtls-crypto = { version = "0.1.3", path = "../noxtls-crypto", default-features = false }
 
 [lib]
 path = "src/lib.rs"

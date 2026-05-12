@@ -14,7 +14,7 @@ categories = ["network-programming", "no-std"]
 rust-version = "1.75"
 
 [dependencies]
-noxtls-core = { version = "0.1.2", path = "../noxtls-core", default-features = false }
+noxtls-core = { version = "0.1.3", path = "../noxtls-core", default-features = false }
 async-trait = { version = "0.1.83", optional = true }
 embedded-io = { version = "0.6", optional = true }
 embedded-io-async = { version = "0.6", optional = true }

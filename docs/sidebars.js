@@ -21,7 +21,6 @@ const sidebars = {
         "api/x509",
         "api/tls",
         "api/apps",
-        "api/noxsight-integration",
       ],
     },
   ],

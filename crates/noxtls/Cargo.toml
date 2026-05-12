@@ -14,12 +14,12 @@ categories = ["cryptography", "network-programming"]
 rust-version = "1.75"
 
 [dependencies]
-noxtls-core = { version = "0.1.2", path = "../noxtls-core", default-features = false }
-noxtls-crypto = { version = "0.1.2", path = "../noxtls-crypto", default-features = false }
-noxtls-io = { version = "0.1.2", path = "../noxtls-io", default-features = false }
-noxtls-psa = { version = "0.1.2", path = "../noxtls-psa", default-features = false, optional = true }
-noxtls-platform = { version = "0.1.2", path = "../noxtls-platform", default-features = false }
-noxtls-x509 = { version = "0.1.2", path = "../noxtls-x509", default-features = false }
+noxtls-core = { version = "0.1.3", path = "../noxtls-core", default-features = false }
+noxtls-crypto = { version = "0.1.3", path = "../noxtls-crypto", default-features = false }
+noxtls-io = { version = "0.1.3", path = "../noxtls-io", default-features = false }
+noxtls-psa = { version = "0.1.3", path = "../noxtls-psa", default-features = false, optional = true }
+noxtls-platform = { version = "0.1.3", path = "../noxtls-platform", default-features = false }
+noxtls-x509 = { version = "0.1.3", path = "../noxtls-x509", default-features = false }
 
 [features]
 default = ["std", "alloc"]

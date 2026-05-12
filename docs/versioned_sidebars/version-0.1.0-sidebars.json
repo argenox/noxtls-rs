@@ -22,8 +22,7 @@
         "api/pkc",
         "api/x509",
         "api/tls",
-        "api/apps",
-        "api/noxsight-integration"
+        "api/apps"
       ]
     }
   ]

@@ -20,4 +20,4 @@ Security reports are accepted for all crates in this workspace:
 - `noxtls-io`
 - `noxtls-platform`
 
-Internal-only crates (`noxtls-test`, `noxsight-integration`) are lower priority but may still be reported if they affect shipped integrations.
+Internal-only crate (`noxtls-test`) is lower priority but may still be reported if it affects shipped integrations.

@@ -75,8 +75,7 @@ Crates in `crates/`:
 | `noxtls-x509` | ASN.1/DER, certificate handling, and validation |
 | `noxtls-io` | Transport traits and blocking/async adapters |
 | `noxtls-platform` | Platform time hooks (extensible for RNG/storage) |
-| `noxtls-test` | Demo binaries and internal test helpers (`publish = false`) |
-| `noxsight-integration` | Observability adapters (`publish = false`) |
+| `noxtls-test` | Demo binaries and internal test helpers (workspace-only, not on crates.io) |
 
 ## Getting started
 
