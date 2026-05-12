@@ -1,6 +1,9 @@
 name: Publish Crates
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -35,6 +38,9 @@ jobs:
 
       - name: Publish noxtls-io
         run: cargo publish -p noxtls-io
+
+      - name: Publish noxtls-psa
+        run: cargo publish -p noxtls-psa
 
       - name: Publish noxtls-x509
         run: cargo publish -p noxtls-x509
