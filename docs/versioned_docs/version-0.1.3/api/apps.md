@@ -4,18 +4,18 @@ title: noxtls-test
 
 # `noxtls-test`
 
-Workspace-only demo binaries and test helpers; not published to crates.io.
+Internal demo and test binaries for the noxtls Rust workspace.
 
 ## Crate metadata
 
-- Workspace path: `crates/noxtls-test`
+- Workspace path: `noxtls/crates/noxtls-test`
 - Package name: `noxtls-test`
 - Publish status: internal/private
 
 ## API references
 
 - docs.rs: not published (internal crate)
-- Source: [`crates/noxtls-test`](https://github.com/Argenox/noxtls-oem-rust/tree/main/crates/noxtls-test)
+- Source: [`noxtls/crates/noxtls-test`](https://github.com/Argenox/noxtls-oem-rust/tree/main/noxtls/crates/noxtls-test)
 
 ## Notes
 

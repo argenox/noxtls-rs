@@ -46,7 +46,7 @@ function buildMarkdown(version, release) {
     "",
     `This page describes changes, fixes, and known issues for **NoxTLS Rust ${version}**.`,
     "",
-    "For source artifacts and release tags, see [Releases on GitHub](https://github.com/Argenox/noxtls-oem-rust/releases).",
+    "For source artifacts and release tags, see [Releases on GitHub](https://github.com/argenox/noxtls-rs/releases).",
     "",
     "Use the **version dropdown** in the navbar to view docs and notes for other versions.",
     "",

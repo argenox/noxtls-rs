@@ -1,5 +1,5 @@
 // @ts-check
-// NoxTLS Rust documentation
+// NoxTLS Rust documentation — layout aligned with NoxTLS C docs (docs.noxtls.com)
 
 import {themes as prismThemes} from "prism-react-renderer";
 
@@ -30,8 +30,7 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
-          // Match embedded C docs pattern: pin default + keep "Next" for in-tree `docs/`.
-          lastVersion: "0.1.0",
+          lastVersion: "0.1.3",
           includeCurrentVersion: true,
           versions: {
             current: {
@@ -51,35 +50,45 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      // Without this, localStorage can pin "next" as preferred; navbar `doc` then
-      // resolves to `/docs/next/...` and versionless `/docs/intro` feels missing.
-      docs: {
-        versionPersistence: "none",
+      colorMode: {
+        defaultMode: "light",
+        disableSwitch: false,
+        respectPrefersColorScheme: true,
       },
       navbar: {
         title: "NoxTLS Rust",
         logo: {
-          alt: "NoxTLS",
+          alt: "NoxTLS Rust",
           src: "img/logo.svg",
         },
         items: [
-          // Land on versionless `/docs/intro` (lastVersion alias), not `/docs/next/...`
           {
-            type: "doc",
-            docId: "intro",
-            label: "Documentation",
+            type: "docSidebar",
+            sidebarId: "docsSidebar",
             position: "left",
+            label: "Documentation",
           },
           {
             type: "docsVersionDropdown",
             position: "right",
+            dropdownItemsBefore: [],
             dropdownItemsAfter: [
-              {to: "https://github.com/Argenox/noxtls-oem-rust/releases", label: "All releases"},
+              {to: "https://github.com/argenox/noxtls-rs/releases", label: "All releases"},
             ],
           },
           {
-            href: "https://github.com/Argenox/noxtls-oem-rust",
+            href: "https://github.com/argenox/noxtls-rs",
             label: "GitHub",
+            position: "right",
+          },
+          {
+            to: "/docs/security",
+            label: "Security",
+            position: "right",
+          },
+          {
+            href: "https://crates.io/crates/noxtls",
+            label: "crates.io",
             position: "right",
           },
         ],
@@ -94,15 +103,26 @@ const config = {
               {label: "Getting Started", to: "/docs/getting-started"},
               {label: "Architecture", to: "/docs/architecture"},
               {label: "Security", to: "/docs/security"},
+              {label: "Embedded targets and I/O", to: "/docs/embed-targets"},
               {label: "Crate API", to: "/docs/api"},
               {label: "Release Notes", to: "/docs/release-notes"},
             ],
           },
           {
-            title: "Get the Code",
+            title: "Get the code",
             items: [
               {label: "Build from source", to: "/docs/getting-started"},
-              {label: "GitHub", href: "https://github.com/Argenox/noxtls-oem-rust"},
+              {label: "GitHub", href: "https://github.com/argenox/noxtls-rs"},
+              {label: "noxtls on crates.io", href: "https://crates.io/crates/noxtls"},
+              {label: "API on docs.rs", href: "https://docs.rs/noxtls"},
+            ],
+          },
+          {
+            title: "Community",
+            items: [
+              {label: "NoxTLS (C library)", href: "https://docs.noxtls.com"},
+              {label: "noxtls.com", href: "https://noxtls.com"},
+              {label: "Contact", href: "mailto:info@argenox.com"},
             ],
           },
         ],
@@ -111,7 +131,7 @@ const config = {
       prism: {
         theme: prismThemes.github,
         darkTheme: prismThemes.dracula,
-        additionalLanguages: ["rust", "toml", "bash", "powershell"],
+        additionalLanguages: ["rust", "toml", "bash", "powershell", "c"],
       },
     }),
 };

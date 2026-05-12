@@ -1,7 +1,5 @@
-// @ts-check
-/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
-const sidebars = {
-  docsSidebar: [
+{
+  "docsSidebar": [
     "intro",
     "getting-started",
     "architecture",
@@ -9,10 +7,14 @@ const sidebars = {
     "embed-targets",
     "release-notes",
     {
-      type: "category",
-      label: "Crate API",
-      link: {type: "generated-index", title: "Crate API", slug: "/api"},
-      items: [
+      "type": "category",
+      "label": "Crate API",
+      "link": {
+        "type": "generated-index",
+        "title": "Crate API",
+        "slug": "/api"
+      },
+      "items": [
         "api/core",
         "api/hash",
         "api/sym",
@@ -22,10 +24,10 @@ const sidebars = {
         "api/tls",
         "api/apps",
         {
-          type: "category",
-          label: "Published crates",
-          collapsed: true,
-          items: [
+          "type": "category",
+          "label": "Published crates",
+          "collapsed": true,
+          "items": [
             "api/crates/noxtls",
             "api/crates/noxtls-core",
             "api/crates/noxtls-crypto",
@@ -34,12 +36,10 @@ const sidebars = {
             "api/crates/noxtls-platform",
             "api/crates/noxtls-psa",
             "api/crates/noxtls-x509",
-            "api/crates/noxtls-test",
-          ],
-        },
-      ],
-    },
-  ],
-};
-
-export default sidebars;
+            "api/crates/noxtls-test"
+          ]
+        }
+      ]
+    }
+  ]
+}

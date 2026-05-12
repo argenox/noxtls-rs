@@ -157,6 +157,8 @@ npm run docs:sync
 npm run start
 ```
 
+- **Versioned docs (like NoxTLS C):** snapshots live under `docs/versioned_docs/version-*` and are listed in `docs/versions.json`. When you ship a release, add an entry to `docs/changelog.json`, then from `docs/` run `npm run docs:snapshot -- X.Y.Z` (runs `docs:sync` then `docusaurus docs:version X.Y.Z`). Commit the updated `versioned_docs/`, `versioned_sidebars/`, and `versions.json`. Set `lastVersion` in `docs/docusaurus.config.js` to the newest published doc version.
+
 - Record-layer integration notes: `docs/TLS13_RECORD_POLICY.md`
 - DTLS policy knobs: `docs/DTLS13_OPERATIONAL_POLICY.md`
 

@@ -4,18 +4,18 @@ title: noxtls-core
 
 # `noxtls-core`
 
-Internal implementation crate for noxtls: core profile flags, shared types, and utilities.
+Core profile flags, shared types, and utilities for the noxtls Rust stack.
 
 ## Crate metadata
 
-- Workspace path: `crates/noxtls-core`
+- Workspace path: `noxtls/crates/noxtls-core`
 - Package name: `noxtls-core`
 - Publish status: published/public
 
 ## API references
 
 - docs.rs: [https://docs.rs/noxtls-core](https://docs.rs/noxtls-core)
-- Source: [`crates/noxtls-core`](https://github.com/Argenox/noxtls-oem-rust/tree/main/crates/noxtls-core)
+- Source: [`noxtls/crates/noxtls-core`](https://github.com/Argenox/noxtls-oem-rust/tree/main/noxtls/crates/noxtls-core)
 
 ## Notes
 
