@@ -14,8 +14,8 @@ categories = ["cryptography", "embedded"]
 rust-version = "1.75"
 
 [dependencies]
-noxtls-core = { version = "0.1.0", path = "../noxtls-core", default-features = false }
-noxtls-crypto = { version = "0.1.0", path = "../noxtls-crypto", default-features = false }
+noxtls-core = { version = "0.1.2", path = "../noxtls-core", default-features = false }
+noxtls-crypto = { version = "0.1.2", path = "../noxtls-crypto", default-features = false }
 
 [features]
 default = ["alloc"]

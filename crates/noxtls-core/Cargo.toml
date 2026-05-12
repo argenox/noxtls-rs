@@ -1,11 +1,11 @@
 [package]
 name = "noxtls-core"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 license = "GPL-2.0-only OR LicenseRef-Argenox-Commercial-License"
 authors = ["Argenox Technologies LLC"]
 repository = "https://github.com/argenox/noxtls"
-homepage = "https://argenox.com"
+homepage = "https://noxtls.com"
 documentation = "https://github.com/argenox/noxtls"
 description = "Internal implementation crate for noxtls: core profile flags, shared types, and utilities."
 readme = "../../README.md"

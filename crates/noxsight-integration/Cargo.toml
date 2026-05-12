@@ -10,7 +10,7 @@ readme = "../../../README.md"
 rust-version = "1.75"
 
 [dependencies]
-noxtls = { version = "0.1.0", path = "../noxtls", default-features = false }
+noxtls = { version = "0.1.2", path = "../noxtls", default-features = false }
 
 [lib]
 path = "src/lib.rs"

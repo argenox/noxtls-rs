@@ -1,11 +1,11 @@
 [package]
 name = "noxtls-x509"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 license = "GPL-2.0-only OR LicenseRef-Argenox-Commercial-License"
 authors = ["Argenox Technologies LLC"]
 repository = "https://github.com/argenox/noxtls"
-homepage = "https://argenox.com"
+homepage = "https://noxtls.com"
 documentation = "https://github.com/argenox/noxtls"
 description = "Internal implementation crate for noxtls: X.509, ASN.1, and DER certificate utilities."
 readme = "../../README.md"
@@ -14,9 +14,9 @@ categories = ["cryptography", "parser-implementations"]
 rust-version = "1.75"
 
 [dependencies]
-noxtls-core = { version = "0.1.0", path = "../noxtls-core", default-features = false }
-noxtls-crypto = { version = "0.1.0", path = "../noxtls-crypto", default-features = false }
-noxtls-pem = { version = "0.1.0", path = "../noxtls-pem", default-features = false }
+noxtls-core = { version = "0.1.2", path = "../noxtls-core", default-features = false }
+noxtls-crypto = { version = "0.1.2", path = "../noxtls-crypto", default-features = false }
+noxtls-pem = { version = "0.1.2", path = "../noxtls-pem", default-features = false }
 
 [features]
 default = ["std", "alloc"]
