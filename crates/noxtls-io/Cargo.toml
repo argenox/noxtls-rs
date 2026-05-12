@@ -1,0 +1,32 @@
+[package]
+name = "noxtls-io"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Transport traits and blocking/async adapters for noxtls TLS record I/O."
+readme = "../../../README.md"
+keywords = ["tls", "io", "embedded", "async"]
+categories = ["network-programming", "no-std"]
+rust-version = "1.75"
+
+[dependencies]
+noxtls-core = { version = "0.1.0", path = "../noxtls-core", default-features = false }
+async-trait = { version = "0.1.83", optional = true }
+embedded-io = { version = "0.6", optional = true }
+embedded-io-async = { version = "0.6", optional = true }
+tokio = { version = "1", features = ["io-util", "net"], optional = true }
+
+[features]
+default = ["std", "alloc"]
+std = ["noxtls-core/std"]
+alloc = ["noxtls-core/alloc"]
+adapter-embedded-io = ["embedded-io", "alloc"]
+adapter-embedded-io-async = ["embedded-io-async", "alloc", "async-trait"]
+adapter-tokio = ["tokio", "std", "async-trait"]
+
+[lib]
+path = "src/lib.rs"

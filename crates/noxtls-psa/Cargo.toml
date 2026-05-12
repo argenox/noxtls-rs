@@ -1,0 +1,27 @@
+[package]
+name = "noxtls-psa"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Public PSA Crypto adapter and provider abstractions for noxtls."
+readme = "../../../README.md"
+keywords = ["tls", "crypto", "psa", "embedded", "provider"]
+categories = ["cryptography", "embedded"]
+rust-version = "1.75"
+
+[dependencies]
+noxtls-core = { version = "0.1.0", path = "../noxtls-core", default-features = false }
+noxtls-crypto = { version = "0.1.0", path = "../noxtls-crypto", default-features = false }
+
+[features]
+default = ["alloc"]
+alloc = []
+std = ["alloc", "noxtls-core/std", "noxtls-crypto/std"]
+mbedtls-psa-ffi = []
+
+[lib]
+path = "src/lib.rs"

@@ -1,0 +1,49 @@
+## Rust build artifacts
+## Default `target/` plus alternate `CARGO_TARGET_DIR` trees (e.g. `target-pkc-opt`, `target-ci`)
+/target/
+**/target/
+/target-*/
+**/target-*/
+/debug/
+**/debug/
+
+## Cargo
+Cargo.lock
+*.crate
+
+## Test and coverage outputs
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+*.lcov
+coverage/
+
+## IDE and editor files
+.idea/
+.vscode/
+*.code-workspace
+
+## OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.cur*
+*.bak
+*.swp
+*.swo
+
+## Environment and local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+

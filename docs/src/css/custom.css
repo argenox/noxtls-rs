@@ -1,0 +1,23 @@
+/**
+ * NoxTLS documentation - Argenox blue (#00AAFF) theme
+ */
+
+:root {
+  --ifm-color-primary: #00aaff;
+  --ifm-color-primary-dark: #0099e6;
+  --ifm-color-primary-darker: #0088cc;
+  --ifm-color-primary-darkest: #0077b3;
+  --ifm-color-primary-light: #33bbff;
+  --ifm-color-primary-lighter: #66ccff;
+  --ifm-color-primary-lightest: #99ddff;
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #33bbff;
+  --ifm-color-primary-dark: #00aaff;
+  --ifm-color-primary-darker: #0099e6;
+  --ifm-color-primary-darkest: #0088cc;
+  --ifm-color-primary-light: #66ccff;
+  --ifm-color-primary-lighter: #99ddff;
+  --ifm-color-primary-lightest: #cceeff;
+}

@@ -1,0 +1,16 @@
+[package]
+name = "noxsight-integration"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish = false
+description = "Internal observability integration adapters for noxtls Rust runtime events."
+readme = "../../../README.md"
+rust-version = "1.75"
+
+[dependencies]
+noxtls = { version = "0.1.0", path = "../noxtls", default-features = false }
+
+[lib]
+path = "src/lib.rs"

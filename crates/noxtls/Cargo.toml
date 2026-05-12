@@ -1,0 +1,106 @@
+[package]
+name = "noxtls"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "TLS/DTLS protocol and connection state machine for the noxtls Rust stack."
+readme = "../../../README.md"
+keywords = ["tls", "dtls", "crypto", "networking"]
+categories = ["cryptography", "network-programming"]
+rust-version = "1.75"
+
+[dependencies]
+noxtls-core = { version = "0.1.0", path = "../noxtls-core", default-features = false }
+noxtls-crypto = { version = "0.1.0", path = "../noxtls-crypto", default-features = false }
+noxtls-io = { version = "0.1.0", path = "../noxtls-io", default-features = false }
+noxtls-psa = { version = "0.1.0", path = "../noxtls-psa", default-features = false, optional = true }
+noxtls-platform = { version = "0.1.0", path = "../noxtls-platform", default-features = false }
+noxtls-x509 = { version = "0.1.0", path = "../noxtls-x509", default-features = false }
+
+[features]
+default = ["std", "alloc"]
+std = [
+    "noxtls-core/std",
+    "noxtls-crypto/std",
+    "noxtls-io/std",
+    "noxtls-psa?/std",
+    "noxtls-platform/std",
+    "noxtls-x509/std",
+]
+alloc = [
+    "noxtls-core/alloc",
+    "noxtls-crypto/alloc",
+    "noxtls-io/alloc",
+    "noxtls-psa?/alloc",
+    "noxtls-platform/alloc",
+    "noxtls-x509/alloc",
+]
+adapter-embedded-io = ["noxtls-io/adapter-embedded-io"]
+adapter-embedded-io-async = ["noxtls-io/adapter-embedded-io-async"]
+adapter-tokio = ["noxtls-io/adapter-tokio"]
+hazardous-legacy-crypto = ["noxtls-crypto/hazardous-legacy-crypto"]
+provider-psa = ["dep:noxtls-psa"]
+provider-psa-test-export = ["provider-psa"]
+
+[lib]
+path = "src/lib.rs"
+
+[[example]]
+name = "dtls_client"
+path = "../../examples/dtls_client.rs"
+
+[[example]]
+name = "dtls_server"
+path = "../../examples/dtls_server.rs"
+
+[[example]]
+name = "tls_client"
+path = "../../examples/tls_client.rs"
+
+[[example]]
+name = "tls_server"
+path = "../../examples/tls_server.rs"
+
+[[example]]
+name = "cert_app"
+path = "../../examples/cert_app.rs"
+
+[[example]]
+name = "cert_req"
+path = "../../examples/cert_req.rs"
+
+[[example]]
+name = "cert_write"
+path = "../../examples/cert_write.rs"
+
+[[example]]
+name = "crl_app"
+path = "../../examples/crl_app.rs"
+
+[[example]]
+name = "req_app"
+path = "../../examples/req_app.rs"
+
+[[example]]
+name = "pem2der"
+path = "../../examples/pem2der.rs"
+
+[[example]]
+name = "parse_certificate"
+path = "../../examples/parse_certificate.rs"
+
+[[example]]
+name = "verify_chain"
+path = "../../examples/verify_chain.rs"
+
+[[example]]
+name = "embedded_no_std"
+path = "../../examples/embedded_no_std.rs"
+
+[[example]]
+name = "noxtls-rs"
+path = "../../examples/noxtls_rs.rs"

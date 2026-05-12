@@ -1,0 +1,22 @@
+[package]
+name = "noxtls-platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Time, RNG, and storage abstractions for portable noxtls integrations."
+readme = "../../../README.md"
+keywords = ["tls", "embedded", "time", "rng"]
+categories = ["no-std", "cryptography"]
+rust-version = "1.75"
+
+[features]
+default = ["std", "alloc"]
+std = []
+alloc = []
+
+[lib]
+path = "src/lib.rs"

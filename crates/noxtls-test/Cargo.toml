@@ -1,0 +1,29 @@
+[package]
+name = "noxtls-test"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish = false
+description = "Demo binaries and basic test helpers for the noxtls Rust workspace."
+readme = "../../../README.md"
+rust-version = "1.75"
+
+[dependencies]
+noxtls = { version = "0.1.0", path = "../noxtls", default-features = false }
+noxtls-crypto = { version = "0.1.0", path = "../noxtls-crypto", default-features = false }
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "tls_test"
+path = "src/bin/tls_test.rs"
+
+[[bin]]
+name = "sha_demo"
+path = "src/bin/sha_demo.rs"
+
+[[bin]]
+name = "perf_baseline"
+path = "src/bin/perf_baseline.rs"

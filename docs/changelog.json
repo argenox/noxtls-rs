@@ -1,0 +1,14 @@
+{
+  "releases": [
+    {
+      "version": "0.1.0",
+      "date": "2026-04-17",
+      "changes": [
+        "Initial public Rust workspace split into core, hash, sym, drbg, pkc, x509, and tls crates.",
+        "Added standalone repository metadata and crates.io packaging readiness updates."
+      ],
+      "fixed": [],
+      "known_issues": []
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+// @ts-check
+/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
+const sidebars = {
+  docsSidebar: [
+    "intro",
+    "getting-started",
+    "architecture",
+    "security",
+    "embed-targets",
+    "release-notes",
+    {
+      type: "category",
+      label: "Crate API",
+      link: {type: "generated-index", title: "Crate API", slug: "/api"},
+      items: [
+        "api/core",
+        "api/hash",
+        "api/sym",
+        "api/drbg",
+        "api/pkc",
+        "api/x509",
+        "api/tls",
+        "api/apps",
+        "api/noxsight-integration",
+      ],
+    },
+  ],
+};
+
+export default sidebars;

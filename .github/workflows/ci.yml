@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noxtls
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+      - name: Check no_std + alloc (library crates)
+        run: |
+          cargo check -p noxtls-core --no-default-features --features alloc
+          cargo check -p noxtls-crypto --no-default-features --features alloc
+          cargo check -p noxtls-pem --no-default-features --features alloc
+          cargo check -p noxtls-x509 --no-default-features --features alloc
+          cargo check -p noxtls-io --no-default-features --features alloc
+          cargo check -p noxtls --no-default-features --features alloc
+
+      - name: Check TLS transport adapters
+        run: |
+          cargo check -p noxtls --features adapter-embedded-io
+          cargo check -p noxtls --features adapter-embedded-io-async
+          cargo check -p noxtls --features adapter-tokio
+
+  coverage-core:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noxtls
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools-preview
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
+
+      - name: Core crate coverage gate (line 95 / branch 90)
+        run: |
+          cargo +nightly llvm-cov --branch \
+            -p noxtls \
+            -p noxtls-core \
+            -p noxtls-crypto \
+            -p noxtls-x509 \
+            -p noxtls-pem \
+            -p noxtls-io \
+            -p noxtls-platform \
+            -F noxtls-io/adapter-embedded-io \
+            --no-report
+
+          cargo +nightly llvm-cov report --branch \
+            -p noxtls \
+            -p noxtls-core \
+            -p noxtls-crypto \
+            -p noxtls-x509 \
+            -p noxtls-pem \
+            -p noxtls-io \
+            -p noxtls-platform \
+            --html \
+            --output-dir target/llvm-cov/html
+
+          cargo +nightly llvm-cov report --branch \
+            -p noxtls \
+            -p noxtls-core \
+            -p noxtls-crypto \
+            -p noxtls-x509 \
+            -p noxtls-pem \
+            -p noxtls-io \
+            -p noxtls-platform \
+            --lcov \
+            --output-path target/llvm-cov/lcov.info
+
+          cargo +nightly llvm-cov report --branch \
+            -p noxtls \
+            -p noxtls-core \
+            -p noxtls-crypto \
+            -p noxtls-x509 \
+            -p noxtls-pem \
+            -p noxtls-io \
+            -p noxtls-platform \
+            --json \
+            --summary-only \
+            --output-path target/llvm-cov/summary.json \
+            --fail-under-lines 95
+
+      - name: Enforce branch coverage >= 90%
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          summary_path = Path("target/llvm-cov/summary.json")
+          data = json.loads(summary_path.read_text(encoding="utf-8"))
+          totals = data["data"][0]["totals"]
+          branches = totals.get("branches")
+          if not branches or branches.get("count", 0) == 0:
+            raise SystemExit("Branch coverage data unavailable")
+          pct = (branches["covered"] / branches["count"]) * 100.0
+          print(f"Total branch coverage: {pct:.2f}%")
+          if pct < 90.0:
+            raise SystemExit(f"Branch coverage gate failed: {pct:.2f}% < 90.00%")
+          PY
+
+      - name: Upload core coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-coverage-report
+          path: |
+            target/llvm-cov/html
+            target/llvm-cov/lcov.info
+            target/llvm-cov/summary.json
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: noxtls/docs/package-lock.json
+
+      - name: Install docs dependencies
+        working-directory: noxtls/docs
+        run: npm ci
+
+      - name: Regenerate docs content
+        working-directory: noxtls/docs
+        run: npm run docs:sync
+
+      - name: Build Docusaurus site
+        working-directory: noxtls/docs
+        run: npm run build

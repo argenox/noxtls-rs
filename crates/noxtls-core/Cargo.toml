@@ -1,0 +1,89 @@
+[package]
+name = "noxtls-core"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-only OR LicenseRef-Argenox-Commercial-License"
+authors = ["Argenox Technologies LLC"]
+repository = "https://github.com/argenox/noxtls"
+homepage = "https://argenox.com"
+documentation = "https://github.com/argenox/noxtls"
+description = "Core profile flags, shared types, and utilities for the noxtls Rust stack."
+readme = "../../../README.md"
+keywords = ["tls", "crypto", "security", "networking"]
+categories = ["cryptography", "network-programming"]
+rust-version = "1.75"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = ["std", "alloc", "profile-default"]
+std = []
+alloc = []
+
+profile-default = [
+    "feature-hash",
+    "feature-encryption",
+    "feature-drbg",
+    "feature-pkc",
+    "feature-cert",
+    "feature-tls",
+    "feature-tls12",
+    "feature-tls13",
+    "feature-dtls",
+]
+profile-minimal-tls-client = [
+    "feature-hash",
+    "feature-encryption",
+    "feature-drbg",
+    "feature-pkc",
+    "feature-cert",
+    "feature-tls",
+    "feature-tls12",
+    "feature-tls13",
+]
+profile-tls-server-pki = [
+    "feature-hash",
+    "feature-encryption",
+    "feature-drbg",
+    "feature-pkc",
+    "feature-cert",
+    "feature-cert-write",
+    "feature-tls",
+    "feature-tls12",
+    "feature-tls13",
+    "feature-dtls",
+]
+profile-crypto-only = [
+    "feature-hash",
+    "feature-encryption",
+    "feature-drbg",
+    "feature-pkc",
+]
+profile-fips-like = [
+    "feature-hash",
+    "feature-encryption",
+    "feature-drbg",
+    "feature-pkc",
+    "feature-cert",
+    "feature-tls",
+    "feature-tls12",
+    "feature-tls13",
+]
+
+feature-hash = []
+feature-encryption = []
+feature-drbg = []
+feature-pkc = []
+feature-cert = []
+feature-cert-write = []
+feature-tls = []
+feature-tls10 = []
+feature-tls11 = []
+feature-tls12 = []
+feature-tls13 = []
+feature-dtls = []
+
+policy-strict-constant-time = []
+policy-allow-legacy-algorithms = []
+policy-allow-sha1-signatures = []

@@ -1,0 +1,26 @@
+[package]
+name = "noxtls-crypto"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-only OR LicenseRef-Argenox-Commercial-License"
+authors = ["Argenox Technologies LLC"]
+repository = "https://github.com/argenox/noxtls"
+homepage = "https://argenox.com"
+documentation = "https://github.com/argenox/noxtls"
+description = "Hash, symmetric cipher, public-key, and DRBG primitives for the noxtls Rust stack."
+readme = "../../../README.md"
+keywords = ["tls", "crypto", "aes", "rsa", "hkdf"]
+categories = ["cryptography"]
+rust-version = "1.75"
+
+[dependencies]
+noxtls-core = { version = "0.1.0", path = "../noxtls-core", default-features = false }
+
+[features]
+default = ["std", "alloc"]
+std = ["noxtls-core/std"]
+alloc = ["noxtls-core/alloc"]
+hazardous-legacy-crypto = []
+
+[lib]
+path = "src/lib.rs"
