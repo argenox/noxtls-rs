@@ -9,13 +9,95 @@ permissions:
   contents: write
 
 jobs:
+  build:
+    name: Build (${{ matrix.suffix }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            suffix: linux-x86_64
+          - os: windows-latest
+            suffix: windows-x86_64
+          - os: macos-15
+            suffix: macos-aarch64
+          # macOS 15 on Intel (x86_64-apple-darwin); see runner-images "macos-15-intel"
+          - os: macos-15-intel
+            suffix: macos-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release (workspace + examples + demo bins)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --workspace --release
+          cargo build -p noxtls --examples --release
+          cargo build -p noxtls-test --bins --release
+
+      - name: Package applications
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${GITHUB_REF_NAME}"
+          STAGE="noxtls-${VER}-${{ matrix.suffix }}"
+          mkdir -p "${STAGE}/bin" "${STAGE}/examples"
+          for name in tls_test sha_demo perf_baseline; do
+            if [[ -f "target/release/${name}.exe" ]]; then
+              cp "target/release/${name}.exe" "${STAGE}/bin/"
+            elif [[ -f "target/release/${name}" ]]; then
+              cp "target/release/${name}" "${STAGE}/bin/"
+            fi
+          done
+          shopt -s nullglob
+          for f in target/release/examples/*; do
+            [[ -f "$f" ]] || continue
+            case "$f" in
+              *.d|*.pdb) continue ;;
+            esac
+            cp "$f" "${STAGE}/examples/"
+          done
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            OUT="${STAGE}.zip"
+            tar -a -c -f "${OUT}" "${STAGE}"
+          else
+            OUT="${STAGE}.tar.gz"
+            tar czf "${OUT}" "${STAGE}"
+          fi
+          echo "archive=${OUT}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: noxtls-${{ matrix.suffix }}
+          path: ${{ steps.package.outputs.archive }}
+
   github-release:
+    name: Publish GitHub Release
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Publish GitHub Release for tag
+      - name: Download all platform archives
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: noxtls-*
+          merge-multiple: true
+
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          files: release-assets/*
