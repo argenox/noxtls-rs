@@ -105,6 +105,7 @@ for (const member of members) {
 
   const docId = toDocIdFromMember(member);
   const outPath = path.join(docsApiDir, `${docId}.md`);
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, buildDoc(member, pkgName, description, published), "utf8");
   console.log("Written", outPath);
   written += 1;
