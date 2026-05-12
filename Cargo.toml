@@ -1,0 +1,23 @@
+[workspace]
+members = [
+    "crates/noxtls",
+    "crates/noxtls-core",
+    "crates/noxtls-crypto",
+    "crates/noxtls-io",
+    "crates/noxtls-pem",
+    "crates/noxtls-platform",
+    "crates/noxtls-psa",
+    "crates/noxtls-x509",
+    "crates/noxtls-test",
+    "crates/noxsight-integration",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-only OR LicenseRef-Argenox-Commercial-License"
+authors = ["Argenox Technologies LLC"]
+repository = "https://github.com/argenox/noxtls-rs"
+homepage = "https://argenox.com"
+documentation = "https://docs.noxtls.com"

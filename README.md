@@ -7,12 +7,11 @@
 **A pure Rust TLS/DTLS workspace for embedded and host systems.**  
 Built for deterministic behavior, portable integrations, and modern cryptography.
 
-[![Build](https://github.com/argenox/noxtls/actions/workflows/build-applications.yml/badge.svg)](https://github.com/argenox/noxtls/actions/workflows/build-applications.yml)
-[![Tests](https://github.com/argenox/noxtls/actions/workflows/tests.yml/badge.svg)](https://github.com/argenox/noxtls/actions/workflows/tests.yml)
-[![CodeQL](https://github.com/argenox/noxtls/actions/workflows/codeql.yml/badge.svg)](https://github.com/argenox/noxtls/actions/workflows/codeql.yml)
+[![CI](https://github.com/argenox/noxtls-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/argenox/noxtls-rs/actions/workflows/ci.yml)
+[![Interop gates](https://github.com/argenox/noxtls-rs/actions/workflows/interop-gates.yml/badge.svg)](https://github.com/argenox/noxtls-rs/actions/workflows/interop-gates.yml)
 
 **Website:** https://argenox.com  
-**Issues:** https://github.com/argenox/noxtls/issues  
+**Issues:** https://github.com/argenox/noxtls-rs/issues  
 
 ## Why NoxTLS Rust?
 
@@ -85,8 +84,8 @@ Crates in `crates/`:
 ### Clone
 
 ```powershell
-git clone https://github.com/argenox/noxtls.git
-cd noxtls
+git clone https://github.com/argenox/noxtls-rs.git
+cd noxtls-rs
 ```
 
 ### Build and test
