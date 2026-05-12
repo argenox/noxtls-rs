@@ -43,6 +43,12 @@ jobs:
           cargo check -p noxtls --features adapter-embedded-io-async
           cargo check -p noxtls --features adapter-tokio
 
+      - name: Build workspace and application binaries
+        run: |
+          cargo build --workspace
+          cargo build -p noxtls --examples
+          cargo build -p noxtls-test --bins
+
   coverage-core:
     runs-on: ubuntu-latest
     steps:

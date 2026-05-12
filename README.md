@@ -8,7 +8,6 @@
 Built for deterministic behavior, portable integrations, and modern cryptography.
 
 [![CI](https://github.com/argenox/noxtls-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/argenox/noxtls-rs/actions/workflows/ci.yml)
-[![Interop gates](https://github.com/argenox/noxtls-rs/actions/workflows/interop-gates.yml/badge.svg)](https://github.com/argenox/noxtls-rs/actions/workflows/interop-gates.yml)
 
 **Website:** https://argenox.com  
 **Issues:** https://github.com/argenox/noxtls-rs/issues  
@@ -118,7 +117,6 @@ npm run start
 ```
 
 - Record-layer integration notes: `docs/TLS13_RECORD_POLICY.md`
-- Interop verification matrices: `docs/TLS13_INTEROP_MATRIX.md`, `docs/TLS12_INTEROP_MATRIX.md`
 - DTLS policy knobs: `docs/DTLS13_OPERATIONAL_POLICY.md`
 
 ## Formatting and linting
