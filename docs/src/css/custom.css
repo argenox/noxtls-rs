@@ -68,6 +68,12 @@
   margin: 0;
 }
 
+/* Navbar logo: file is 256px source; cap display size like typical doc sites */
+.navbar__logo img {
+  height: 2.25rem;
+  width: auto;
+}
+
 /* Slightly tighter doc sidebar (classic theme) */
 .theme-doc-sidebar-container {
   border-right-color: var(--ifm-toc-border-color);

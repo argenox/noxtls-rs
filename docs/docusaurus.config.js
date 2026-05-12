@@ -7,7 +7,7 @@ import {themes as prismThemes} from "prism-react-renderer";
 const config = {
   title: "NoxTLS Rust",
   tagline: "Pure Rust crypto and TLS workspace",
-  favicon: "img/logo.svg",
+  favicon: "img/noxtls-rust-logo-256.webp",
 
   future: {
     v4: true,
@@ -59,7 +59,7 @@ const config = {
         title: "NoxTLS Rust",
         logo: {
           alt: "NoxTLS Rust",
-          src: "img/logo.svg",
+          src: "img/noxtls-rust-logo-256.webp",
         },
         items: [
           {
