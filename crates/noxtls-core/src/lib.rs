@@ -327,4 +327,3 @@ pub fn read_u24_be(input: &[u8]) -> Result<u32> {
 pub fn secure_zero(data: &mut [u8]) {
     data.fill(0);
 }
-

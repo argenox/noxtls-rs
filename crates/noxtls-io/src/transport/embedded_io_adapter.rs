@@ -126,4 +126,3 @@ impl<I: Read + Write + ErrorType> BlockingStream for EmbeddedIoTransport<I> {
         Ok(())
     }
 }
-

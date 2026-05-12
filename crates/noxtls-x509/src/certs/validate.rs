@@ -23,9 +23,8 @@ use crate::internal_alloc::{String, Vec};
 
 use noxtls_crypto::{
     ed25519_verify, mldsa_verify, p256_ecdsa_verify_sha256, rsassa_pss_sha256_verify,
-    rsassa_pss_sha384_verify, rsassa_sha256_verify, rsassa_sha384_verify,
-    rsassa_sha512_verify, Ed25519PublicKey, MlDsaPublicKey, P256PublicKey, RsaPublicKey,
-    OID_ID_MLDSA65,
+    rsassa_pss_sha384_verify, rsassa_sha256_verify, rsassa_sha384_verify, rsassa_sha512_verify,
+    Ed25519PublicKey, MlDsaPublicKey, P256PublicKey, RsaPublicKey, OID_ID_MLDSA65,
 };
 
 use super::{parse_der_node, Certificate};

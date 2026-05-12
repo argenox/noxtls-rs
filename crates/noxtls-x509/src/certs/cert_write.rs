@@ -780,4 +780,3 @@ fn encode_der_len(len: usize) -> Result<Vec<u8>> {
     out.extend_from_slice(content);
     Ok(out)
 }
-

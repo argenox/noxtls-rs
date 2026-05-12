@@ -58,4 +58,3 @@ impl Display for TransportError {
 #[cfg(feature = "std")]
 /// Bridges [`TransportError`] into [`std::error::Error`] when the `std` feature is enabled.
 impl std::error::Error for TransportError {}
-

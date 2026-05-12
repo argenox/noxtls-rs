@@ -355,4 +355,3 @@ pub fn ed25519_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<Ed
         .map_err(|_| Error::InvalidLength("ed25519 keygen expected 32-byte seed"))?;
     Ok(Ed25519PrivateKey::from_seed(&seed))
 }
-

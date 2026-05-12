@@ -247,4 +247,3 @@ pub fn shake256(data: &[u8], output_len: usize) -> Vec<u8> {
     // SHAKE functions use domain-separation suffix 0x1F (FIPS 202).
     keccak_sponge(136, output_len, data, 0x1F)
 }
-

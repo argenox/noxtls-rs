@@ -19,8 +19,8 @@
 //!
 //! Implementations are split by algorithm file; this module only wires `pub use` exports.
 
-mod digest;
 mod bcrypt_pbkdf;
+mod digest;
 mod hex;
 mod hkdf;
 mod hmac;
@@ -41,4 +41,3 @@ pub use tls::{
     tls12_finished_verify_data_sha256, tls12_finished_verify_data_sha384, tls12_prf_sha256,
     tls12_prf_sha384, TlsTranscriptSha256, TlsTranscriptSha384,
 };
-

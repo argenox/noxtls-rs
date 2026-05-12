@@ -45,9 +45,6 @@ pub use primitive::{
     OID_ID_MLDSA65,
 };
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub use primitive::{x448, x448_basepoint, x448_generate_private_key_auto, x448_shared_secret};
+pub use primitive::{rsa_generate_keypair_auto, rsa_generate_keypair_with_exponent_auto};
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub use primitive::{
-    rsa_generate_keypair_auto, rsa_generate_keypair_with_exponent_auto,
-};
-
+pub use primitive::{x448, x448_basepoint, x448_generate_private_key_auto, x448_shared_secret};

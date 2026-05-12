@@ -146,7 +146,9 @@ impl ExternalKeyHandle {
     /// Returns [`Error::InvalidLength`] when `id` is empty.
     pub fn new(id: &[u8]) -> Result<Self> {
         if id.is_empty() {
-            return Err(Error::InvalidLength("external key handle must not be empty"));
+            return Err(Error::InvalidLength(
+                "external key handle must not be empty",
+            ));
         }
         Ok(Self { id: id.to_vec() })
     }
@@ -268,7 +270,11 @@ impl SoftwareKeyProvider {
         handle: ExternalKeyHandle,
         key: X25519PrivateKey,
     ) -> Result<()> {
-        if self.x25519_keys.iter().any(|(existing, _)| existing == &handle) {
+        if self
+            .x25519_keys
+            .iter()
+            .any(|(existing, _)| existing == &handle)
+        {
             return Err(Error::StateError("x25519 key handle is already registered"));
         }
         self.x25519_keys.push((handle, key));

@@ -20,8 +20,8 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
     aes_gcm_encrypt, p256_ecdh_shared_secret, p256_ecdsa_sign_sha256, rsaes_oaep_sha256_decrypt,
-    rsaes_pkcs1_v15_decrypt, rsassa_pss_sha256_sign, rsassa_sha256_sign, sha256, x25519,
-    AesCipher, P256PrivateKey, P256PublicKey, RsaPrivateKey,
+    rsaes_pkcs1_v15_decrypt, rsassa_pss_sha256_sign, rsassa_sha256_sign, sha256, x25519, AesCipher,
+    P256PrivateKey, P256PublicKey, RsaPrivateKey,
 };
 
 /// Identifies a backend-managed external key object.
@@ -625,9 +625,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
     fn decrypt(&self, request: &KeyDecryptRequest<'_>) -> Result<Vec<u8>> {
         let (material, policy) = self.resolve_key(request.handle)?;
         if !policy.allow_decrypt {
-            return Err(Error::StateError(
-                "psa decrypt not permitted by key policy",
-            ));
+            return Err(Error::StateError("psa decrypt not permitted by key policy"));
         }
         match (request.algorithm, material) {
             (PsaDecryptAlgorithm::RsaPkcs1v15, SoftwarePrivateMaterial::Rsa(key)) => {
@@ -636,7 +634,9 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
             (PsaDecryptAlgorithm::RsaOaepSha256, SoftwarePrivateMaterial::Rsa(key)) => {
                 rsaes_oaep_sha256_decrypt(key, request.ciphertext, request.label.unwrap_or(&[]))
             }
-            _ => Err(Error::UnsupportedFeature("psa decrypt algorithm/key mismatch")),
+            _ => Err(Error::UnsupportedFeature(
+                "psa decrypt algorithm/key mismatch",
+            )),
         }
     }
 
@@ -672,7 +672,9 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
                 let peer = P256PublicKey::from_uncompressed(request.peer_public_key)?;
                 Ok(p256_ecdh_shared_secret(private, &peer)?.to_vec())
             }
-            _ => Err(Error::UnsupportedFeature("psa derive algorithm/key mismatch")),
+            _ => Err(Error::UnsupportedFeature(
+                "psa derive algorithm/key mismatch",
+            )),
         }
     }
 

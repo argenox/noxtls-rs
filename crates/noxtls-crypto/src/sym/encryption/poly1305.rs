@@ -336,4 +336,3 @@ impl Poly1305State {
         tag
     }
 }
-

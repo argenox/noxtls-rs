@@ -22,13 +22,13 @@ use noxtls_crypto::{
     RsaPrivateKey, RsaPublicKey, X25519PrivateKey, X25519PublicKey, X448PrivateKey, X448PublicKey,
     OID_ID_MLDSA65,
 };
+#[cfg(feature = "std")]
+use noxtls_pem::{der_to_pem_file, pem_file_to_der};
 use noxtls_pem::{
     ec_private_key_pem_to_der_sec1, private_key_der_to_pem_pkcs8, private_key_pem_to_der_pkcs8,
     public_key_der_to_pem_spki, public_key_pem_to_der_spki, rsa_private_key_pem_to_der_pkcs1,
     rsa_public_key_der_to_pem_pkcs1, rsa_public_key_pem_to_der_pkcs1,
 };
-#[cfg(feature = "std")]
-use noxtls_pem::{der_to_pem_file, pem_file_to_der};
 #[cfg(feature = "std")]
 use std::path::Path;
 
@@ -248,11 +248,7 @@ pub fn ed25519_public_key_to_pem_spki(public: Ed25519PublicKey) -> Result<String
 pub fn p256_private_key_to_pkcs8_der(private: &P256PrivateKey) -> Result<Vec<u8>> {
     let scalar = private.to_bytes()?;
     let sec1 = encode_der_sequence(
-        &[
-            encode_der_integer(&[0x01]),
-            encode_der_node(0x04, &scalar),
-        ]
-        .concat(),
+        &[encode_der_integer(&[0x01]), encode_der_node(0x04, &scalar)].concat(),
     )?;
     encode_pkcs8_private_key_info_der(OID_EC_PUBLIC_KEY, Some(OID_PRIME256V1), &sec1)
 }
@@ -743,9 +739,7 @@ pub fn ed25519_public_key_from_spki_der(der: &[u8]) -> Result<Ed25519PublicKey> 
         ));
     }
     if info.subject_public_key.len() != 32 {
-        return Err(Error::InvalidLength(
-            "ed25519 public key must be 32 bytes",
-        ));
+        return Err(Error::InvalidLength("ed25519 public key must be 32 bytes"));
     }
     let mut public = [0_u8; 32];
     public.copy_from_slice(&info.subject_public_key);
@@ -1746,7 +1740,9 @@ mod ed25519_pkcs8_tests {
         }
         let der = ed25519_pkcs8_der_raw_seed(&seed);
         let sk = ed25519_private_key_from_pkcs8_der(&der).expect("pkcs8 raw");
-        let expect = Ed25519PrivateKey::from_seed(&seed).verifying_key().to_bytes();
+        let expect = Ed25519PrivateKey::from_seed(&seed)
+            .verifying_key()
+            .to_bytes();
         assert_eq!(sk.verifying_key().to_bytes(), expect);
     }
 
@@ -1783,7 +1779,11 @@ mod ed25519_pkcs8_tests {
         let sk = P256PrivateKey::from_bytes(scalar).expect("p256 seed");
         let der = p256_private_key_to_pkcs8_der(&sk).expect("serialize");
         let decoded = p256_private_key_from_pkcs8_der(&der).expect("parse");
-        let expected_pub = sk.public_key().expect("pub a").to_uncompressed().expect("sec1 a");
+        let expected_pub = sk
+            .public_key()
+            .expect("pub a")
+            .to_uncompressed()
+            .expect("sec1 a");
         let decoded_pub = decoded
             .public_key()
             .expect("pub b")
@@ -1841,7 +1841,11 @@ mod ed25519_pkcs8_tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
-        std::env::temp_dir().join(format!("noxtls_{stem}_{}_{}.pem", std::process::id(), nanos))
+        std::env::temp_dir().join(format!(
+            "noxtls_{stem}_{}_{}.pem",
+            std::process::id(),
+            nanos
+        ))
     }
 
     /// Confirms PKCS#8 private-key file read/write wrappers roundtrip an Ed25519 key.
@@ -1907,4 +1911,3 @@ mod ed25519_pkcs8_tests {
         let _ = fs::remove_file(path);
     }
 }
-

@@ -792,4 +792,3 @@ fn is_all_zero(bytes: &[u8; 32]) -> bool {
 fn is_montgomery_u_one(bytes: &[u8; 32]) -> bool {
     bytes[0] == 1 && bytes[1..].iter().all(|byte| *byte == 0)
 }
-

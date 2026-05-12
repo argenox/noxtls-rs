@@ -404,4 +404,3 @@ fn set_profile_once(slot: &mut Option<Profile>, value: Profile, _line_number: us
     *slot = Some(value);
     Ok(())
 }
-

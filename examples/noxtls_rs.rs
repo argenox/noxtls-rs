@@ -19,18 +19,19 @@
 //!
 //! Run with `cargo run -p noxtls --example noxtls_rs -- ...`. Subcommands mirror the `main` dispatch table.
 
-
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use noxtls_core::{Error, Result};
-use noxtls_crypto::{
-    aes_gcm_decrypt, aes_gcm_encrypt, decode_hex, sha1, sha256, sha384, sha3_256, sha3_384,
-    sha3_512, sha512, x25519_generate_private_key_auto, AesCipher, HmacDrbgSha256,
-    P256PrivateKey, P256PublicKey,
-};
 #[cfg(feature = "hazardous-legacy-crypto")]
 use noxtls_crypto::x448_generate_private_key_auto;
+use noxtls_crypto::{
+    aes_gcm_decrypt, aes_gcm_encrypt, decode_hex, sha1, sha256, sha384, sha3_256, sha3_384,
+    sha3_512, sha512, x25519_generate_private_key_auto, AesCipher, HmacDrbgSha256, P256PrivateKey,
+    P256PublicKey,
+};
+#[cfg(feature = "hazardous-legacy-crypto")]
+use noxtls_x509::x448_public_key_to_pem_spki;
 use noxtls_x509::{
     certificate_der_to_pem, certificate_matches_hostname, certificate_pem_to_der, der_to_pem,
     p256_public_key_to_pem_spki, parse_certificate, parse_der_node,
@@ -38,8 +39,6 @@ use noxtls_x509::{
     validate_certificate_chain, write_csr_p256_sha256, write_self_signed_certificate_p256_sha256,
     x25519_public_key_to_pem_spki,
 };
-#[cfg(feature = "hazardous-legacy-crypto")]
-use noxtls_x509::x448_public_key_to_pem_spki;
 
 /// Runs an OpenSSL-style noxtls utility for digests, encryption, randomness, keys, and X.509.
 ///

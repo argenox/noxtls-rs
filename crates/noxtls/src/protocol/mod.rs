@@ -23,9 +23,9 @@ mod dtls;
 mod handshake;
 mod kdf;
 mod key_provider;
+mod keyshare;
 #[cfg(feature = "provider-psa")]
 mod psa_provider;
-mod keyshare;
 mod psk;
 mod record;
 mod state;
@@ -34,10 +34,9 @@ pub use connection::{
     ClientHelloExtensions, ClientHelloInfo, Connection, DtlsOperationalPolicy,
     DtlsOperationalProfile, ProtectedRecord, Tls13EarlyDataOperationalPolicy,
     Tls13EarlyDataOperationalProfile, Tls13EarlyDataReplayState, Tls13EarlyDataTelemetry,
-    Tls13OcspStapleVerification, Tls13OcspStapleVerifier,
-    Tls13QuicInitialSecrets, Tls13QuicNextTrafficSecrets, Tls13QuicPacketProtectionKeys,
-    Tls13QuicTrafficSecretSnapshot, TLS13_QUIC_EXPORTER_LABEL_CLIENT_1RTT,
-    TLS13_QUIC_EXPORTER_LABEL_SERVER_1RTT,
+    Tls13OcspStapleVerification, Tls13OcspStapleVerifier, Tls13QuicInitialSecrets,
+    Tls13QuicNextTrafficSecrets, Tls13QuicPacketProtectionKeys, Tls13QuicTrafficSecretSnapshot,
+    TLS13_QUIC_EXPORTER_LABEL_CLIENT_1RTT, TLS13_QUIC_EXPORTER_LABEL_SERVER_1RTT,
 };
 pub use dtls::{
     dtls13_aes128gcm_record_size, encode_dtls_record_header, encode_dtls_record_packet,
@@ -54,16 +53,15 @@ pub use key_provider::{
     ExternalKeyHandle, ExternalKeyProvider, KeyDecryptAlgorithm, KeyDecryptRequest,
     KeyDeriveAlgorithm, KeyDeriveRequest, KeySignAlgorithm, KeySignRequest, SoftwareKeyProvider,
 };
-#[cfg(feature = "provider-psa")]
-pub use psa_provider::PsaExternalKeyProvider;
 pub use keyshare::{
     derive_deterministic_p256_private, derive_deterministic_x25519_private,
     derive_tls13_p256_shared_secret, derive_tls13_x25519_shared_secret,
     tls13_client_hello_offers_supported_key_exchange, tls13_key_share_group_supported,
     tls13_signature_algorithm_supported,
 };
+#[cfg(feature = "provider-psa")]
+pub use psa_provider::PsaExternalKeyProvider;
 pub use psk::{ResumptionTicket, TicketStore, TicketUsagePolicy};
 pub use state::{
     AlertDescription, AlertLevel, CipherSuite, HandshakeState, RecordContentType, TlsVersion,
 };
-

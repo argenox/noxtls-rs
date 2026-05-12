@@ -30,14 +30,21 @@ pub use cert_write::{
     write_self_signed_certificate_p256_sha256, write_self_signed_certificate_rsa_sha256,
 };
 pub use certificate::{certificate_matches_hostname, parse_certificate, Certificate};
+#[cfg(feature = "std")]
+pub use key_format::{
+    ed25519_private_key_from_pem_file_pkcs8, ed25519_private_key_to_pem_file_pkcs8,
+    p256_private_key_from_pem_file_pkcs8, p256_private_key_to_pem_file_pkcs8,
+    x25519_private_key_from_pem_file_pkcs8, x25519_private_key_to_pem_file_pkcs8,
+    x448_private_key_from_pem_file_pkcs8, x448_private_key_to_pem_file_pkcs8,
+};
 pub use key_format::{
     ed25519_private_key_from_pem_pkcs8, ed25519_private_key_from_pkcs8_der,
     ed25519_private_key_to_pem_pkcs8, ed25519_private_key_to_pkcs8_der,
-    ed25519_public_key_from_pem_spki, ed25519_public_key_from_spki_der, ed25519_public_key_to_pem_spki,
-    ed25519_public_key_to_spki_der, mldsa_public_key_from_spki_der, p256_private_key_from_pem_pkcs8,
-    p256_private_key_from_pem_sec1, p256_private_key_from_pkcs8_der, p256_private_key_to_pem_pkcs8,
-    p256_private_key_to_pkcs8_der,
-    p256_private_key_from_sec1_der, p256_public_key_from_pem_spki, p256_public_key_from_spki_der,
+    ed25519_public_key_from_pem_spki, ed25519_public_key_from_spki_der,
+    ed25519_public_key_to_pem_spki, ed25519_public_key_to_spki_der, mldsa_public_key_from_spki_der,
+    p256_private_key_from_pem_pkcs8, p256_private_key_from_pem_sec1,
+    p256_private_key_from_pkcs8_der, p256_private_key_from_sec1_der, p256_private_key_to_pem_pkcs8,
+    p256_private_key_to_pkcs8_der, p256_public_key_from_pem_spki, p256_public_key_from_spki_der,
     p256_public_key_to_pem_spki, p256_public_key_to_spki_der, parse_ecdsa_signature_der,
     parse_pkcs1_rsa_private_key_der, parse_pkcs1_rsa_public_key_der,
     parse_pkcs8_private_key_info_der, parse_spki_public_key_info_der,
@@ -48,11 +55,11 @@ pub use key_format::{
     x25519_private_key_from_pkcs8_der, x25519_private_key_to_pem_pkcs8,
     x25519_private_key_to_pkcs8_der, x25519_public_key_from_pem_spki,
     x25519_public_key_from_spki_der, x25519_public_key_to_pem_spki, x25519_public_key_to_spki_der,
-    x448_private_key_from_pem_pkcs8, x448_private_key_from_pkcs8_der, x448_private_key_to_pem_pkcs8,
-    x448_private_key_to_pkcs8_der,
-    x448_public_key_from_pem_spki, x448_public_key_from_spki_der, x448_public_key_to_pem_spki,
-    x448_public_key_to_spki_der, Pkcs8PrivateKeyInfoDerParts, RsaPrivateKeyDerParts,
-    RsaPublicKeyDerParts, SpkiPublicKeyInfoDerParts,
+    x448_private_key_from_pem_pkcs8, x448_private_key_from_pkcs8_der,
+    x448_private_key_to_pem_pkcs8, x448_private_key_to_pkcs8_der, x448_public_key_from_pem_spki,
+    x448_public_key_from_spki_der, x448_public_key_to_pem_spki, x448_public_key_to_spki_der,
+    Pkcs8PrivateKeyInfoDerParts, RsaPrivateKeyDerParts, RsaPublicKeyDerParts,
+    SpkiPublicKeyInfoDerParts,
 };
 pub use noxtls_pem::{
     certificate_chain_pem_to_der_blocks, certificate_der_to_pem, certificate_pem_to_der,
@@ -64,16 +71,8 @@ pub use noxtls_pem::{
 };
 #[cfg(feature = "std")]
 pub use noxtls_pem::{der_to_file, der_to_pem_file, pem_file_to_der, pem_file_to_der_blocks};
-#[cfg(feature = "std")]
-pub use key_format::{
-    ed25519_private_key_from_pem_file_pkcs8, ed25519_private_key_to_pem_file_pkcs8,
-    p256_private_key_from_pem_file_pkcs8, p256_private_key_to_pem_file_pkcs8,
-    x25519_private_key_from_pem_file_pkcs8, x25519_private_key_to_pem_file_pkcs8,
-    x448_private_key_from_pem_file_pkcs8, x448_private_key_to_pem_file_pkcs8,
-};
 pub use validate::{
     validate_certificate_chain, validate_certificate_chain_constraints_only,
     validate_certificate_chain_strict, validate_certificate_chain_with_options,
     verify_certificate_signature, ValidationError, ValidationOptions, ValidationReport,
 };
-

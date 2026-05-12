@@ -1362,4 +1362,3 @@ fn poly_to_message(poly: &Poly) -> [u8; MLKEM_SHARED_SECRET_LEN] {
     }
     out
 }
-

@@ -23,9 +23,8 @@ mod mdigest;
 mod sha3;
 
 pub use mdigest::{
-    bcrypt_pbkdf_sha512,
-    decode_hex, hkdf_expand_sha256, hkdf_expand_sha384, hkdf_extract_sha256, hkdf_extract_sha384,
-    hmac_sha256, hmac_sha384, hmac_sha512, sha1, sha256, sha384, sha512,
+    bcrypt_pbkdf_sha512, decode_hex, hkdf_expand_sha256, hkdf_expand_sha384, hkdf_extract_sha256,
+    hkdf_extract_sha384, hmac_sha256, hmac_sha384, hmac_sha512, sha1, sha256, sha384, sha512,
     tls12_finished_verify_data_sha256, tls12_finished_verify_data_sha384, tls12_prf_sha256,
     tls12_prf_sha384, Digest, Sha256, Sha512, TlsTranscriptSha256, TlsTranscriptSha384,
 };

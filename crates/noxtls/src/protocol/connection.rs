@@ -47,12 +47,11 @@ use crate::internal_alloc::{String, Vec};
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
     aes_gcm_decrypt, aes_gcm_encrypt, chacha20_poly1305_decrypt, chacha20_poly1305_encrypt,
-    ed25519_public_key_from_subject_public_key_info, ed25519_verify, mldsa_verify,
-    hkdf_extract_sha256,
-    p256_ecdsa_verify_sha256, rsassa_pss_sha256_verify, rsassa_pss_sha384_verify, sha256,
-    tls12_prf_sha256, tls12_prf_sha384, AesCipher, HmacDrbgSha256, MlDsaPublicKey, MlKemPrivateKey,
-    P256PrivateKey, P256PublicKey, RsaPublicKey, TlsTranscriptSha256, TlsTranscriptSha384,
-    X25519PrivateKey, MLKEM_CIPHERTEXT_LEN,
+    ed25519_public_key_from_subject_public_key_info, ed25519_verify, hkdf_extract_sha256,
+    mldsa_verify, p256_ecdsa_verify_sha256, rsassa_pss_sha256_verify, rsassa_pss_sha384_verify,
+    sha256, tls12_prf_sha256, tls12_prf_sha384, AesCipher, HmacDrbgSha256, MlDsaPublicKey,
+    MlKemPrivateKey, P256PrivateKey, P256PublicKey, RsaPublicKey, TlsTranscriptSha256,
+    TlsTranscriptSha384, X25519PrivateKey, MLKEM_CIPHERTEXT_LEN,
 };
 use noxtls_x509::{
     certificate_matches_hostname, parse_certificate, parse_der_node, parse_ecdsa_signature_der,
@@ -899,9 +898,9 @@ impl Connection {
             Some(value) if value.is_empty() => Err(Error::InvalidLength(
                 "tls12 session id must not be empty when present",
             )),
-            Some(value) if value.len() > 32 => {
-                Err(Error::InvalidLength("tls12 session id must not exceed 32 bytes"))
-            }
+            Some(value) if value.len() > 32 => Err(Error::InvalidLength(
+                "tls12 session id must not exceed 32 bytes",
+            )),
             Some(value) => {
                 self.tls12_session_id = Some(value.to_vec());
                 Ok(())
@@ -1214,7 +1213,10 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn set_tls13_early_data_operational_policy(&mut self, policy: Tls13EarlyDataOperationalPolicy) {
+    pub fn set_tls13_early_data_operational_policy(
+        &mut self,
+        policy: Tls13EarlyDataOperationalPolicy,
+    ) {
         self.set_tls13_require_early_data_acceptance(policy.require_acceptance);
         self.set_tls13_early_data_anti_replay_enabled(policy.anti_replay_enabled);
     }
@@ -1382,7 +1384,13 @@ impl Connection {
         obfuscated_ticket_age: u32,
         psk: &[u8],
     ) -> Result<Vec<u8>> {
-        self.send_client_hello_with_psk_internal(random, identity, obfuscated_ticket_age, psk, false)
+        self.send_client_hello_with_psk_internal(
+            random,
+            identity,
+            obfuscated_ticket_age,
+            psk,
+            false,
+        )
     }
 
     /// Builds and records a TLS 1.3 ClientHello carrying one PSK identity+binder.
@@ -2034,13 +2042,18 @@ impl Connection {
                 "encrypted extensions missing required server_name acknowledgement",
             ));
         }
-        if encrypted_extensions.early_data_accepted && !self.tls13_early_data_offered_in_client_hello {
+        if encrypted_extensions.early_data_accepted
+            && !self.tls13_early_data_offered_in_client_hello
+        {
             return Err(Error::ParseFailure(
                 "encrypted extensions contains unsolicited early_data acceptance",
             ));
         }
-        self.tls13_early_data_accepted_in_encrypted_extensions = encrypted_extensions.early_data_accepted;
-        if self.tls13_early_data_offered_in_client_hello && !encrypted_extensions.early_data_accepted {
+        self.tls13_early_data_accepted_in_encrypted_extensions =
+            encrypted_extensions.early_data_accepted;
+        if self.tls13_early_data_offered_in_client_hello
+            && !encrypted_extensions.early_data_accepted
+        {
             self.tls13_early_data_accepted_psk = None;
             self.tls13_early_data_max_bytes = None;
             self.tls13_early_data_opened_bytes = 0;
@@ -3758,14 +3771,17 @@ impl Connection {
         header_protection_key_len: usize,
     ) -> Result<Tls13QuicPacketProtectionKeys> {
         if key_len == 0 {
-            return Err(Error::InvalidLength("quic key length must be greater than zero"));
+            return Err(Error::InvalidLength(
+                "quic key length must be greater than zero",
+            ));
         }
         if header_protection_key_len == 0 {
             return Err(Error::InvalidLength(
                 "quic header protection key length must be greater than zero",
             ));
         }
-        let key = tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic key", &[], key_len)?;
+        let key =
+            tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic key", &[], key_len)?;
         let iv = tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic iv", &[], 12)?;
         let header_protection_key = tls13_expand_label_for_hash(
             hash_algorithm,
@@ -3799,18 +3815,18 @@ impl Connection {
                 "quic traffic secret snapshot is only defined for TLS 1.3",
             ));
         }
-        let client_handshake_secret = self
-            .tls13_client_handshake_traffic_secret
-            .clone()
-            .ok_or(Error::StateError(
-                "tls13 client handshake traffic secret is not installed",
-            ))?;
-        let server_handshake_secret = self
-            .tls13_server_handshake_traffic_secret
-            .clone()
-            .ok_or(Error::StateError(
-                "tls13 server handshake traffic secret is not installed",
-            ))?;
+        let client_handshake_secret =
+            self.tls13_client_handshake_traffic_secret
+                .clone()
+                .ok_or(Error::StateError(
+                    "tls13 client handshake traffic secret is not installed",
+                ))?;
+        let server_handshake_secret =
+            self.tls13_server_handshake_traffic_secret
+                .clone()
+                .ok_or(Error::StateError(
+                    "tls13 server handshake traffic secret is not installed",
+                ))?;
         let client_application_secret = self
             .tls13_client_application_traffic_secret
             .clone()
@@ -3863,20 +3879,10 @@ impl Connection {
             .ok_or(Error::StateError(
                 "tls13 application server traffic secret is not installed",
             ))?;
-        let client_next_application_secret = tls13_expand_label_for_hash(
-            hash_algorithm,
-            client_secret,
-            b"quic ku",
-            &[],
-            hash_len,
-        )?;
-        let server_next_application_secret = tls13_expand_label_for_hash(
-            hash_algorithm,
-            server_secret,
-            b"quic ku",
-            &[],
-            hash_len,
-        )?;
+        let client_next_application_secret =
+            tls13_expand_label_for_hash(hash_algorithm, client_secret, b"quic ku", &[], hash_len)?;
+        let server_next_application_secret =
+            tls13_expand_label_for_hash(hash_algorithm, server_secret, b"quic ku", &[], hash_len)?;
         Ok(Tls13QuicNextTrafficSecrets {
             client_next_application_secret,
             server_next_application_secret,
@@ -4809,10 +4815,9 @@ impl Connection {
         let (key, iv) = self.derive_tls13_early_data_record_key_iv(psk)?;
         let nonce = build_record_nonce(&iv, sequence);
         let (ciphertext, tag) = if self.tls13_early_data_uses_chacha20_poly1305() {
-            let key_32: [u8; 32] = key
-                .as_slice()
-                .try_into()
-                .map_err(|_| Error::InvalidLength("tls13 early-data chacha key must be 32 bytes"))?;
+            let key_32: [u8; 32] = key.as_slice().try_into().map_err(|_| {
+                Error::InvalidLength("tls13 early-data chacha key must be 32 bytes")
+            })?;
             chacha20_poly1305_encrypt(&key_32, &nonce, aad, plaintext)?
         } else {
             let cipher = AesCipher::new(&key)?;
@@ -4916,10 +4921,9 @@ impl Connection {
         let (key, iv) = self.derive_tls13_early_data_record_key_iv(psk)?;
         let nonce = build_record_nonce(&iv, record.sequence);
         let plaintext = if self.tls13_early_data_uses_chacha20_poly1305() {
-            let key_32: [u8; 32] = key
-                .as_slice()
-                .try_into()
-                .map_err(|_| Error::InvalidLength("tls13 early-data chacha key must be 32 bytes"))?;
+            let key_32: [u8; 32] = key.as_slice().try_into().map_err(|_| {
+                Error::InvalidLength("tls13 early-data chacha key must be 32 bytes")
+            })?;
             chacha20_poly1305_decrypt(&key_32, &nonce, aad, &record.ciphertext, &record.tag)
                 .map_err(|err| {
                     self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
@@ -4930,13 +4934,15 @@ impl Connection {
                 })?
         } else {
             let cipher = AesCipher::new(&key)?;
-            aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag).map_err(|err| {
-                self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
-                    .tls13_early_data_telemetry
-                    .rejected_decrypt_or_policy
-                    .saturating_add(1);
-                err
-            })?
+            aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag).map_err(
+                |err| {
+                    self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
+                        .tls13_early_data_telemetry
+                        .rejected_decrypt_or_policy
+                        .saturating_add(1);
+                    err
+                },
+            )?
         };
         if plaintext.len() > self.max_record_plaintext_len {
             self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
@@ -5002,7 +5008,11 @@ impl Connection {
     ) -> Result<Vec<u8>> {
         let inner = encode_tls13_inner_plaintext(content, content_type, padding_len);
         let expected_aad = self.build_tls13_record_aad(inner.len().saturating_add(16))?;
-        let aad_to_use = if aad.is_empty() { &expected_aad[..] } else { aad };
+        let aad_to_use = if aad.is_empty() {
+            &expected_aad[..]
+        } else {
+            aad
+        };
         let record = self.seal_tls13_early_data_record(psk, &inner, aad_to_use, sequence)?;
         self.encode_tls13_record_packet(&record)
     }
@@ -5035,7 +5045,11 @@ impl Connection {
         let record = self.decode_tls13_record_packet(packet, sequence)?;
         let expected_aad =
             self.build_tls13_record_aad(record.ciphertext.len().saturating_add(record.tag.len()))?;
-        let aad_to_use = if aad.is_empty() { &expected_aad[..] } else { aad };
+        let aad_to_use = if aad.is_empty() {
+            &expected_aad[..]
+        } else {
+            aad
+        };
         let inner = self.open_tls13_early_data_record(psk, &record, aad_to_use)?;
         decode_tls13_inner_plaintext(&inner)
     }
@@ -5116,12 +5130,12 @@ impl Connection {
         )? {
             return Ok(Vec::new());
         }
-        let accepted_psk =
-            self.tls13_early_data_accepted_psk
-                .clone()
-                .ok_or(Error::StateError(
-                    "tls13 early-data accepted ticket context is not installed",
-                ))?;
+        let accepted_psk = self
+            .tls13_early_data_accepted_psk
+            .clone()
+            .ok_or(Error::StateError(
+                "tls13 early-data accepted ticket context is not installed",
+            ))?;
         self.open_tls13_early_data_client_flight_packets(&accepted_psk, packets, first_sequence)
     }
 
@@ -5164,12 +5178,12 @@ impl Connection {
         )? {
             return Ok(Vec::new());
         }
-        let accepted_psk =
-            self.tls13_early_data_accepted_psk
-                .clone()
-                .ok_or(Error::StateError(
-                    "tls13 early-data accepted ticket context is not installed",
-                ))?;
+        let accepted_psk = self
+            .tls13_early_data_accepted_psk
+            .clone()
+            .ok_or(Error::StateError(
+                "tls13 early-data accepted ticket context is not installed",
+            ))?;
         self.open_tls13_early_data_client_flight_packets(&accepted_psk, packets, first_sequence)
     }
 
@@ -10802,7 +10816,9 @@ fn parse_certificate_body(body: &[u8]) -> Result<ParsedTls13CertificateBody> {
 /// This function does not panic.
 fn parse_tls12_certificate_list(body: &[u8]) -> Result<Vec<Vec<u8>>> {
     if body.len() < 3 {
-        return Err(Error::ParseFailure("tls12 certificate message is malformed"));
+        return Err(Error::ParseFailure(
+            "tls12 certificate message is malformed",
+        ));
     }
     let list_len = ((body[0] as usize) << 16) | ((body[1] as usize) << 8) | body[2] as usize;
     if list_len == 0 || list_len != body.len() - 3 {
@@ -10818,9 +10834,12 @@ fn parse_tls12_certificate_list(body: &[u8]) -> Result<Vec<Vec<u8>>> {
                 "tls12 certificate entry length is truncated",
             ));
         }
-        let cert_len = ((cursor[0] as usize) << 16) | ((cursor[1] as usize) << 8) | cursor[2] as usize;
+        let cert_len =
+            ((cursor[0] as usize) << 16) | ((cursor[1] as usize) << 8) | cursor[2] as usize;
         if cert_len == 0 {
-            return Err(Error::ParseFailure("tls12 certificate entry must not be empty"));
+            return Err(Error::ParseFailure(
+                "tls12 certificate entry must not be empty",
+            ));
         }
         if cursor.len() < 3 + cert_len {
             return Err(Error::ParseFailure("tls12 certificate entry is truncated"));
@@ -10829,7 +10848,9 @@ fn parse_tls12_certificate_list(body: &[u8]) -> Result<Vec<Vec<u8>>> {
         cursor = &cursor[3 + cert_len..];
     }
     if certificates.is_empty() {
-        return Err(Error::ParseFailure("tls12 certificate list must not be empty"));
+        return Err(Error::ParseFailure(
+            "tls12 certificate list must not be empty",
+        ));
     }
     Ok(certificates)
 }

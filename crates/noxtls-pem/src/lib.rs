@@ -756,4 +756,3 @@ fn decode_base64_sextet(byte: u8) -> Result<u8> {
         )),
     }
 }
-

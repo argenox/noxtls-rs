@@ -1133,4 +1133,3 @@ fn derive_signing_nonce(private_scalar: &BigUint, digest: &[u8; 32], counter: u3
     seed.extend_from_slice(&counter.to_be_bytes());
     BigUint::from_be_bytes(&sha256(&seed))
 }
-

@@ -47,4 +47,3 @@ pub fn unix_timestamp_secs() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_secs())
 }
-

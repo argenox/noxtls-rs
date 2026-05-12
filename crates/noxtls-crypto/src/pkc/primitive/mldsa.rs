@@ -1741,4 +1741,3 @@ fn expand_seed_bytes(label: &[u8], seed: &[u8], out_len: usize) -> Vec<u8> {
     input.extend_from_slice(seed);
     shake256(&input, out_len)
 }
-

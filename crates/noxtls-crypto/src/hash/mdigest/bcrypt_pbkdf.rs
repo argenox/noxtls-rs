@@ -318,10 +318,14 @@ pub fn bcrypt_pbkdf_sha512(
         return Err(Error::InvalidLength("bcrypt_pbkdf rounds must be non-zero"));
     }
     if key_len == 0 {
-        return Err(Error::InvalidLength("bcrypt_pbkdf key_len must be non-zero"));
+        return Err(Error::InvalidLength(
+            "bcrypt_pbkdf key_len must be non-zero",
+        ));
     }
     if password.is_empty() {
-        return Err(Error::InvalidLength("bcrypt_pbkdf password must not be empty"));
+        return Err(Error::InvalidLength(
+            "bcrypt_pbkdf password must not be empty",
+        ));
     }
     if salt.is_empty() {
         return Err(Error::InvalidLength("bcrypt_pbkdf salt must not be empty"));
@@ -605,7 +609,8 @@ mod tests {
 
     #[test]
     fn bcrypt_pbkdf_rejects_zero_key_length() {
-        let err = bcrypt_pbkdf_sha512(b"password", b"salt", 4, 0).expect_err("key length must fail");
+        let err =
+            bcrypt_pbkdf_sha512(b"password", b"salt", 4, 0).expect_err("key length must fail");
         assert!(matches!(err, noxtls_core::Error::InvalidLength(_)));
     }
 }

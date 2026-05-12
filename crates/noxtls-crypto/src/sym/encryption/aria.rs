@@ -769,4 +769,3 @@ fn rotate_right_128(input: &[u8; 16], out: &mut [u8; 16], bits: usize) {
 fn rotate_left_128(input: &[u8; 16], out: &mut [u8; 16], bits: usize) {
     rotate_right_128(input, out, 128 - (bits & 127));
 }
-

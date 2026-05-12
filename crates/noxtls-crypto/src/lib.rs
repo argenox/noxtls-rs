@@ -69,11 +69,9 @@ pub use pkc::{
     OID_ID_MLDSA65,
 };
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub use pkc::{x448, x448_basepoint, x448_generate_private_key_auto, x448_shared_secret};
+pub use pkc::{rsa_generate_keypair_auto, rsa_generate_keypair_with_exponent_auto};
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub use pkc::{
-    rsa_generate_keypair_auto, rsa_generate_keypair_with_exponent_auto,
-};
+pub use pkc::{x448, x448_basepoint, x448_generate_private_key_auto, x448_shared_secret};
 pub use sym::{
     aes_cbc_decrypt, aes_cbc_encrypt, aes_ccm_decrypt, aes_ccm_encrypt, aes_cfb_apply,
     aes_cfb_decrypt, aes_cfb_encrypt, aes_ctr_apply, aes_gcm_decrypt, aes_gcm_encrypt,
@@ -93,4 +91,3 @@ pub use sym::{
     des_cfb_encrypt, des_ctr_apply, des_ctr_decrypt, des_ctr_encrypt, des_ecb_decrypt,
     des_ecb_encrypt, des_ofb_apply, des_ofb_decrypt, des_ofb_encrypt, DesCipher, Rc4,
 };
-

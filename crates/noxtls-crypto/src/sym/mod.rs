@@ -41,4 +41,3 @@ pub use encryption::{
     des_cfb_encrypt, des_ctr_apply, des_ctr_decrypt, des_ctr_encrypt, des_ecb_decrypt,
     des_ecb_encrypt, des_ofb_apply, des_ofb_decrypt, des_ofb_encrypt, DesCipher, Rc4,
 };
-

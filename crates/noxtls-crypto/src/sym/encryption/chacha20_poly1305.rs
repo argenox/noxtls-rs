@@ -157,4 +157,3 @@ pub fn chacha20_poly1305_decrypt(
     cipher.apply_keystream(ciphertext, &mut plaintext)?;
     Ok(plaintext)
 }
-

@@ -2192,5 +2192,3 @@ fn miller_rabin_round(n: &BigUint, d: &BigUint, s: u32, witness: u32) -> bool {
     }
     false
 }
-
-

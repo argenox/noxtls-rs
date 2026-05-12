@@ -831,4 +831,3 @@ fn store_block_be(out: &mut [u8; 16], d1: u64, d2: u64) {
     out[..8].copy_from_slice(&d2.to_be_bytes());
     out[8..].copy_from_slice(&d1.to_be_bytes());
 }
-

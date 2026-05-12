@@ -62,5 +62,3 @@ pub use des::{
 pub use poly1305::{poly1305_key_gen, poly1305_mac, poly1305_mac_padded16, poly1305_tags_equal};
 #[cfg(feature = "hazardous-legacy-crypto")]
 pub use rc4::Rc4;
-
-

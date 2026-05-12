@@ -59,7 +59,10 @@ impl PsaError {
     ///
     /// A new [`PsaError`] value with caller-provided fields.
     pub fn new(code: PsaResultCode, detail_status: Option<i32>) -> Self {
-        Self { code, detail_status }
+        Self {
+            code,
+            detail_status,
+        }
     }
 
     /// Converts this PSA error to a `noxtls-core` error with uniform posture.

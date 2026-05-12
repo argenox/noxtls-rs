@@ -31,9 +31,9 @@ mod x25519;
 mod x448;
 
 use crate::drbg::HmacDrbgSha256;
-use noxtls_core::Result;
 #[cfg(not(feature = "hazardous-legacy-crypto"))]
 use noxtls_core::Error;
+use noxtls_core::Result;
 
 pub use ed25519::{
     ed25519_generate_private_key_auto, ed25519_public_key_from_subject_public_key_info,
@@ -55,9 +55,7 @@ pub use p256::{
 };
 pub use pq_selftest::run_pq_self_tests;
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub use rsa::{
-    rsa_generate_keypair_auto, rsa_generate_keypair_with_exponent_auto,
-};
+pub use rsa::{rsa_generate_keypair_auto, rsa_generate_keypair_with_exponent_auto};
 pub use rsa::{
     rsa_generate_keypair_secure_auto, rsa_generate_keypair_with_policy_auto,
     rsaes_oaep_sha256_decrypt, rsaes_oaep_sha256_decrypt_crt_only, rsaes_oaep_sha256_encrypt_auto,
@@ -72,11 +70,11 @@ pub use x25519::{
     x25519, x25519_basepoint, x25519_generate_private_key_auto, x25519_shared_secret,
     X25519PrivateKey, X25519PublicKey,
 };
-pub use x448::{X448PrivateKey, X448PublicKey};
 #[cfg(feature = "hazardous-legacy-crypto")]
 pub use x448::x448_generate_private_key_auto;
 #[cfg(feature = "hazardous-legacy-crypto")]
 pub use x448::{x448, x448_basepoint, x448_shared_secret};
+pub use x448::{X448PrivateKey, X448PublicKey};
 
 /// Selects one supported elliptic-curve key algorithm for unified key generation.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -168,5 +166,3 @@ pub fn ecc_generate_keypair_auto(
         }
     }
 }
-
-
