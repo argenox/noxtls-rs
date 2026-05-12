@@ -5111,6 +5111,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
+    #[allow(clippy::too_many_arguments)]
     pub fn accept_and_open_tls13_early_data_client_flight_with_ticket_policy(
         &mut self,
         client_hello: &[u8],
@@ -5159,6 +5160,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
+    #[allow(clippy::too_many_arguments)]
     pub fn accept_and_open_tls13_early_data_client_flight_with_ticket_store(
         &mut self,
         client_hello: &[u8],
@@ -9196,7 +9198,7 @@ fn default_client_cipher_suites(version: TlsVersion) -> Vec<CipherSuite> {
 /// # Panics
 ///
 /// This function does not panic.
-///
+#[allow(clippy::too_many_arguments)]
 fn encode_client_hello_body(
     version: TlsVersion,
     random: &[u8],

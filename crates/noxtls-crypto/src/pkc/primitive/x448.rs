@@ -15,6 +15,7 @@
 // See `noxtls/LICENSE` and `noxtls/LICENSE.md` in this repository for full details.
 // CONTACT: info@argenox.com
 
+#[cfg(feature = "hazardous-legacy-crypto")]
 use crate::drbg::HmacDrbgSha256;
 use noxtls_core::{Error, Result};
 
@@ -136,7 +137,7 @@ impl X448PrivateKey {
         #[cfg(not(feature = "hazardous-legacy-crypto"))]
         {
             let _ = peer;
-            return Err(Error::StateError(X448_DISABLED_MESSAGE));
+            Err(Error::StateError(X448_DISABLED_MESSAGE))
         }
         #[cfg(feature = "hazardous-legacy-crypto")]
         {
@@ -291,20 +292,12 @@ pub fn x448_basepoint(scalar: &[u8; X448_SIZE]) -> [u8; X448_SIZE] {
 /// # Errors
 ///
 /// Forwards errors from [`X448PrivateKey::diffie_hellman_checked`].
+#[cfg(feature = "hazardous-legacy-crypto")]
 pub fn x448_shared_secret(
     private_key: X448PrivateKey,
     peer_public_key: X448PublicKey,
 ) -> Result<[u8; X448_SIZE]> {
-    #[cfg(not(feature = "hazardous-legacy-crypto"))]
-    {
-        let _ = private_key;
-        let _ = peer_public_key;
-        return Err(Error::StateError(X448_DISABLED_MESSAGE));
-    }
-    #[cfg(feature = "hazardous-legacy-crypto")]
-    {
-        private_key.diffie_hellman_checked(peer_public_key)
-    }
+    private_key.diffie_hellman_checked(peer_public_key)
 }
 
 /// Generates an X448 private key from DRBG output.
@@ -318,21 +311,14 @@ pub fn x448_shared_secret(
 /// # Errors
 ///
 /// Returns DRBG errors from [`HmacDrbgSha256::generate`], or [`Error::InvalidLength`] if the DRBG output is not exactly `X448_SIZE` bytes.
+#[cfg(feature = "hazardous-legacy-crypto")]
 pub fn x448_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<X448PrivateKey> {
-    #[cfg(not(feature = "hazardous-legacy-crypto"))]
-    {
-        let _ = drbg;
-        return Err(Error::StateError(X448_DISABLED_MESSAGE));
-    }
-    #[cfg(feature = "hazardous-legacy-crypto")]
-    {
-        let scalar = drbg.generate(X448_SIZE, b"x448_private_scalar")?;
-        let bytes: [u8; X448_SIZE] = scalar
-            .as_slice()
-            .try_into()
-            .map_err(|_| Error::InvalidLength("x448 private scalar length mismatch"))?;
-        Ok(X448PrivateKey::from_bytes(bytes))
-    }
+    let scalar = drbg.generate(X448_SIZE, b"x448_private_scalar")?;
+    let bytes: [u8; X448_SIZE] = scalar
+        .as_slice()
+        .try_into()
+        .map_err(|_| Error::InvalidLength("x448 private scalar length mismatch"))?;
+    Ok(X448PrivateKey::from_bytes(bytes))
 }
 
 /// Clamps a raw Curve448 scalar according to RFC 7748 bit clearing and setting rules.
@@ -354,7 +340,9 @@ fn clamp_scalar(mut scalar: [u8; X448_SIZE]) -> [u8; X448_SIZE] {
     scalar
 }
 
+#[cfg(feature = "hazardous-legacy-crypto")]
 const MASK56: u64 = (1_u64 << 56) - 1;
+#[cfg(feature = "hazardous-legacy-crypto")]
 const MODULUS_LIMBS: [u64; 8] = [
     MASK56,
     MASK56,
@@ -366,9 +354,11 @@ const MODULUS_LIMBS: [u64; 8] = [
     MASK56,
 ];
 
+#[cfg(feature = "hazardous-legacy-crypto")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct FieldElement448([u64; 8]);
 
+#[cfg(feature = "hazardous-legacy-crypto")]
 impl FieldElement448 {
     /// Returns the additive identity in the Curve448 base field representation.
     ///

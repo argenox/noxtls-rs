@@ -1692,11 +1692,7 @@ mod ed25519_pkcs8_tests {
     };
 
     fn sample_ed25519_seed() -> [u8; 32] {
-        let mut seed = [0_u8; 32];
-        for i in 0..32 {
-            seed[i] = i as u8 + 1;
-        }
-        seed
+        core::array::from_fn(|i| i as u8 + 1)
     }
 
     /// Builds PKCS#8 `PrivateKeyInfo` for Ed25519 with nested `OCTET STRING` seed encoding.
@@ -1734,10 +1730,7 @@ mod ed25519_pkcs8_tests {
     /// Confirms PKCS#8 with a raw 32-byte `privateKey` body parses to the same verifying key.
     #[test]
     fn ed25519_pkcs8_raw_seed_in_private_key_field_parses() {
-        let mut seed = [0_u8; 32];
-        for i in 0..32 {
-            seed[i] = i as u8 + 7;
-        }
+        let seed = core::array::from_fn(|i| i as u8 + 7);
         let der = ed25519_pkcs8_der_raw_seed(&seed);
         let sk = ed25519_private_key_from_pkcs8_der(&der).expect("pkcs8 raw");
         let expect = Ed25519PrivateKey::from_seed(&seed)

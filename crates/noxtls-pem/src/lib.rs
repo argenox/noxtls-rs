@@ -62,7 +62,6 @@ const PEM_LABEL_PUBLIC_KEY: &str = "PUBLIC KEY";
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn certificate_der_to_pem(der: &[u8]) -> Result<String> {
     der_to_pem(der, PEM_LABEL_CERTIFICATE)
 }
@@ -84,7 +83,6 @@ pub fn certificate_der_to_pem(der: &[u8]) -> Result<String> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn certificate_pem_to_der(pem: &str) -> Result<Vec<u8>> {
     pem_to_der(pem, PEM_LABEL_CERTIFICATE)
 }
@@ -106,7 +104,6 @@ pub fn certificate_pem_to_der(pem: &str) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn certificate_chain_pem_to_der_blocks(pem: &str) -> Result<Vec<Vec<u8>>> {
     pem_to_der_blocks(pem, PEM_LABEL_CERTIFICATE)
 }
@@ -128,7 +125,6 @@ pub fn certificate_chain_pem_to_der_blocks(pem: &str) -> Result<Vec<Vec<u8>>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn rsa_private_key_der_to_pem_pkcs1(der: &[u8]) -> Result<String> {
     der_to_pem(der, PEM_LABEL_RSA_PRIVATE_KEY)
 }
@@ -150,7 +146,6 @@ pub fn rsa_private_key_der_to_pem_pkcs1(der: &[u8]) -> Result<String> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn rsa_private_key_pem_to_der_pkcs1(pem: &str) -> Result<Vec<u8>> {
     pem_to_der(pem, PEM_LABEL_RSA_PRIVATE_KEY)
 }
@@ -172,7 +167,6 @@ pub fn rsa_private_key_pem_to_der_pkcs1(pem: &str) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn rsa_public_key_der_to_pem_pkcs1(der: &[u8]) -> Result<String> {
     der_to_pem(der, PEM_LABEL_RSA_PUBLIC_KEY)
 }
@@ -193,7 +187,6 @@ pub fn rsa_public_key_der_to_pem_pkcs1(der: &[u8]) -> Result<String> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn rsa_public_key_pem_to_der_pkcs1(pem: &str) -> Result<Vec<u8>> {
     pem_to_der(pem, PEM_LABEL_RSA_PUBLIC_KEY)
 }
@@ -214,7 +207,6 @@ pub fn rsa_public_key_pem_to_der_pkcs1(pem: &str) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn private_key_der_to_pem_pkcs8(der: &[u8]) -> Result<String> {
     der_to_pem(der, PEM_LABEL_PRIVATE_KEY)
 }
@@ -235,7 +227,6 @@ pub fn private_key_der_to_pem_pkcs8(der: &[u8]) -> Result<String> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn private_key_pem_to_der_pkcs8(pem: &str) -> Result<Vec<u8>> {
     pem_to_der(pem, PEM_LABEL_PRIVATE_KEY)
 }
@@ -256,7 +247,6 @@ pub fn private_key_pem_to_der_pkcs8(pem: &str) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn ec_private_key_der_to_pem_sec1(der: &[u8]) -> Result<String> {
     der_to_pem(der, PEM_LABEL_EC_PRIVATE_KEY)
 }
@@ -278,7 +268,6 @@ pub fn ec_private_key_der_to_pem_sec1(der: &[u8]) -> Result<String> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn ec_private_key_pem_to_der_sec1(pem: &str) -> Result<Vec<u8>> {
     pem_to_der(pem, PEM_LABEL_EC_PRIVATE_KEY)
 }
@@ -299,7 +288,6 @@ pub fn ec_private_key_pem_to_der_sec1(pem: &str) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn public_key_der_to_pem_spki(der: &[u8]) -> Result<String> {
     der_to_pem(der, PEM_LABEL_PUBLIC_KEY)
 }
@@ -320,7 +308,6 @@ pub fn public_key_der_to_pem_spki(der: &[u8]) -> Result<String> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn public_key_pem_to_der_spki(pem: &str) -> Result<Vec<u8>> {
     pem_to_der(pem, PEM_LABEL_PUBLIC_KEY)
 }
@@ -343,7 +330,6 @@ pub fn public_key_pem_to_der_spki(pem: &str) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 #[cfg(feature = "std")]
 pub fn pem_file_to_der(path: &Path, label: &str) -> Result<Vec<u8>> {
     let pem = std::fs::read_to_string(path)
@@ -368,7 +354,6 @@ pub fn pem_file_to_der(path: &Path, label: &str) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 #[cfg(feature = "std")]
 pub fn pem_file_to_der_blocks(path: &Path, label: &str) -> Result<Vec<Vec<u8>>> {
     let pem = std::fs::read_to_string(path)
@@ -395,7 +380,6 @@ pub fn pem_file_to_der_blocks(path: &Path, label: &str) -> Result<Vec<Vec<u8>>> 
 /// # Panics
 ///
 /// This function does not panic.
-
 #[cfg(feature = "std")]
 pub fn der_to_pem_file(path: &Path, der: &[u8], label: &str) -> Result<()> {
     let pem = der_to_pem(der, label)?;
@@ -421,7 +405,6 @@ pub fn der_to_pem_file(path: &Path, der: &[u8], label: &str) -> Result<()> {
 /// # Panics
 ///
 /// This function does not panic.
-
 #[cfg(feature = "std")]
 pub fn der_to_file(path: &Path, der: &[u8]) -> Result<()> {
     if der.is_empty() {
@@ -449,7 +432,6 @@ pub fn der_to_file(path: &Path, der: &[u8]) -> Result<()> {
 /// # Panics
 ///
 /// Panics if an internal `expect` on ASCII-only base64 chunk UTF-8 conversion fails (should be unreachable).
-
 pub fn der_to_pem(der: &[u8], label: &str) -> Result<String> {
     if der.is_empty() {
         return Err(Error::InvalidLength("der input must not be empty"));
@@ -497,7 +479,6 @@ pub fn der_to_pem(der: &[u8], label: &str) -> Result<String> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn pem_to_der(pem: &str, label: &str) -> Result<Vec<u8>> {
     let blocks = pem_to_der_blocks(pem, label)?;
     if blocks.len() != 1 {
@@ -527,7 +508,6 @@ pub fn pem_to_der(pem: &str, label: &str) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-
 pub fn pem_to_der_blocks(pem: &str, label: &str) -> Result<Vec<Vec<u8>>> {
     if pem.is_empty() {
         return Err(Error::InvalidLength("pem input must not be empty"));
