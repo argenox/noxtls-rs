@@ -9,7 +9,7 @@ Built for deterministic behavior, portable integrations, and modern cryptography
 
 [![CI](https://github.com/argenox/noxtls-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/argenox/noxtls-rs/actions/workflows/ci.yml)
 
-**Website:** https://argenox.com  
+**Website:** https://noxtls.com  
 **Issues:** https://github.com/argenox/noxtls-rs/issues  
 
 ## Why NoxTLS Rust?
@@ -62,6 +62,74 @@ Legacy or hazardous algorithms (for example **DES**, **RC4**, **X448**, and some
 - **`provider-psa`** — offload signing, decryption, derivation, and AEAD to a PSA-style backend while keeping the same protocol API.
 - **Transport adapters** — `embedded-io`, `embedded-io-async`, and **Tokio** (`noxtls-io`, enabled from `noxtls`).
 
+## Getting started
+
+### Use `noxtls` from crates.io
+
+The **[`noxtls`](https://crates.io/crates/noxtls)** crate is published on [crates.io](https://crates.io/). Browse the API on **[docs.rs/noxtls](https://docs.rs/noxtls)**.
+
+Add it to your project:
+
+```powershell
+cargo add noxtls
+```
+
+Or pin a version in `Cargo.toml` (use the version you intend to ship against; this repository’s workspace is currently **0.1.3**):
+
+```toml
+[dependencies]
+noxtls = "0.1.3"
+```
+
+**Defaults:** the crate enables `std` and `alloc` by default for typical host applications. For `no_std` builds, disable default features and opt in explicitly:
+
+```toml
+[dependencies]
+noxtls = { version = "0.1.3", default-features = false, features = ["alloc"] }
+```
+
+**Common Cargo features** (see `crates/noxtls/Cargo.toml` for the complete list):
+
+| Feature | Purpose |
+|---------|---------|
+| `adapter-tokio` | Tokio transport adapter |
+| `adapter-embedded-io` | Blocking `embedded-io` adapter |
+| `adapter-embedded-io-async` | Async `embedded-io-async` adapter |
+| `provider-psa` | PSA crypto backend |
+| `hazardous-legacy-crypto` | Legacy algorithms (off by default) |
+
+Import protocol types from the crate root, for example:
+
+```rust
+use noxtls::{Connection, TlsVersion, CipherSuite};
+```
+
+For end-to-end TLS/DTLS and certificate examples, use this repo’s `examples/` (below) and the hosted guides at **[rsdocs.noxtls.com](https://rsdocs.noxtls.com)**.
+
+### Clone this repository
+
+```powershell
+git clone https://github.com/argenox/noxtls-rs.git
+cd noxtls-rs
+```
+
+### Build and test
+
+```powershell
+cargo check --workspace
+cargo test --workspace
+```
+
+### Run examples (from a clone)
+
+```powershell
+cargo run -p noxtls --example tls_client
+cargo run -p noxtls --example parse_certificate
+cargo run -p noxtls --example noxtls-rs -- dgst --alg sha256 --text "hello"
+```
+
+See `examples/README.md` for the full command list.
+
 ## Workspace crates
 
 Crates in `crates/`:
@@ -76,32 +144,6 @@ Crates in `crates/`:
 | `noxtls-io` | Transport traits and blocking/async adapters |
 | `noxtls-platform` | Platform time hooks (extensible for RNG/storage) |
 | `noxtls-test` | Demo binaries and internal test helpers (workspace-only, not on crates.io) |
-
-## Getting started
-
-### Clone
-
-```powershell
-git clone https://github.com/argenox/noxtls-rs.git
-cd noxtls-rs
-```
-
-### Build and test
-
-```powershell
-cargo check --workspace
-cargo test --workspace
-```
-
-### Run examples
-
-```powershell
-cargo run -p noxtls --example tls_client
-cargo run -p noxtls --example parse_certificate
-cargo run -p noxtls --example noxtls-rs -- dgst --alg sha256 --text "hello"
-```
-
-See `examples/README.md` for the full command list.
 
 ## Documentation
 

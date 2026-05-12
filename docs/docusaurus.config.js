@@ -30,6 +30,15 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
+          // Match embedded C docs pattern: pin default + keep "Next" for in-tree `docs/`.
+          lastVersion: "0.1.0",
+          includeCurrentVersion: true,
+          versions: {
+            current: {
+              label: "Next",
+              path: "next",
+            },
+          },
         },
         blog: false,
         theme: {
