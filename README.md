@@ -24,6 +24,46 @@ NoxTLS Rust is built for teams that need Rust-native TLS/DTLS support with predi
 - Configurable transport adapters (`embedded-io`, `embedded-io-async`, `tokio`)
 - X.509 parsing, validation, and PEM tooling
 
+## Features and cryptography
+
+### Protocols (TLS / DTLS)
+
+- **TLS 1.3** and **DTLS 1.3** — handshake, record layer, resumption and early-data policy hooks, OCSP stapling support, and QUIC-style packet protection helpers for HTTP/3-style stacks.
+- **TLS 1.2** and **DTLS 1.2** — ECDHE-RSA with **AES-128-GCM** or **AES-256-GCM** (IANA `0xC02F` / `0xC030`).
+
+### Negotiated cipher suites
+
+| Protocol | Suites |
+|----------|--------|
+| TLS 1.3 / DTLS 1.3 | `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256` |
+| TLS 1.2 / DTLS 1.2 | `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256`, `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384` |
+
+### Key exchange and signatures (TLS 1.3)
+
+- **Groups:** X25519, P-256 (secp256r1), ML-KEM-768 (standalone and hybrid with X25519).
+- **Signature algorithms:** ECDSA with P-256, RSA-PSS (SHA-256 / SHA-384), Ed25519, ML-DSA-65.
+
+### `noxtls-crypto` primitive suite
+
+The **`noxtls-crypto`** crate supplies the underlying algorithms used by TLS and by tooling examples:
+
+- **Digests and KDF:** SHA-256 / SHA-384 / SHA-512, SHA-3, SHAKE-256, HMAC, HKDF, TLS 1.2 PRF helpers; SHA-1 where legacy verification requires it.
+- **Symmetric:** AES-GCM, ChaCha20-Poly1305, and additional AES / ARIA / Camellia modes (CBC, CCM, CTR, CFB, OFB, XTS, and more).
+- **Public-key:** RSA (OAEP, PKCS#1 v1.5, PSS), P-256 ECDH and ECDSA, X25519, Ed25519, ML-KEM, ML-DSA.
+- **Randomness:** HMAC-DRBG (SHA-256).
+
+Legacy or hazardous algorithms (for example **DES**, **RC4**, **X448**, and some relaxed RSA key-generation paths) are gated behind the **`hazardous-legacy-crypto`** Cargo feature and are off by default.
+
+### Certificates and PKIX
+
+- **`noxtls-x509`** — X.509 parsing, chain validation, hostname checks, CSR and CRL handling (see `examples/` for PEM/DER workflows).
+- **`noxtls-pem`** — PEM envelope encoding and decoding shared across the stack.
+
+### Optional integrations
+
+- **`provider-psa`** — offload signing, decryption, derivation, and AEAD to a PSA-style backend while keeping the same protocol API.
+- **Transport adapters** — `embedded-io`, `embedded-io-async`, and **Tokio** (`noxtls-io`, enabled from `noxtls`).
+
 ## Workspace crates
 
 Crates in `crates/`:
