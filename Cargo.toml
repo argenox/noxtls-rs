@@ -20,4 +20,4 @@ license = "GPL-2.0-only OR LicenseRef-Argenox-Commercial-License"
 authors = ["Argenox Technologies LLC"]
 repository = "https://github.com/argenox/noxtls-rs"
 homepage = "https://argenox.com"
-documentation = "https://docs.noxtls.com"
+documentation = "https://rsdocs.noxtls.com"

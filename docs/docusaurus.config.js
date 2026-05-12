@@ -13,7 +13,7 @@ const config = {
     v4: true,
   },
 
-  url: "https://docs.noxtls.com",
+  url: "https://rsdocs.noxtls.com",
   baseUrl: "/",
 
   onBrokenLinks: "warn",
