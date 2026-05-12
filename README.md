@@ -106,7 +106,7 @@ See `examples/README.md` for the full command list.
 
 ## Documentation
 
-- Docs site: https://docs.noxtls.com
+- Docs site: https://rsdocs.noxtls.com
 - Local docs server:
 
 ```powershell
