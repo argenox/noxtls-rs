@@ -20,7 +20,7 @@ use crate::internal_alloc::ToOwned;
 use crate::internal_alloc::{String, Vec};
 use noxtls_core::{Error, Result};
 
-use super::{parse_der_length, parse_der_node};
+use super::{noxtls_parse_der_length, noxtls_parse_der_node};
 
 const MAX_CERTIFICATE_DER_LEN: usize = 1 << 20;
 const MAX_EXTENSION_COUNT: usize = 256;
@@ -72,7 +72,7 @@ pub struct Certificate<'a> {
 /// # Returns
 /// `true` when hostname matches SAN dNSName entries, or subject CN when SAN is absent.
 #[must_use]
-pub fn certificate_matches_hostname(cert: &Certificate<'_>, hostname: &str) -> bool {
+pub fn noxtls_certificate_matches_hostname(cert: &Certificate<'_>, hostname: &str) -> bool {
     let Some(normalized_hostname) = normalize_dns_name(hostname, false) else {
         return false;
     };
@@ -95,11 +95,11 @@ pub fn certificate_matches_hostname(cert: &Certificate<'_>, hostname: &str) -> b
 ///
 /// # Returns
 /// Parsed `Certificate` view with extracted core fields and extension data.
-pub fn parse_certificate(input: &[u8]) -> Result<Certificate<'_>> {
+pub fn noxtls_parse_certificate(input: &[u8]) -> Result<Certificate<'_>> {
     if input.len() > MAX_CERTIFICATE_DER_LEN {
         return Err(Error::ParseFailure("certificate exceeds parser size limit"));
     }
-    let (cert_seq, rem) = parse_der_node(input)?;
+    let (cert_seq, rem) = noxtls_parse_der_node(input)?;
     if cert_seq.tag != 0x30 || !rem.is_empty() {
         return Err(Error::ParseFailure(
             "certificate must be top-level sequence",
@@ -107,17 +107,17 @@ pub fn parse_certificate(input: &[u8]) -> Result<Certificate<'_>> {
     }
 
     let raw_tbs_der = first_der_encoded(cert_seq.body)?;
-    let (tbs, cert_rest) = parse_der_node(cert_seq.body)?;
+    let (tbs, cert_rest) = noxtls_parse_der_node(cert_seq.body)?;
     if tbs.tag != 0x30 {
         return Err(Error::ParseFailure("missing TBSCertificate sequence"));
     }
-    let (cert_sig_alg, cert_sig_rest) = parse_der_node(cert_rest)?;
+    let (cert_sig_alg, cert_sig_rest) = noxtls_parse_der_node(cert_rest)?;
     if cert_sig_alg.tag != 0x30 {
         return Err(Error::ParseFailure(
             "missing certificate signature algorithm",
         ));
     }
-    let (signature_value_node, cert_tail) = parse_der_node(cert_sig_rest)?;
+    let (signature_value_node, cert_tail) = noxtls_parse_der_node(cert_sig_rest)?;
     if signature_value_node.tag != 0x03 || !cert_tail.is_empty() {
         return Err(Error::ParseFailure("missing certificate signature value"));
     }
@@ -125,9 +125,9 @@ pub fn parse_certificate(input: &[u8]) -> Result<Certificate<'_>> {
     let mut tbs_cursor = tbs.body;
     let mut version = 1_u8;
 
-    let (first, maybe_rest) = parse_der_node(tbs_cursor)?;
+    let (first, maybe_rest) = noxtls_parse_der_node(tbs_cursor)?;
     if first.tag == 0xA0 {
-        let (version_node, version_tail) = parse_der_node(first.body)?;
+        let (version_node, version_tail) = noxtls_parse_der_node(first.body)?;
         if version_node.tag != 0x02 || !version_tail.is_empty() || version_node.body.is_empty() {
             return Err(Error::ParseFailure("invalid certificate version"));
         }
@@ -139,43 +139,43 @@ pub fn parse_certificate(input: &[u8]) -> Result<Certificate<'_>> {
         tbs_cursor = maybe_rest;
     }
 
-    let (serial, rest) = parse_der_node(tbs_cursor)?;
+    let (serial, rest) = noxtls_parse_der_node(tbs_cursor)?;
     if serial.tag != 0x02 {
         return Err(Error::ParseFailure("missing certificate serial"));
     }
     tbs_cursor = rest;
 
-    let (tbs_sig_alg, rest) = parse_der_node(tbs_cursor)?;
+    let (tbs_sig_alg, rest) = noxtls_parse_der_node(tbs_cursor)?;
     if tbs_sig_alg.tag != 0x30 {
         return Err(Error::ParseFailure("missing TBS signature algorithm"));
     }
     tbs_cursor = rest;
 
-    let (issuer, rest) = parse_der_node(tbs_cursor)?;
+    let (issuer, rest) = noxtls_parse_der_node(tbs_cursor)?;
     if issuer.tag != 0x30 {
         return Err(Error::ParseFailure("missing certificate issuer"));
     }
     tbs_cursor = rest;
 
-    let (validity, rest) = parse_der_node(tbs_cursor)?;
+    let (validity, rest) = noxtls_parse_der_node(tbs_cursor)?;
     if validity.tag != 0x30 {
         return Err(Error::ParseFailure("missing certificate validity"));
     }
     tbs_cursor = rest;
     let (not_before, not_after) = parse_validity(validity.body)?;
 
-    let (subject, rest) = parse_der_node(tbs_cursor)?;
+    let (subject, rest) = noxtls_parse_der_node(tbs_cursor)?;
     if subject.tag != 0x30 {
         return Err(Error::ParseFailure("missing certificate subject"));
     }
     tbs_cursor = rest;
 
-    let (spki, mut tbs_tail) = parse_der_node(tbs_cursor)?;
+    let (spki, mut tbs_tail) = noxtls_parse_der_node(tbs_cursor)?;
     if spki.tag != 0x30 {
         return Err(Error::ParseFailure("missing subject public key info"));
     }
     while matches!(tbs_tail.first(), Some(0x81 | 0x82)) {
-        let (_node, rest) = parse_der_node(tbs_tail)?;
+        let (_node, rest) = noxtls_parse_der_node(tbs_tail)?;
         tbs_tail = rest;
     }
 
@@ -194,7 +194,7 @@ pub fn parse_certificate(input: &[u8]) -> Result<Certificate<'_>> {
     let mut crl_distribution_uris = Vec::new();
     let mut authority_info_access_uris = Vec::new();
     if !tbs_tail.is_empty() {
-        let (extensions_ctx, tail) = parse_der_node(tbs_tail)?;
+        let (extensions_ctx, tail) = noxtls_parse_der_node(tbs_tail)?;
         if extensions_ctx.tag != 0xA3 || !tail.is_empty() {
             return Err(Error::ParseFailure(
                 "unexpected TBSCertificate fields after subject public key info",
@@ -270,7 +270,7 @@ fn first_der_encoded(input: &[u8]) -> Result<&[u8]> {
     if input.len() < 2 {
         return Err(Error::ParseFailure("DER node too short"));
     }
-    let (len, len_len) = parse_der_length(&input[1..])?;
+    let (len, len_len) = noxtls_parse_der_length(&input[1..])?;
     let total_len = 1_usize
         .checked_add(len_len)
         .and_then(|value| value.checked_add(len))
@@ -299,12 +299,12 @@ fn first_der_encoded(input: &[u8]) -> Result<&[u8]> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_algorithm_identifier_oid(input: &[u8]) -> Result<Vec<u8>> {
-    let (oid_node, rest) = parse_der_node(input)?;
+    let (oid_node, rest) = noxtls_parse_der_node(input)?;
     if oid_node.tag != 0x06 {
         return Err(Error::ParseFailure("algorithm identifier missing OID"));
     }
     if !rest.is_empty() {
-        let (_params, tail) = parse_der_node(rest)?;
+        let (_params, tail) = noxtls_parse_der_node(rest)?;
         if !tail.is_empty() {
             return Err(Error::ParseFailure(
                 "algorithm identifier has trailing fields",
@@ -332,7 +332,7 @@ fn parse_algorithm_identifier_oid(input: &[u8]) -> Result<Vec<u8>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_spki_algorithm_oid(spki_body: &[u8]) -> Result<Vec<u8>> {
-    let (alg_node, rest) = parse_der_node(spki_body)?;
+    let (alg_node, rest) = noxtls_parse_der_node(spki_body)?;
     if alg_node.tag != 0x30 {
         return Err(Error::ParseFailure(
             "subjectPublicKeyInfo missing algorithm",
@@ -364,8 +364,8 @@ fn parse_spki_algorithm_oid(spki_body: &[u8]) -> Result<Vec<u8>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_spki_subject_public_key(spki_body: &[u8]) -> Result<Vec<u8>> {
-    let (_alg_node, rest) = parse_der_node(spki_body)?;
-    let (subject_key_node, tail) = parse_der_node(rest)?;
+    let (_alg_node, rest) = noxtls_parse_der_node(spki_body)?;
+    let (subject_key_node, tail) = noxtls_parse_der_node(rest)?;
     if subject_key_node.tag != 0x03 {
         return Err(Error::ParseFailure(
             "subjectPublicKeyInfo missing public key",
@@ -397,8 +397,8 @@ fn parse_spki_subject_public_key(spki_body: &[u8]) -> Result<Vec<u8>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_validity(validity_body: &[u8]) -> Result<(String, String)> {
-    let (not_before_node, rest) = parse_der_node(validity_body)?;
-    let (not_after_node, tail) = parse_der_node(rest)?;
+    let (not_before_node, rest) = noxtls_parse_der_node(validity_body)?;
+    let (not_after_node, tail) = noxtls_parse_der_node(rest)?;
     if !tail.is_empty() {
         return Err(Error::ParseFailure("unexpected bytes in validity"));
     }
@@ -452,18 +452,18 @@ fn subject_common_name(subject_raw: &[u8]) -> Option<String> {
     const OID_COMMON_NAME: &[u8] = &[0x55, 0x04, 0x03];
     let mut rdn_cursor = subject_raw;
     while !rdn_cursor.is_empty() {
-        let (rdn_set, rest) = parse_der_node(rdn_cursor).ok()?;
+        let (rdn_set, rest) = noxtls_parse_der_node(rdn_cursor).ok()?;
         if rdn_set.tag != 0x31 {
             return None;
         }
         let mut attr_cursor = rdn_set.body;
         while !attr_cursor.is_empty() {
-            let (attr_seq, attr_rest) = parse_der_node(attr_cursor).ok()?;
+            let (attr_seq, attr_rest) = noxtls_parse_der_node(attr_cursor).ok()?;
             if attr_seq.tag != 0x30 {
                 return None;
             }
-            let (oid, value_rest) = parse_der_node(attr_seq.body).ok()?;
-            let (value, tail) = parse_der_node(value_rest).ok()?;
+            let (oid, value_rest) = noxtls_parse_der_node(attr_seq.body).ok()?;
+            let (value, tail) = noxtls_parse_der_node(value_rest).ok()?;
             if oid.tag == 0x06
                 && oid.body == OID_COMMON_NAME
                 && tail.is_empty()
@@ -681,7 +681,7 @@ fn parse_extensions(
     Vec<String>,
     Vec<String>,
 )> {
-    let (extensions_seq, tail) = parse_der_node(input)?;
+    let (extensions_seq, tail) = noxtls_parse_der_node(input)?;
     if extensions_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid certificate extensions"));
     }
@@ -710,18 +710,18 @@ fn parse_extensions(
                 "certificate has too many extensions for parser limit",
             ));
         }
-        let (ext_node, rest) = parse_der_node(ext_cursor)?;
+        let (ext_node, rest) = noxtls_parse_der_node(ext_cursor)?;
         ext_cursor = rest;
         if ext_node.tag != 0x30 {
             return Err(Error::ParseFailure("invalid extension sequence"));
         }
-        let (oid_node, mut ext_rest) = parse_der_node(ext_node.body)?;
+        let (oid_node, mut ext_rest) = noxtls_parse_der_node(ext_node.body)?;
         if oid_node.tag != 0x06 {
             return Err(Error::ParseFailure("extension missing OID"));
         }
         let (_critical, maybe_rest) = parse_optional_boolean(ext_rest)?;
         ext_rest = maybe_rest;
-        let (extn_value_node, ext_tail) = parse_der_node(ext_rest)?;
+        let (extn_value_node, ext_tail) = noxtls_parse_der_node(ext_rest)?;
         if extn_value_node.tag != 0x04 || !ext_tail.is_empty() {
             return Err(Error::ParseFailure(
                 "extension missing extnValue octet string",
@@ -813,7 +813,7 @@ fn parse_optional_boolean(input: &[u8]) -> Result<(Option<bool>, &[u8])> {
     if input.is_empty() {
         return Ok((None, input));
     }
-    let (node, rest) = parse_der_node(input)?;
+    let (node, rest) = noxtls_parse_der_node(input)?;
     if node.tag != 0x01 {
         return Ok((None, input));
     }
@@ -841,7 +841,7 @@ fn parse_optional_boolean(input: &[u8]) -> Result<(Option<bool>, &[u8])> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_basic_constraints(extn_octets: &[u8]) -> Result<(bool, Option<u32>)> {
-    let (seq, tail) = parse_der_node(extn_octets)?;
+    let (seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid basicConstraints encoding"));
     }
@@ -850,7 +850,7 @@ fn parse_basic_constraints(extn_octets: &[u8]) -> Result<(bool, Option<u32>)> {
     let mut path_len = None;
 
     if !cursor.is_empty() {
-        let (node, rest) = parse_der_node(cursor)?;
+        let (node, rest) = noxtls_parse_der_node(cursor)?;
         if node.tag == 0x01 {
             if node.body.len() != 1 {
                 return Err(Error::ParseFailure("invalid basicConstraints cA boolean"));
@@ -860,7 +860,7 @@ fn parse_basic_constraints(extn_octets: &[u8]) -> Result<(bool, Option<u32>)> {
         }
     }
     if !cursor.is_empty() {
-        let (path_node, path_tail) = parse_der_node(cursor)?;
+        let (path_node, path_tail) = noxtls_parse_der_node(cursor)?;
         if path_node.tag != 0x02 || !path_tail.is_empty() || path_node.body.is_empty() {
             return Err(Error::ParseFailure(
                 "invalid basicConstraints pathLenConstraint",
@@ -889,7 +889,7 @@ fn parse_basic_constraints(extn_octets: &[u8]) -> Result<(bool, Option<u32>)> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_key_usage(extn_octets: &[u8]) -> Result<u16> {
-    let (bit_string_node, tail) = parse_der_node(extn_octets)?;
+    let (bit_string_node, tail) = noxtls_parse_der_node(extn_octets)?;
     if bit_string_node.tag != 0x03 || !tail.is_empty() || bit_string_node.body.is_empty() {
         return Err(Error::ParseFailure("invalid keyUsage encoding"));
     }
@@ -929,14 +929,14 @@ fn parse_key_usage(extn_octets: &[u8]) -> Result<u16> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_subject_alt_name_dns(extn_octets: &[u8]) -> Result<Vec<String>> {
-    let (general_names_seq, tail) = parse_der_node(extn_octets)?;
+    let (general_names_seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if general_names_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid subjectAltName encoding"));
     }
     let mut names = Vec::new();
     let mut cursor = general_names_seq.body;
     while !cursor.is_empty() {
-        let (name_node, rest) = parse_der_node(cursor)?;
+        let (name_node, rest) = noxtls_parse_der_node(cursor)?;
         cursor = rest;
         if name_node.tag == 0x82 {
             if names.len() >= MAX_SAN_DNS_NAME_COUNT {
@@ -1010,19 +1010,19 @@ fn parse_der_positive_integer_u32(bytes: &[u8]) -> Result<u32> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_certificate_policies(extn_octets: &[u8]) -> Result<Vec<Vec<u8>>> {
-    let (policies_seq, tail) = parse_der_node(extn_octets)?;
+    let (policies_seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if policies_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid certificatePolicies encoding"));
     }
     let mut policies = Vec::new();
     let mut cursor = policies_seq.body;
     while !cursor.is_empty() {
-        let (policy_info, rest) = parse_der_node(cursor)?;
+        let (policy_info, rest) = noxtls_parse_der_node(cursor)?;
         cursor = rest;
         if policy_info.tag != 0x30 {
             return Err(Error::ParseFailure("invalid PolicyInformation sequence"));
         }
-        let (policy_oid, policy_tail) = parse_der_node(policy_info.body)?;
+        let (policy_oid, policy_tail) = noxtls_parse_der_node(policy_info.body)?;
         if policy_oid.tag != 0x06 {
             return Err(Error::ParseFailure("certificate policy missing OID"));
         }
@@ -1060,20 +1060,20 @@ fn parse_certificate_policies(extn_octets: &[u8]) -> Result<Vec<Vec<u8>>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_policy_mappings(extn_octets: &[u8]) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
-    let (mappings_seq, tail) = parse_der_node(extn_octets)?;
+    let (mappings_seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if mappings_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid policyMappings encoding"));
     }
     let mut mappings = Vec::new();
     let mut cursor = mappings_seq.body;
     while !cursor.is_empty() {
-        let (mapping, rest) = parse_der_node(cursor)?;
+        let (mapping, rest) = noxtls_parse_der_node(cursor)?;
         cursor = rest;
         if mapping.tag != 0x30 {
             return Err(Error::ParseFailure("invalid policyMappings entry"));
         }
-        let (issuer_policy, mapping_rest) = parse_der_node(mapping.body)?;
-        let (subject_policy, mapping_tail) = parse_der_node(mapping_rest)?;
+        let (issuer_policy, mapping_rest) = noxtls_parse_der_node(mapping.body)?;
+        let (subject_policy, mapping_tail) = noxtls_parse_der_node(mapping_rest)?;
         if issuer_policy.tag != 0x06 || subject_policy.tag != 0x06 || !mapping_tail.is_empty() {
             return Err(Error::ParseFailure("invalid policyMappings policy OIDs"));
         }
@@ -1105,7 +1105,7 @@ fn parse_policy_mappings(extn_octets: &[u8]) -> Result<Vec<(Vec<u8>, Vec<u8>)>> 
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_crl_distribution_points(extn_octets: &[u8]) -> Result<Vec<String>> {
-    let (dp_seq, tail) = parse_der_node(extn_octets)?;
+    let (dp_seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if dp_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure(
             "invalid cRLDistributionPoints encoding",
@@ -1114,19 +1114,19 @@ fn parse_crl_distribution_points(extn_octets: &[u8]) -> Result<Vec<String>> {
     let mut uris = Vec::new();
     let mut dp_cursor = dp_seq.body;
     while !dp_cursor.is_empty() {
-        let (dp_node, rest) = parse_der_node(dp_cursor)?;
+        let (dp_node, rest) = noxtls_parse_der_node(dp_cursor)?;
         dp_cursor = rest;
         if dp_node.tag != 0x30 {
             return Err(Error::ParseFailure("invalid DistributionPoint sequence"));
         }
         let mut dp_fields = dp_node.body;
         while !dp_fields.is_empty() {
-            let (field_node, field_rest) = parse_der_node(dp_fields)?;
+            let (field_node, field_rest) = noxtls_parse_der_node(dp_fields)?;
             dp_fields = field_rest;
             if field_node.tag != 0xA0 {
                 continue;
             }
-            let (general_names, gn_tail) = parse_der_node(field_node.body)?;
+            let (general_names, gn_tail) = noxtls_parse_der_node(field_node.body)?;
             if general_names.tag != 0x30 || !gn_tail.is_empty() {
                 return Err(Error::ParseFailure(
                     "invalid DistributionPointName fullName",
@@ -1134,7 +1134,7 @@ fn parse_crl_distribution_points(extn_octets: &[u8]) -> Result<Vec<String>> {
             }
             let mut gn_cursor = general_names.body;
             while !gn_cursor.is_empty() {
-                let (general_name, gn_rest) = parse_der_node(gn_cursor)?;
+                let (general_name, gn_rest) = noxtls_parse_der_node(gn_cursor)?;
                 gn_cursor = gn_rest;
                 if general_name.tag == 0x86 {
                     if uris.len() >= MAX_URI_COUNT {
@@ -1170,14 +1170,14 @@ fn parse_crl_distribution_points(extn_octets: &[u8]) -> Result<Vec<String>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_extended_key_usage(extn_octets: &[u8]) -> Result<Vec<Vec<u8>>> {
-    let (eku_seq, tail) = parse_der_node(extn_octets)?;
+    let (eku_seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if eku_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid extendedKeyUsage encoding"));
     }
     let mut usages = Vec::new();
     let mut cursor = eku_seq.body;
     while !cursor.is_empty() {
-        let (usage, rest) = parse_der_node(cursor)?;
+        let (usage, rest) = noxtls_parse_der_node(cursor)?;
         cursor = rest;
         if usage.tag != 0x06 {
             return Err(Error::ParseFailure("invalid extendedKeyUsage purpose OID"));
@@ -1210,7 +1210,7 @@ fn parse_extended_key_usage(extn_octets: &[u8]) -> Result<Vec<Vec<u8>>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_name_constraints(extn_octets: &[u8]) -> Result<(Vec<String>, Vec<String>)> {
-    let (constraints_seq, tail) = parse_der_node(extn_octets)?;
+    let (constraints_seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if constraints_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid nameConstraints encoding"));
     }
@@ -1218,7 +1218,7 @@ fn parse_name_constraints(extn_octets: &[u8]) -> Result<(Vec<String>, Vec<String
     let mut excluded_dns = Vec::new();
     let mut cursor = constraints_seq.body;
     while !cursor.is_empty() {
-        let (subtrees, rest) = parse_der_node(cursor)?;
+        let (subtrees, rest) = noxtls_parse_der_node(cursor)?;
         cursor = rest;
         match subtrees.tag {
             0xA0 => parse_general_subtrees_dns(subtrees.body, &mut permitted_dns)?,
@@ -1248,18 +1248,18 @@ fn parse_name_constraints(extn_octets: &[u8]) -> Result<(Vec<String>, Vec<String
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_general_subtrees_dns(input: &[u8], out: &mut Vec<String>) -> Result<()> {
-    let (subtrees_seq, tail) = parse_der_node(input)?;
+    let (subtrees_seq, tail) = noxtls_parse_der_node(input)?;
     if subtrees_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid GeneralSubtrees encoding"));
     }
     let mut cursor = subtrees_seq.body;
     while !cursor.is_empty() {
-        let (subtree, rest) = parse_der_node(cursor)?;
+        let (subtree, rest) = noxtls_parse_der_node(cursor)?;
         cursor = rest;
         if subtree.tag != 0x30 {
             return Err(Error::ParseFailure("invalid GeneralSubtree entry"));
         }
-        let (base, mut base_rest) = parse_der_node(subtree.body)?;
+        let (base, mut base_rest) = noxtls_parse_der_node(subtree.body)?;
         if base.tag == 0x82 {
             if out.len() >= MAX_GENERAL_SUBTREE_COUNT {
                 return Err(Error::ParseFailure(
@@ -1271,7 +1271,7 @@ fn parse_general_subtrees_dns(input: &[u8], out: &mut Vec<String>) -> Result<()>
             out.push(dns.to_owned());
         }
         while !base_rest.is_empty() {
-            let (bound, rest) = parse_der_node(base_rest)?;
+            let (bound, rest) = noxtls_parse_der_node(base_rest)?;
             match bound.tag {
                 0x80 | 0x81 => {
                     if bound.body.is_empty() {
@@ -1311,20 +1311,20 @@ fn parse_general_subtrees_dns(input: &[u8], out: &mut Vec<String>) -> Result<()>
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_authority_info_access(extn_octets: &[u8]) -> Result<Vec<String>> {
-    let (descriptions_seq, tail) = parse_der_node(extn_octets)?;
+    let (descriptions_seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if descriptions_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid authorityInfoAccess encoding"));
     }
     let mut uris = Vec::new();
     let mut cursor = descriptions_seq.body;
     while !cursor.is_empty() {
-        let (description, rest) = parse_der_node(cursor)?;
+        let (description, rest) = noxtls_parse_der_node(cursor)?;
         cursor = rest;
         if description.tag != 0x30 {
             return Err(Error::ParseFailure("invalid AccessDescription entry"));
         }
-        let (_method, location_rest) = parse_der_node(description.body)?;
-        let (location, tail) = parse_der_node(location_rest)?;
+        let (_method, location_rest) = noxtls_parse_der_node(description.body)?;
+        let (location, tail) = noxtls_parse_der_node(location_rest)?;
         if !tail.is_empty() {
             return Err(Error::ParseFailure(
                 "invalid AccessDescription trailing fields",
@@ -1362,7 +1362,7 @@ fn parse_authority_info_access(extn_octets: &[u8]) -> Result<Vec<String>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_policy_constraints(extn_octets: &[u8]) -> Result<(Option<u32>, Option<u32>)> {
-    let (constraints_seq, tail) = parse_der_node(extn_octets)?;
+    let (constraints_seq, tail) = noxtls_parse_der_node(extn_octets)?;
     if constraints_seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid policyConstraints encoding"));
     }
@@ -1370,7 +1370,7 @@ fn parse_policy_constraints(extn_octets: &[u8]) -> Result<(Option<u32>, Option<u
     let mut inhibit_policy_mapping = None;
     let mut cursor = constraints_seq.body;
     while !cursor.is_empty() {
-        let (node, rest) = parse_der_node(cursor)?;
+        let (node, rest) = noxtls_parse_der_node(cursor)?;
         cursor = rest;
         match node.tag {
             0x80 | 0xA0 => {
@@ -1403,7 +1403,7 @@ fn parse_policy_constraints(extn_octets: &[u8]) -> Result<(Option<u32>, Option<u
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_inhibit_any_policy(extn_octets: &[u8]) -> Result<u32> {
-    let (skip_certs_node, tail) = parse_der_node(extn_octets)?;
+    let (skip_certs_node, tail) = noxtls_parse_der_node(extn_octets)?;
     if skip_certs_node.tag != 0x02 || !tail.is_empty() || skip_certs_node.body.is_empty() {
         return Err(Error::ParseFailure("invalid inhibitAnyPolicy encoding"));
     }
@@ -1434,7 +1434,7 @@ fn parse_policy_constraint_skip_certs(node: &super::DerNode<'_>) -> Result<u32> 
     if node.tag == 0x80 || node.tag == 0x81 {
         return parse_der_positive_integer_u32(node.body);
     }
-    let (inner_integer, tail) = parse_der_node(node.body)?;
+    let (inner_integer, tail) = noxtls_parse_der_node(node.body)?;
     if inner_integer.tag != 0x02 || !tail.is_empty() || inner_integer.body.is_empty() {
         return Err(Error::ParseFailure(
             "invalid policyConstraints integer wrapper",

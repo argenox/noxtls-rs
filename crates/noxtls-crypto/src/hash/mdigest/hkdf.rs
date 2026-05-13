@@ -18,7 +18,7 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 
-use super::{hmac_sha256, hmac_sha384};
+use super::{noxtls_hmac_sha256, noxtls_hmac_sha384};
 
 /// Extracts a pseudorandom key (PRK) using HKDF-Extract with SHA-256.
 ///
@@ -33,13 +33,13 @@ use super::{hmac_sha256, hmac_sha384};
 ///
 /// This function does not panic.
 #[must_use]
-pub fn hkdf_extract_sha256(salt: &[u8], ikm: &[u8]) -> [u8; 32] {
+pub fn noxtls_hkdf_extract_sha256(salt: &[u8], ikm: &[u8]) -> [u8; 32] {
     let effective_salt = if salt.is_empty() {
         &[0_u8; 32][..]
     } else {
         salt
     };
-    hmac_sha256(effective_salt, ikm)
+    noxtls_hmac_sha256(effective_salt, ikm)
 }
 
 /// Expands HKDF output material using SHA-256 and requested output length.
@@ -59,7 +59,7 @@ pub fn hkdf_extract_sha256(salt: &[u8], ikm: &[u8]) -> [u8; 32] {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn hkdf_expand_sha256(prk: &[u8], info: &[u8], len: usize) -> Result<Vec<u8>> {
+pub fn noxtls_hkdf_expand_sha256(prk: &[u8], info: &[u8], len: usize) -> Result<Vec<u8>> {
     if prk.len() < 32 {
         return Err(Error::InvalidLength("hkdf prk must be at least 32 bytes"));
     }
@@ -74,7 +74,7 @@ pub fn hkdf_expand_sha256(prk: &[u8], info: &[u8], len: usize) -> Result<Vec<u8>
         msg.extend_from_slice(&t);
         msg.extend_from_slice(info);
         msg.push(idx as u8);
-        t = hmac_sha256(prk, &msg).to_vec();
+        t = noxtls_hmac_sha256(prk, &msg).to_vec();
         okm.extend_from_slice(&t);
     }
     okm.truncate(len);
@@ -94,13 +94,13 @@ pub fn hkdf_expand_sha256(prk: &[u8], info: &[u8], len: usize) -> Result<Vec<u8>
 ///
 /// This function does not panic.
 #[must_use]
-pub fn hkdf_extract_sha384(salt: &[u8], ikm: &[u8]) -> [u8; 48] {
+pub fn noxtls_hkdf_extract_sha384(salt: &[u8], ikm: &[u8]) -> [u8; 48] {
     let effective_salt = if salt.is_empty() {
         &[0_u8; 48][..]
     } else {
         salt
     };
-    hmac_sha384(effective_salt, ikm)
+    noxtls_hmac_sha384(effective_salt, ikm)
 }
 
 /// Expands HKDF output material using SHA-384 and requested output length.
@@ -120,7 +120,7 @@ pub fn hkdf_extract_sha384(salt: &[u8], ikm: &[u8]) -> [u8; 48] {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn hkdf_expand_sha384(prk: &[u8], info: &[u8], len: usize) -> Result<Vec<u8>> {
+pub fn noxtls_hkdf_expand_sha384(prk: &[u8], info: &[u8], len: usize) -> Result<Vec<u8>> {
     if prk.len() < 48 {
         return Err(Error::InvalidLength("hkdf prk must be at least 48 bytes"));
     }
@@ -135,7 +135,7 @@ pub fn hkdf_expand_sha384(prk: &[u8], info: &[u8], len: usize) -> Result<Vec<u8>
         msg.extend_from_slice(&t);
         msg.extend_from_slice(info);
         msg.push(idx as u8);
-        t = hmac_sha384(prk, &msg).to_vec();
+        t = noxtls_hmac_sha384(prk, &msg).to_vec();
         okm.extend_from_slice(&t);
     }
     okm.truncate(len);

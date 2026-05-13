@@ -333,7 +333,7 @@ impl CamelliaCipher {
 
 /// Encrypts Camellia-ECB over full blocks; input length must be multiple of 16.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn camellia_ecb_encrypt(cipher: &CamelliaCipher, input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_camellia_ecb_encrypt(cipher: &CamelliaCipher, input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(16) {
         return Err(Error::InvalidLength(
             "camellia ecb input must be block-aligned",
@@ -351,7 +351,7 @@ pub fn camellia_ecb_encrypt(cipher: &CamelliaCipher, input: &[u8]) -> Result<Vec
 
 /// Decrypts Camellia-ECB over full blocks; input length must be multiple of 16.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn camellia_ecb_decrypt(cipher: &CamelliaCipher, input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_camellia_ecb_decrypt(cipher: &CamelliaCipher, input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(16) {
         return Err(Error::InvalidLength(
             "camellia ecb input must be block-aligned",
@@ -368,7 +368,7 @@ pub fn camellia_ecb_decrypt(cipher: &CamelliaCipher, input: &[u8]) -> Result<Vec
 }
 
 /// Encrypts Camellia-CBC with a 16-byte IV and block-aligned plaintext.
-pub fn camellia_cbc_encrypt(
+pub fn noxtls_camellia_cbc_encrypt(
     cipher: &CamelliaCipher,
     iv: &[u8; 16],
     plaintext: &[u8],
@@ -394,7 +394,7 @@ pub fn camellia_cbc_encrypt(
 }
 
 /// Decrypts Camellia-CBC with a 16-byte IV and block-aligned ciphertext.
-pub fn camellia_cbc_decrypt(
+pub fn noxtls_camellia_cbc_decrypt(
     cipher: &CamelliaCipher,
     iv: &[u8; 16],
     ciphertext: &[u8],
@@ -422,17 +422,17 @@ pub fn camellia_cbc_decrypt(
 
 /// Applies Camellia-CTR transformation using a 16-byte initial counter block.
 #[must_use]
-pub fn camellia_ctr_apply(
+pub fn noxtls_camellia_ctr_apply(
     cipher: &CamelliaCipher,
     nonce_counter: &[u8; 16],
     input: &[u8],
 ) -> Vec<u8> {
-    camellia_ctr_encrypt(cipher, nonce_counter, input)
+    noxtls_camellia_ctr_encrypt(cipher, nonce_counter, input)
 }
 
 /// Encrypts bytes with Camellia-CTR using a 16-byte initial counter block.
 #[must_use]
-pub fn camellia_ctr_encrypt(
+pub fn noxtls_camellia_ctr_encrypt(
     cipher: &CamelliaCipher,
     nonce_counter: &[u8; 16],
     plaintext: &[u8],
@@ -442,7 +442,7 @@ pub fn camellia_ctr_encrypt(
 
 /// Decrypts bytes with Camellia-CTR using a 16-byte initial counter block.
 #[must_use]
-pub fn camellia_ctr_decrypt(
+pub fn noxtls_camellia_ctr_decrypt(
     cipher: &CamelliaCipher,
     nonce_counter: &[u8; 16],
     ciphertext: &[u8],
@@ -490,19 +490,19 @@ fn camellia_ctr_process(
 
 /// Applies Camellia-CFB-128 transformation with a 16-byte IV.
 #[must_use]
-pub fn camellia_cfb_apply(cipher: &CamelliaCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
-    camellia_cfb_encrypt(cipher, iv, input)
+pub fn noxtls_camellia_cfb_apply(cipher: &CamelliaCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
+    noxtls_camellia_cfb_encrypt(cipher, iv, input)
 }
 
 /// Encrypts bytes with Camellia-CFB-128 using a 16-byte IV/register.
 #[must_use]
-pub fn camellia_cfb_encrypt(cipher: &CamelliaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_camellia_cfb_encrypt(cipher: &CamelliaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
     camellia_cfb_process(cipher, iv, plaintext, true)
 }
 
 /// Decrypts bytes with Camellia-CFB-128 using a 16-byte IV/register.
 #[must_use]
-pub fn camellia_cfb_decrypt(cipher: &CamelliaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_camellia_cfb_decrypt(cipher: &CamelliaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
     camellia_cfb_process(cipher, iv, ciphertext, false)
 }
 
@@ -552,19 +552,19 @@ fn camellia_cfb_process(
 
 /// Applies Camellia-OFB transformation with a 16-byte IV.
 #[must_use]
-pub fn camellia_ofb_apply(cipher: &CamelliaCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
-    camellia_ofb_encrypt(cipher, iv, input)
+pub fn noxtls_camellia_ofb_apply(cipher: &CamelliaCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
+    noxtls_camellia_ofb_encrypt(cipher, iv, input)
 }
 
 /// Encrypts bytes with Camellia-OFB using a 16-byte IV.
 #[must_use]
-pub fn camellia_ofb_encrypt(cipher: &CamelliaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_camellia_ofb_encrypt(cipher: &CamelliaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
     camellia_ofb_process(cipher, iv, plaintext)
 }
 
 /// Decrypts bytes with Camellia-OFB using a 16-byte IV.
 #[must_use]
-pub fn camellia_ofb_decrypt(cipher: &CamelliaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_camellia_ofb_decrypt(cipher: &CamelliaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
     camellia_ofb_process(cipher, iv, ciphertext)
 }
 

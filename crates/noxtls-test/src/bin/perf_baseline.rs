@@ -19,7 +19,7 @@
 
 use std::time::Instant;
 
-use noxtls_crypto::{sha256, ChaCha20};
+use noxtls_crypto::{noxtls_sha256, ChaCha20};
 
 /// Runs SHA-256 and ChaCha20 timing loops and prints millisecond totals to stdout.
 ///
@@ -38,7 +38,7 @@ fn main() {
     let data = vec![0x5a_u8; 1 << 20];
     let start = Instant::now();
     for _ in 0..256 {
-        let _ = sha256(&data);
+        let _ = noxtls_sha256(&data);
     }
     let sha_time = start.elapsed();
     println!("sha256_1mib_x256_ms={}", sha_time.as_millis());

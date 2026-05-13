@@ -125,7 +125,7 @@ impl<B: PsaCryptoBackend> ExternalKeyProvider for PsaExternalKeyProvider<B> {
     ///
     /// # Arguments
     ///
-    /// * `request` — noxtls derive request containing key handle and peer public key.
+    /// * `request` — PSA derive request containing key handle and peer public key.
     ///
     /// # Returns
     ///
@@ -144,6 +144,6 @@ impl<B: PsaCryptoBackend> ExternalKeyProvider for PsaExternalKeyProvider<B> {
             algorithm,
             peer_public_key: request.peer_public_key,
         };
-        self.provider.derive(&mapped)
+        self.provider.noxtls_derive(&mapped)
     }
 }

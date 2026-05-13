@@ -32,7 +32,7 @@
 /// # Panics
 ///
 /// This function does not panic.
-pub fn app_banner() -> &'static str {
+pub fn noxtls_app_banner() -> &'static str {
     "noxtls rust apps"
 }
 

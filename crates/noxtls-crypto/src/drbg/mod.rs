@@ -15,7 +15,7 @@
 // See `noxtls/LICENSE` and `noxtls/LICENSE.md` in this repository for full details.
 // CONTACT: info@argenox.com
 
-use crate::hash::hmac_sha256;
+use crate::hash::noxtls_hmac_sha256;
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 
@@ -110,7 +110,7 @@ impl HmacDrbgSha256 {
         }
         let mut out = Vec::with_capacity(out_len);
         while out.len() < out_len {
-            self.v = hmac_sha256(&self.k, &self.v);
+            self.v = noxtls_hmac_sha256(&self.k, &self.v);
             out.extend_from_slice(&self.v);
         }
         out.truncate(out_len);
@@ -144,15 +144,15 @@ impl HmacDrbgSha256 {
         if let Some(data) = provided_data {
             msg.extend_from_slice(data);
         }
-        self.k = hmac_sha256(&self.k, &msg);
-        self.v = hmac_sha256(&self.k, &self.v);
+        self.k = noxtls_hmac_sha256(&self.k, &msg);
+        self.v = noxtls_hmac_sha256(&self.k, &self.v);
         if let Some(data) = provided_data {
             let mut msg = Vec::with_capacity(self.v.len() + 1 + data.len());
             msg.extend_from_slice(&self.v);
             msg.push(0x01);
             msg.extend_from_slice(data);
-            self.k = hmac_sha256(&self.k, &msg);
-            self.v = hmac_sha256(&self.k, &self.v);
+            self.k = noxtls_hmac_sha256(&self.k, &msg);
+            self.v = noxtls_hmac_sha256(&self.k, &self.v);
         }
     }
 }

@@ -220,7 +220,7 @@ impl AriaCipher {
 
 /// Encrypts ARIA-ECB over full blocks; input length must be multiple of 16.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn aria_ecb_encrypt(cipher: &AriaCipher, input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aria_ecb_encrypt(cipher: &AriaCipher, input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aria ecb input must be block-aligned"));
     }
@@ -236,7 +236,7 @@ pub fn aria_ecb_encrypt(cipher: &AriaCipher, input: &[u8]) -> Result<Vec<u8>> {
 
 /// Decrypts ARIA-ECB over full blocks; input length must be multiple of 16.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn aria_ecb_decrypt(cipher: &AriaCipher, input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aria_ecb_decrypt(cipher: &AriaCipher, input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aria ecb input must be block-aligned"));
     }
@@ -251,7 +251,7 @@ pub fn aria_ecb_decrypt(cipher: &AriaCipher, input: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Encrypts ARIA-CBC with a 16-byte IV and block-aligned plaintext.
-pub fn aria_cbc_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aria_cbc_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Result<Vec<u8>> {
     if !plaintext.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aria cbc input must be block-aligned"));
     }
@@ -271,7 +271,7 @@ pub fn aria_cbc_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[u8]) ->
 }
 
 /// Decrypts ARIA-CBC with a 16-byte IV and block-aligned ciphertext.
-pub fn aria_cbc_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aria_cbc_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Result<Vec<u8>> {
     if !ciphertext.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aria cbc input must be block-aligned"));
     }
@@ -293,13 +293,13 @@ pub fn aria_cbc_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &[u8]) -
 
 /// Applies ARIA-CTR transformation using a 16-byte initial counter block.
 #[must_use]
-pub fn aria_ctr_apply(cipher: &AriaCipher, nonce_counter: &[u8; 16], input: &[u8]) -> Vec<u8> {
-    aria_ctr_encrypt(cipher, nonce_counter, input)
+pub fn noxtls_aria_ctr_apply(cipher: &AriaCipher, nonce_counter: &[u8; 16], input: &[u8]) -> Vec<u8> {
+    noxtls_aria_ctr_encrypt(cipher, nonce_counter, input)
 }
 
 /// Encrypts bytes with ARIA-CTR using a 16-byte initial counter block.
 #[must_use]
-pub fn aria_ctr_encrypt(
+pub fn noxtls_aria_ctr_encrypt(
     cipher: &AriaCipher,
     nonce_counter: &[u8; 16],
     plaintext: &[u8],
@@ -309,7 +309,7 @@ pub fn aria_ctr_encrypt(
 
 /// Decrypts bytes with ARIA-CTR using a 16-byte initial counter block.
 #[must_use]
-pub fn aria_ctr_decrypt(
+pub fn noxtls_aria_ctr_decrypt(
     cipher: &AriaCipher,
     nonce_counter: &[u8; 16],
     ciphertext: &[u8],
@@ -353,19 +353,19 @@ fn aria_ctr_process(cipher: &AriaCipher, nonce_counter: &[u8; 16], input: &[u8])
 
 /// Applies ARIA-CFB-128 transformation with a 16-byte IV.
 #[must_use]
-pub fn aria_cfb_apply(cipher: &AriaCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
-    aria_cfb_encrypt(cipher, iv, input)
+pub fn noxtls_aria_cfb_apply(cipher: &AriaCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
+    noxtls_aria_cfb_encrypt(cipher, iv, input)
 }
 
 /// Encrypts bytes with ARIA-CFB-128 using a 16-byte IV/register.
 #[must_use]
-pub fn aria_cfb_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_aria_cfb_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
     aria_cfb_process(cipher, iv, plaintext, true)
 }
 
 /// Decrypts bytes with ARIA-CFB-128 using a 16-byte IV/register.
 #[must_use]
-pub fn aria_cfb_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_aria_cfb_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
     aria_cfb_process(cipher, iv, ciphertext, false)
 }
 
@@ -410,19 +410,19 @@ fn aria_cfb_process(cipher: &AriaCipher, iv: &[u8; 16], input: &[u8], encrypt: b
 
 /// Applies ARIA-OFB transformation with a 16-byte IV.
 #[must_use]
-pub fn aria_ofb_apply(cipher: &AriaCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
-    aria_ofb_encrypt(cipher, iv, input)
+pub fn noxtls_aria_ofb_apply(cipher: &AriaCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
+    noxtls_aria_ofb_encrypt(cipher, iv, input)
 }
 
 /// Encrypts bytes with ARIA-OFB using a 16-byte IV.
 #[must_use]
-pub fn aria_ofb_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_aria_ofb_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
     aria_ofb_process(cipher, iv, plaintext)
 }
 
 /// Decrypts bytes with ARIA-OFB using a 16-byte IV.
 #[must_use]
-pub fn aria_ofb_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_aria_ofb_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
     aria_ofb_process(cipher, iv, ciphertext)
 }
 

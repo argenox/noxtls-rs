@@ -20,7 +20,7 @@
 use std::{fs, path::Path};
 
 use noxtls_core::{Error, Result};
-use noxtls_x509::{certificate_der_to_pem, certificate_pem_to_der};
+use noxtls_x509::{noxtls_certificate_der_to_pem, noxtls_certificate_pem_to_der};
 
 /// Converts a certificate file between PEM and DER encodings based on the input wire format.
 ///
@@ -48,21 +48,21 @@ fn main() -> Result<()> {
     if input.starts_with(b"-----BEGIN CERTIFICATE-----") {
         let pem = std::str::from_utf8(&input)
             .map_err(|_| Error::InvalidEncoding("certificate PEM must be UTF-8"))?;
-        let der = certificate_pem_to_der(pem)?;
+        let der = noxtls_certificate_pem_to_der(pem)?;
         let output_path =
             output_path_override.unwrap_or_else(|| with_extension(&input_path, "der"));
         fs::write(&output_path, der)
             .map_err(|_| Error::StateError("failed to write DER output file"))?;
-        println!("converted=pem_to_der");
+        println!("converted=noxtls_certificate_pem_to_der");
         println!("input={input_path}");
         println!("output={output_path}");
     } else {
-        let pem = certificate_der_to_pem(&input)?;
+        let pem = noxtls_certificate_der_to_pem(&input)?;
         let output_path =
             output_path_override.unwrap_or_else(|| with_extension(&input_path, "pem"));
         fs::write(&output_path, pem.as_bytes())
             .map_err(|_| Error::StateError("failed to write PEM output file"))?;
-        println!("converted=der_to_pem");
+        println!("converted=noxtls_certificate_der_to_pem");
         println!("input={input_path}");
         println!("output={output_path}");
     }

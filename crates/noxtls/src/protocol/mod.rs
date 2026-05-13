@@ -39,14 +39,14 @@ pub use connection::{
     TLS13_QUIC_EXPORTER_LABEL_CLIENT_1RTT, TLS13_QUIC_EXPORTER_LABEL_SERVER_1RTT,
 };
 pub use dtls::{
-    dtls13_aes128gcm_record_size, encode_dtls_record_header, encode_dtls_record_packet,
-    open_dtls13_aes128gcm_record, parse_dtls12_handshake_fragment, parse_dtls_record_header,
-    parse_dtls_record_packet, reassemble_dtls12_handshake_fragments, seal_dtls13_aes128gcm_record,
+    noxtls_dtls13_aes128gcm_record_size, noxtls_encode_dtls_record_header, noxtls_encode_dtls_record_packet,
+    noxtls_open_dtls13_aes128gcm_record, noxtls_parse_dtls12_handshake_fragment, noxtls_parse_dtls_record_header,
+    noxtls_parse_dtls_record_packet, noxtls_reassemble_dtls12_handshake_fragments, noxtls_seal_dtls13_aes128gcm_record,
     DtlsEpochReplayTracker, DtlsFlightRecord, DtlsFlightRetransmitTracker, DtlsRecordHeader,
     DtlsReplayWindow,
 };
 pub use kdf::{
-    hkdf_extract_for_hash, hkdf_extract_with_salt_for_hash, tls13_expand_label_for_hash,
+    noxtls_hkdf_extract_for_hash, noxtls_hkdf_extract_with_salt_for_hash, noxtls_tls13_expand_label_for_hash,
     HashAlgorithm,
 };
 pub use key_provider::{
@@ -54,10 +54,10 @@ pub use key_provider::{
     KeyDeriveAlgorithm, KeyDeriveRequest, KeySignAlgorithm, KeySignRequest, SoftwareKeyProvider,
 };
 pub use keyshare::{
-    derive_deterministic_p256_private, derive_deterministic_x25519_private,
-    derive_tls13_p256_shared_secret, derive_tls13_x25519_shared_secret,
-    tls13_client_hello_offers_supported_key_exchange, tls13_key_share_group_supported,
-    tls13_signature_algorithm_supported,
+    noxtls_derive_deterministic_p256_private, noxtls_derive_deterministic_x25519_private,
+    noxtls_derive_tls13_p256_shared_secret, noxtls_derive_tls13_x25519_shared_secret,
+    noxtls_tls13_client_hello_offers_supported_key_exchange, noxtls_tls13_key_share_group_supported,
+    noxtls_tls13_signature_algorithm_supported,
 };
 #[cfg(feature = "provider-psa")]
 pub use psa_provider::PsaExternalKeyProvider;

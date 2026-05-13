@@ -113,7 +113,7 @@ impl PsaCryptoBackend for FfiPsaBackend {
     /// # Errors
     ///
     /// Returns [`Error::UnsupportedFeature`] until concrete FFI hooks are linked.
-    fn derive(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>> {
+    fn noxtls_derive(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>> {
         let _ = request;
         Err(Error::UnsupportedFeature(
             "psa ffi derive unavailable without linked backend",
@@ -155,7 +155,7 @@ impl PsaCryptoBackend for FfiPsaBackend {
     /// # Errors
     ///
     /// Returns [`Error::UnsupportedFeature`] until concrete FFI hooks are linked.
-    fn sha256(&self, input: &[u8]) -> Result<[u8; 32]> {
+    fn noxtls_sha256(&self, input: &[u8]) -> Result<[u8; 32]> {
         let _ = input;
         Err(Error::UnsupportedFeature(
             "psa ffi sha256 unavailable without linked backend",
@@ -176,7 +176,7 @@ impl PsaCryptoBackend for FfiPsaBackend {
     /// # Errors
     ///
     /// Returns [`Error::UnsupportedFeature`] until concrete FFI hooks are linked.
-    fn aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
+    fn noxtls_aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
         let _ = request;
         Err(Error::UnsupportedFeature(
             "psa ffi aes-gcm unavailable without linked backend",

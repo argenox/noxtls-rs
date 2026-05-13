@@ -42,6 +42,6 @@ npm run start
 
 ## Next steps
 
-- [Architecture](/docs/architecture)
-- [Security](/docs/security)
-- [Crate API](/docs/api)
+- [Architecture](./architecture)
+- [Security](./security)
+- [TLS API topic](./api/tls)

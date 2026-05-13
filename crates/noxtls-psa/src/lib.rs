@@ -24,7 +24,7 @@ mod error;
 mod ffi;
 mod provider;
 
-pub use error::{map_status_to_result, normalize_psa_status, PsaError, PsaResultCode};
+pub use error::{noxtls_map_status_to_result, noxtls_normalize_psa_status, PsaError, PsaResultCode};
 pub use ffi::FfiPsaBackend;
 pub use provider::{
     AeadEncryptRequest, AeadEncryptResponse, KeyDecryptRequest, KeyDeriveRequest, KeySignRequest,

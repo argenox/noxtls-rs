@@ -19,8 +19,8 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    aes_gcm_encrypt, p256_ecdh_shared_secret, p256_ecdsa_sign_sha256, rsaes_oaep_sha256_decrypt,
-    rsaes_pkcs1_v15_decrypt, rsassa_pss_sha256_sign, rsassa_sha256_sign, sha256, x25519, AesCipher,
+    noxtls_aes_gcm_encrypt, noxtls_p256_ecdh_shared_secret, noxtls_p256_ecdsa_sign_sha256, noxtls_rsaes_oaep_sha256_decrypt,
+    noxtls_rsaes_pkcs1_v15_decrypt, noxtls_rsassa_pss_sha256_sign, noxtls_rsassa_sha256_sign, noxtls_sha256, noxtls_x25519, AesCipher,
     P256PrivateKey, P256PublicKey, RsaPrivateKey,
 };
 
@@ -194,7 +194,7 @@ pub trait PsaCryptoBackend {
     /// # Errors
     ///
     /// Returns [`Error`] when handle resolution, policy checks, or derive operation fails.
-    fn derive(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>>;
+    fn noxtls_derive(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>>;
 
     /// Fills output bytes with random data.
     ///
@@ -226,7 +226,7 @@ pub trait PsaCryptoBackend {
     /// # Errors
     ///
     /// Returns [`Error`] when hashing fails for the backend.
-    fn sha256(&self, input: &[u8]) -> Result<[u8; 32]>;
+    fn noxtls_sha256(&self, input: &[u8]) -> Result<[u8; 32]>;
 
     /// Encrypts plaintext with AES-GCM.
     ///
@@ -242,7 +242,7 @@ pub trait PsaCryptoBackend {
     /// # Errors
     ///
     /// Returns [`Error`] when backend lacks AES-GCM support or encryption fails.
-    fn aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse>;
+    fn noxtls_aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse>;
 }
 
 /// Adapts a concrete backend into a stable PSA provider API.
@@ -319,8 +319,8 @@ impl<B: PsaCryptoBackend> PsaProvider<B> {
     /// # Errors
     ///
     /// Returns backend-provided [`Error`] on failures.
-    pub fn derive(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>> {
-        self.backend.derive(request)
+    pub fn noxtls_derive(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>> {
+        self.backend.noxtls_derive(request)
     }
 
     /// Fills output bytes with backend-provided random data.
@@ -355,8 +355,8 @@ impl<B: PsaCryptoBackend> PsaProvider<B> {
     /// # Errors
     ///
     /// Returns backend-provided [`Error`] on hashing failures.
-    pub fn sha256(&self, input: &[u8]) -> Result<[u8; 32]> {
-        self.backend.sha256(input)
+    pub fn noxtls_sha256(&self, input: &[u8]) -> Result<[u8; 32]> {
+        self.backend.noxtls_sha256(input)
     }
 
     /// Encrypts plaintext with backend AES-GCM implementation.
@@ -373,8 +373,8 @@ impl<B: PsaCryptoBackend> PsaProvider<B> {
     /// # Errors
     ///
     /// Returns backend-provided [`Error`] when encryption fails.
-    pub fn aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
-        self.backend.aes_gcm_encrypt(request)
+    pub fn noxtls_aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
+        self.backend.noxtls_aes_gcm_encrypt(request)
     }
 }
 
@@ -589,16 +589,16 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
         }
         match (request.algorithm, material) {
             (PsaSignAlgorithm::RsaPkcs1Sha256, SoftwarePrivateMaterial::Rsa(key)) => {
-                rsassa_sha256_sign(key, request.message)
+                noxtls_rsassa_sha256_sign(key, request.message)
             }
             (PsaSignAlgorithm::RsaPssSha256, SoftwarePrivateMaterial::Rsa(key)) => {
                 let salt = request.salt.ok_or(Error::InvalidLength(
                     "rsa-pss-sha256 signing requires a salt",
                 ))?;
-                rsassa_pss_sha256_sign(key, request.message, salt)
+                noxtls_rsassa_pss_sha256_sign(key, request.message, salt)
             }
             (PsaSignAlgorithm::EcdsaP256Sha256, SoftwarePrivateMaterial::P256(key)) => {
-                let (r, s) = p256_ecdsa_sign_sha256(key, request.message)?;
+                let (r, s) = noxtls_p256_ecdsa_sign_sha256(key, request.message)?;
                 let mut signature = Vec::with_capacity(64);
                 signature.extend_from_slice(&r);
                 signature.extend_from_slice(&s);
@@ -629,10 +629,10 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
         }
         match (request.algorithm, material) {
             (PsaDecryptAlgorithm::RsaPkcs1v15, SoftwarePrivateMaterial::Rsa(key)) => {
-                rsaes_pkcs1_v15_decrypt(key, request.ciphertext)
+                noxtls_rsaes_pkcs1_v15_decrypt(key, request.ciphertext)
             }
             (PsaDecryptAlgorithm::RsaOaepSha256, SoftwarePrivateMaterial::Rsa(key)) => {
-                rsaes_oaep_sha256_decrypt(key, request.ciphertext, request.label.unwrap_or(&[]))
+                noxtls_rsaes_oaep_sha256_decrypt(key, request.ciphertext, request.label.unwrap_or(&[]))
             }
             _ => Err(Error::UnsupportedFeature(
                 "psa decrypt algorithm/key mismatch",
@@ -654,7 +654,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
     /// # Errors
     ///
     /// Returns policy or parse errors for unknown handles, denied usage, or invalid peer key.
-    fn derive(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>> {
+    fn noxtls_derive(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>> {
         let (material, policy) = self.resolve_key(request.handle)?;
         if !policy.allow_derive {
             return Err(Error::StateError("psa derive not permitted by key policy"));
@@ -666,11 +666,11 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
                 }
                 let mut peer = [0u8; 32];
                 peer.copy_from_slice(request.peer_public_key);
-                Ok(x25519(private, &peer).to_vec())
+                Ok(noxtls_x25519(private, &peer).to_vec())
             }
             (PsaDeriveAlgorithm::EcdhP256, SoftwarePrivateMaterial::P256(private)) => {
                 let peer = P256PublicKey::from_uncompressed(request.peer_public_key)?;
-                Ok(p256_ecdh_shared_secret(private, &peer)?.to_vec())
+                Ok(noxtls_p256_ecdh_shared_secret(private, &peer)?.to_vec())
             }
             _ => Err(Error::UnsupportedFeature(
                 "psa derive algorithm/key mismatch",
@@ -713,8 +713,8 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
     /// # Errors
     ///
     /// Returns crypto error if digest primitive reports a failure.
-    fn sha256(&self, input: &[u8]) -> Result<[u8; 32]> {
-        Ok(sha256(input))
+    fn noxtls_sha256(&self, input: &[u8]) -> Result<[u8; 32]> {
+        Ok(noxtls_sha256(input))
     }
 
     /// Encrypts using AES-GCM software primitive.
@@ -731,10 +731,10 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
     /// # Errors
     ///
     /// Returns [`Error::UnsupportedFeature`] because software AES-GCM path is not wired here.
-    fn aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
+    fn noxtls_aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
         let cipher = AesCipher::new(request.key)?;
         let (ciphertext, tag) =
-            aes_gcm_encrypt(&cipher, request.nonce, request.aad, request.plaintext)?;
+            noxtls_aes_gcm_encrypt(&cipher, request.nonce, request.aad, request.plaintext)?;
         Ok(AeadEncryptResponse { ciphertext, tag })
     }
 }

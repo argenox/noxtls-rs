@@ -1,22 +1,66 @@
 ---
-title: noxtls-crypto (hash)
+title: Crypto API - Hash/HMAC/HKDF
 ---
 
-# `noxtls-crypto` — hash, HMAC, HKDF
+# Crypto API: Hash, HMAC, HKDF
 
-Hash, HMAC, and HKDF primitives now live in the unified **`noxtls-crypto`** crate (see the `hash` module and crate-root re-exports).
+Hash and key-derivation helpers are provided by `noxtls-crypto::hash` and re-exported at crate root. This page highlights the functions typically used by TLS and device control planes.
 
-## Crate metadata
+## Digest APIs
 
-- Workspace path: `noxtls/crates/noxtls-crypto`
-- Package name: `noxtls-crypto`
-- Publish status: published/public
+```rust
+pub fn noxtls_sha1(data: &[u8]) -> [u8; 20]
+pub fn noxtls_sha256(data: &[u8]) -> [u8; 32]
+pub fn noxtls_sha384(data: &[u8]) -> [u8; 48]
+pub fn noxtls_sha512(data: &[u8]) -> [u8; 64]
+```
 
-## API references
+- **`data`**: input bytes to hash.
+- Fixed-size return types make buffer sizing explicit in no_std code.
 
-- docs.rs: [https://docs.rs/noxtls-crypto](https://docs.rs/noxtls-crypto)
-- Source: [`noxtls/crates/noxtls-crypto`](https://github.com/Argenox/noxtls-oem-rust/tree/main/noxtls/crates/noxtls-crypto)
+## HMAC APIs
 
-## Notes
+```rust
+pub fn noxtls_hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32]
+```
 
-This page is generated from workspace Cargo metadata. Re-run `npm run api:sync` after crate metadata changes.
+- **`key`**: HMAC key bytes.
+- **`data`**: authenticated message bytes.
+- Returns 32-byte authentication tag.
+
+## HKDF APIs
+
+```rust
+pub fn noxtls_hkdf_extract_sha256(salt: &[u8], ikm: &[u8]) -> [u8; 32]
+pub fn noxtls_hkdf_expand_sha256(prk: &[u8], info: &[u8], len: usize) -> Result<Vec<u8>>
+```
+
+- **`salt`**: optional extract salt (empty salt is handled).
+- **`ikm`**: input key material.
+- **`prk`**: pseudorandom key from extract.
+- **`info`**: context string/domain separation.
+- **`len`**: output length (bounded by RFC HKDF limits).
+
+## TLS 1.2 helper APIs
+
+```rust
+pub fn noxtls_tls12_prf_sha256(secret: &[u8], label: &[u8], seed: &[u8], len: usize) -> Result<Vec<u8>>
+pub fn noxtls_tls12_finished_verify_data_sha256(
+    master_secret: &[u8],
+    finished_label: &[u8],
+    transcript: &[u8],
+) -> Result<[u8; 12]>
+```
+
+- `noxtls_tls12_prf_sha256` computes RFC 5246 PRF output.
+- `noxtls_tls12_finished_verify_data_sha256` computes the 12-byte Finished `verify_data`.
+
+## Guidance
+
+- Use `noxtls_sha256` + `noxtls_hmac_sha256` for constrained-device interoperability defaults.
+- Prefer HKDF functions over custom KDF composition in protocol code.
+- Keep labels/info constants protocol-specific to avoid cross-protocol key reuse.
+
+## Per-algorithm pages
+
+Digest and PRF-focused pages: [mdigest](./mdigest), [SHA-256](./sha256), [SHA-512](./sha512), [SHA-3 / SHAKE256](./sha3), [SHA-1](./sha1), and status pages for [BLAKE2](./blake2), [MD4](./md4), [MD5](./md5), [RIPEMD-160](./ripemd160). Full index: [API index](./api-index).

@@ -39,7 +39,7 @@ const TLS12_RECORD_HEADER_LEN: usize = 5;
 ///
 /// This function does not panic.
 #[must_use]
-pub fn build_record_nonce(base_iv: &[u8; 12], sequence: u64) -> [u8; 12] {
+pub fn noxtls_build_record_nonce(base_iv: &[u8; 12], sequence: u64) -> [u8; 12] {
     let mut nonce = *base_iv;
     let seq_bytes = sequence.to_be_bytes();
     for (idx, byte) in seq_bytes.iter().enumerate() {
@@ -64,7 +64,7 @@ pub fn build_record_nonce(base_iv: &[u8; 12], sequence: u64) -> [u8; 12] {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn encode_tls13_inner_plaintext(
+pub fn noxtls_encode_tls13_inner_plaintext(
     content: &[u8],
     content_type: u8,
     padding_len: usize,
@@ -93,7 +93,7 @@ pub fn encode_tls13_inner_plaintext(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn decode_tls13_inner_plaintext(inner: &[u8]) -> Result<(Vec<u8>, u8)> {
+pub fn noxtls_decode_tls13_inner_plaintext(inner: &[u8]) -> Result<(Vec<u8>, u8)> {
     if inner.is_empty() {
         return Err(Error::ParseFailure(
             "tls13 inner plaintext must not be empty",
@@ -130,7 +130,7 @@ pub fn decode_tls13_inner_plaintext(inner: &[u8]) -> Result<(Vec<u8>, u8)> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn encode_tls13_ciphertext_record(payload: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_encode_tls13_ciphertext_record(payload: &[u8]) -> Result<Vec<u8>> {
     if payload.len() < TLS13_MIN_CIPHERTEXT_LEN {
         return Err(Error::InvalidLength(
             "tls13 ciphertext payload is too short",
@@ -166,7 +166,7 @@ pub fn encode_tls13_ciphertext_record(payload: &[u8]) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn decode_tls13_ciphertext_record(packet: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_decode_tls13_ciphertext_record(packet: &[u8]) -> Result<Vec<u8>> {
     if packet.len() < 5 {
         return Err(Error::ParseFailure("tls13 record header truncated"));
     }
@@ -214,7 +214,7 @@ pub fn decode_tls13_ciphertext_record(packet: &[u8]) -> Result<Vec<u8>> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn encode_tls12_ciphertext_record(
+pub fn noxtls_encode_tls12_ciphertext_record(
     content_type: u8,
     version: [u8; 2],
     payload: &[u8],
@@ -249,7 +249,7 @@ pub fn encode_tls12_ciphertext_record(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn decode_tls12_ciphertext_record(packet: &[u8]) -> Result<(u8, [u8; 2], Vec<u8>)> {
+pub fn noxtls_decode_tls12_ciphertext_record(packet: &[u8]) -> Result<(u8, [u8; 2], Vec<u8>)> {
     if packet.len() < TLS12_RECORD_HEADER_LEN {
         return Err(Error::ParseFailure("tls12 record header truncated"));
     }

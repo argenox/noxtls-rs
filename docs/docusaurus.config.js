@@ -30,7 +30,7 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
-          lastVersion: "0.1.3",
+          lastVersion: "0.2.1",
           includeCurrentVersion: true,
           versions: {
             current: {
@@ -103,9 +103,15 @@ const config = {
               {label: "Getting Started", to: "/docs/getting-started"},
               {label: "Architecture", to: "/docs/architecture"},
               {label: "Security", to: "/docs/security"},
-              {label: "Embedded targets and I/O", to: "/docs/embed-targets"},
-              {label: "Crate API", to: "/docs/api"},
+              {label: "Porting Guide", to: "/docs/porting-guide"},
+              {label: "Configuration Guide", to: "/docs/configuration-guide"},
+              {label: "Memory Usage", to: "/docs/memory-usage"},
               {label: "Release Notes", to: "/docs/release-notes"},
+              {label: "EdDSA", to: "/docs/eddsa"},
+              {label: "TLS component", to: "/docs/tls-component"},
+              {label: "TLS API", to: "/docs/tls-api/overview"},
+              {label: "Crypto API", to: "/docs/crypto-api/overview"},
+              {label: "Applications", to: "/docs/applications/overview"},
             ],
           },
           {

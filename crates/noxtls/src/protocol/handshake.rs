@@ -33,7 +33,7 @@ use noxtls_core::{Error, Result};
 ///
 /// This function does not panic.
 #[must_use]
-pub fn encode_handshake_message(handshake_type: u8, body: &[u8]) -> Vec<u8> {
+pub fn noxtls_encode_handshake_message(handshake_type: u8, body: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(4 + body.len());
     out.push(handshake_type);
     let len_bytes = (body.len() as u32).to_be_bytes();
@@ -59,7 +59,7 @@ pub fn encode_handshake_message(handshake_type: u8, body: &[u8]) -> Vec<u8> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn parse_handshake_message(input: &[u8]) -> Result<(u8, &[u8])> {
+pub fn noxtls_parse_handshake_message(input: &[u8]) -> Result<(u8, &[u8])> {
     if input.len() < 4 {
         return Err(Error::ParseFailure("handshake message too short"));
     }

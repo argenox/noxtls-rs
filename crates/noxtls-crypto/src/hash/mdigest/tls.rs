@@ -18,7 +18,7 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 
-use super::{hmac_sha256, hmac_sha384, sha256, sha384, Digest, Sha256};
+use super::{noxtls_hmac_sha256, noxtls_hmac_sha384, noxtls_sha256, noxtls_sha384, Digest, Sha256};
 
 /// Tracks TLS handshake transcript using streaming SHA-256 updates.
 #[derive(Debug, Clone, Default)]
@@ -129,7 +129,7 @@ impl TlsTranscriptSha384 {
     /// This function does not panic.
     #[must_use]
     pub fn snapshot_hash(&self) -> [u8; 48] {
-        sha384(&self.transcript)
+        noxtls_sha384(&self.transcript)
     }
 }
 
@@ -151,7 +151,7 @@ impl TlsTranscriptSha384 {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn tls12_prf_sha256(secret: &[u8], label: &[u8], seed: &[u8], len: usize) -> Result<Vec<u8>> {
+pub fn noxtls_tls12_prf_sha256(secret: &[u8], label: &[u8], seed: &[u8], len: usize) -> Result<Vec<u8>> {
     if secret.is_empty() {
         return Err(Error::InvalidLength("tls12 prf secret must not be empty"));
     }
@@ -162,14 +162,14 @@ pub fn tls12_prf_sha256(secret: &[u8], label: &[u8], seed: &[u8], len: usize) ->
     label_seed.extend_from_slice(label);
     label_seed.extend_from_slice(seed);
 
-    let mut a = hmac_sha256(secret, &label_seed);
+    let mut a = noxtls_hmac_sha256(secret, &label_seed);
     let mut out = Vec::with_capacity(len);
     while out.len() < len {
         let mut block_input = Vec::with_capacity(a.len() + label_seed.len());
         block_input.extend_from_slice(&a);
         block_input.extend_from_slice(&label_seed);
-        out.extend_from_slice(&hmac_sha256(secret, &block_input));
-        a = hmac_sha256(secret, &a);
+        out.extend_from_slice(&noxtls_hmac_sha256(secret, &block_input));
+        a = noxtls_hmac_sha256(secret, &a);
     }
     out.truncate(len);
     Ok(out)
@@ -193,7 +193,7 @@ pub fn tls12_prf_sha256(secret: &[u8], label: &[u8], seed: &[u8], len: usize) ->
 /// # Panics
 ///
 /// This function does not panic.
-pub fn tls12_prf_sha384(secret: &[u8], label: &[u8], seed: &[u8], len: usize) -> Result<Vec<u8>> {
+pub fn noxtls_tls12_prf_sha384(secret: &[u8], label: &[u8], seed: &[u8], len: usize) -> Result<Vec<u8>> {
     if secret.is_empty() {
         return Err(Error::InvalidLength("tls12 prf secret must not be empty"));
     }
@@ -204,14 +204,14 @@ pub fn tls12_prf_sha384(secret: &[u8], label: &[u8], seed: &[u8], len: usize) ->
     label_seed.extend_from_slice(label);
     label_seed.extend_from_slice(seed);
 
-    let mut a = hmac_sha384(secret, &label_seed);
+    let mut a = noxtls_hmac_sha384(secret, &label_seed);
     let mut out = Vec::with_capacity(len);
     while out.len() < len {
         let mut block_input = Vec::with_capacity(a.len() + label_seed.len());
         block_input.extend_from_slice(&a);
         block_input.extend_from_slice(&label_seed);
-        out.extend_from_slice(&hmac_sha384(secret, &block_input));
-        a = hmac_sha384(secret, &a);
+        out.extend_from_slice(&noxtls_hmac_sha384(secret, &block_input));
+        a = noxtls_hmac_sha384(secret, &a);
     }
     out.truncate(len);
     Ok(out)
@@ -229,18 +229,18 @@ pub fn tls12_prf_sha384(secret: &[u8], label: &[u8], seed: &[u8], len: usize) ->
 ///
 /// # Errors
 ///
-/// Forwards errors from [`tls12_prf_sha256`] (for example empty `master_secret`).
+/// Forwards errors from [`noxtls_tls12_prf_sha256`] (for example empty `master_secret`).
 ///
 /// # Panics
 ///
 /// This function does not panic.
-pub fn tls12_finished_verify_data_sha256(
+pub fn noxtls_tls12_finished_verify_data_sha256(
     master_secret: &[u8],
     finished_label: &[u8],
     transcript: &[u8],
 ) -> Result<[u8; 12]> {
-    let hash = sha256(transcript);
-    let verify = tls12_prf_sha256(master_secret, finished_label, &hash, 12)?;
+    let hash = noxtls_sha256(transcript);
+    let verify = noxtls_tls12_prf_sha256(master_secret, finished_label, &hash, 12)?;
     let mut out = [0_u8; 12];
     out.copy_from_slice(&verify);
     Ok(out)
@@ -258,18 +258,18 @@ pub fn tls12_finished_verify_data_sha256(
 ///
 /// # Errors
 ///
-/// Forwards errors from [`tls12_prf_sha384`] (for example empty `master_secret`).
+/// Forwards errors from [`noxtls_tls12_prf_sha384`] (for example empty `master_secret`).
 ///
 /// # Panics
 ///
 /// This function does not panic.
-pub fn tls12_finished_verify_data_sha384(
+pub fn noxtls_tls12_finished_verify_data_sha384(
     master_secret: &[u8],
     finished_label: &[u8],
     transcript: &[u8],
 ) -> Result<[u8; 12]> {
-    let hash = sha384(transcript);
-    let verify = tls12_prf_sha384(master_secret, finished_label, &hash, 12)?;
+    let hash = noxtls_sha384(transcript);
+    let verify = noxtls_tls12_prf_sha384(master_secret, finished_label, &hash, 12)?;
     let mut out = [0_u8; 12];
     out.copy_from_slice(&verify);
     Ok(out)

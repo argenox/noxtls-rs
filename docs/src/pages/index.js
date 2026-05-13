@@ -2,8 +2,7 @@ import React from "react";
 import Link from "@docusaurus/Link";
 
 /**
- * Landing page styled like NoxTLS C docs (card grid + sections), with Rust-specific links.
- * Uses stable `/docs/...` URLs (lastVersion) so behavior matches docs.noxtls.com-style paths.
+ * Landing page: device-first doc map (parity with NoxTLS C docs IA), Rust-specific content.
  */
 export default function Home() {
   return (
@@ -14,50 +13,57 @@ export default function Home() {
         </h1>
         <p
           style={{
-            maxWidth: 720,
+            maxWidth: 760,
             margin: "0 auto",
             fontSize: "1.1rem",
             color: "var(--ifm-font-color-secondary)",
           }}>
-          Pure Rust TLS/DTLS, cryptography, and X.509 building blocks. Use the
-          Documentation link in the navbar for the full sidebar (including auto-generated
-          crate pages under <strong>Crate API → Published crates</strong> on the Next
-          version).
+          Device-oriented TLS/DTLS, cryptography, and PKIX guidance for Rust—structured like
+          the NoxTLS product docs. Open <strong>Documentation</strong> in the navbar for the
+          full sidebar (TLS API, Crypto API, Applications, and more).
         </p>
       </header>
 
       <section className="home-section">
-        <h2 className="home-section-title">Start here</h2>
+        <h2 className="home-section-title">Core guides</h2>
         <div className="home-card-grid">
           <Link className="home-card" to="/docs/intro">
             <div className="home-card-title">Introduction</div>
-            <p className="home-card-desc">Workspace goals, layout, and how the pieces fit together.</p>
+            <p className="home-card-desc">Who the docs are for and how sections fit together.</p>
           </Link>
           <Link className="home-card" to="/docs/getting-started">
             <div className="home-card-title">Getting started</div>
-            <p className="home-card-desc">Clone, build, test, and run examples from the repo.</p>
+            <p className="home-card-desc">Build, test, and run the doc site locally.</p>
           </Link>
           <Link className="home-card" to="/docs/architecture">
             <div className="home-card-title">Architecture</div>
-            <p className="home-card-desc">Crate boundaries and dependency direction.</p>
+            <p className="home-card-desc">Crate graph from device, gateway, and crypto-only views.</p>
           </Link>
-          <Link className="home-card" to="/docs/api">
-            <div className="home-card-title">Crate API</div>
-            <p className="home-card-desc">Topic guides (hash, TLS, X.509, …) and per-crate metadata.</p>
+          <Link className="home-card" to="/docs/security">
+            <div className="home-card-title">Security</div>
+            <p className="home-card-desc">Reporting, scope, fleet considerations, policy flags.</p>
           </Link>
         </div>
       </section>
 
       <section className="home-section">
-        <h2 className="home-section-title">Security and releases</h2>
+        <h2 className="home-section-title">Porting and configuration</h2>
         <div className="home-card-grid">
-          <Link className="home-card" to="/docs/security">
-            <div className="home-card-title">Security</div>
-            <p className="home-card-desc">Reporting scope and practices for this workspace.</p>
+          <Link className="home-card" to="/docs/porting-guide">
+            <div className="home-card-title">Porting guide</div>
+            <p className="home-card-desc">MCU / RTOS checklist and C-to-Rust mapping.</p>
           </Link>
           <Link className="home-card" to="/docs/embed-targets">
             <div className="home-card-title">Embedded targets and I/O</div>
-            <p className="home-card-desc">Transports, profiles, and integration notes.</p>
+            <p className="home-card-desc">Transports, profiles, adapters.</p>
+          </Link>
+          <Link className="home-card" to="/docs/configuration-guide">
+            <div className="home-card-title">Configuration guide</div>
+            <p className="home-card-desc">Cargo features and core profiles as device policy.</p>
+          </Link>
+          <Link className="home-card" to="/docs/memory-usage">
+            <div className="home-card-title">Memory usage</div>
+            <p className="home-card-desc">ROM/RAM methodology for firmware images.</p>
           </Link>
           <Link className="home-card" to="/docs/release-notes">
             <div className="home-card-title">Release notes</div>
@@ -67,19 +73,55 @@ export default function Home() {
       </section>
 
       <section className="home-section">
-        <h2 className="home-section-title">Latest in-repo docs (Next)</h2>
+        <h2 className="home-section-title">Cryptography and TLS</h2>
+        <div className="home-card-grid">
+          <Link className="home-card" to="/docs/eddsa">
+            <div className="home-card-title">EdDSA</div>
+            <p className="home-card-desc">Ed25519 on devices: enablement and operations.</p>
+          </Link>
+          <Link className="home-card" to="/docs/tls-component">
+            <div className="home-card-title">TLS component</div>
+            <p className="home-card-desc">Layers, roles, and integration patterns.</p>
+          </Link>
+          <Link className="home-card" to="/docs/tls-api/overview">
+            <div className="home-card-title">TLS API</div>
+            <p className="home-card-desc">API map and link into the TLS topic guide.</p>
+          </Link>
+          <Link className="home-card" to="/docs/crypto-api/overview">
+            <div className="home-card-title">Crypto API</div>
+            <p className="home-card-desc">Topic guides and generated crate reference.</p>
+          </Link>
+        </div>
+      </section>
+
+      <section className="home-section">
+        <h2 className="home-section-title">Applications</h2>
+        <div className="home-card-grid">
+          <Link className="home-card" to="/docs/applications/overview">
+            <div className="home-card-title">Applications overview</div>
+            <p className="home-card-desc">Firmware, gateway, and examples index.</p>
+          </Link>
+          <Link className="home-card" to="/docs/applications/firmware-integration">
+            <div className="home-card-title">Firmware integration</div>
+            <p className="home-card-desc">Boot order, storage, transport binding, validation matrix.</p>
+          </Link>
+          <Link className="home-card" to="/docs/applications/host-gateway">
+            <div className="home-card-title">Host gateway</div>
+            <p className="home-card-desc">Tokio-based services and cloud front-ends.</p>
+          </Link>
+        </div>
+      </section>
+
+      <section className="home-section">
+        <h2 className="home-section-title">Latest in-repo (Next)</h2>
         <p style={{color: "var(--ifm-font-color-secondary)", marginTop: 0}}>
-          Use the version dropdown (top right) to switch to <strong>Next</strong> for markdown
-          that tracks <code>main</code> before the next snapshot.
+          Use the version dropdown for <strong>Next</strong> to follow <code>main</code> between
+          doc snapshots.
         </p>
         <div className="home-card-grid">
-          <Link className="home-card" to="/docs/next/api">
-            <div className="home-card-title">Crate API (Next)</div>
-            <p className="home-card-desc">Includes generated pages for each workspace crate.</p>
-          </Link>
-          <Link className="home-card" to="/docs/next/getting-started">
-            <div className="home-card-title">Getting started (Next)</div>
-            <p className="home-card-desc">Bleeding-edge edits to install and build instructions.</p>
+          <Link className="home-card" to="/docs/next/intro">
+            <div className="home-card-title">Introduction (Next)</div>
+            <p className="home-card-desc">In-development edits to this site.</p>
           </Link>
         </div>
       </section>
@@ -93,15 +135,15 @@ export default function Home() {
           </a>
           <a className="home-card" href="https://crates.io/crates/noxtls">
             <div className="home-card-title">noxtls on crates.io</div>
-            <p className="home-card-desc">Install the published stack from crates.io.</p>
+            <p className="home-card-desc">Published crates.</p>
           </a>
           <a className="home-card" href="https://docs.rs/noxtls">
             <div className="home-card-title">docs.rs</div>
-            <p className="home-card-desc">Rust API reference for the main crate.</p>
+            <p className="home-card-desc">Rust API reference.</p>
           </a>
           <a className="home-card" href="https://docs.noxtls.com">
             <div className="home-card-title">NoxTLS (C) documentation</div>
-            <p className="home-card-desc">Sibling C library docs for protocol and API parity context.</p>
+            <p className="home-card-desc">Sibling C library product docs.</p>
           </a>
         </div>
       </section>

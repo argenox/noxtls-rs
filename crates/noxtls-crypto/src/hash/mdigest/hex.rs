@@ -33,7 +33,7 @@ use noxtls_core::{Error, Result};
 /// # Panics
 ///
 /// This function does not panic.
-pub fn decode_hex(hex: &str) -> Result<Vec<u8>> {
+pub fn noxtls_decode_hex(hex: &str) -> Result<Vec<u8>> {
     let bytes = hex.as_bytes();
     if !bytes.len().is_multiple_of(2) {
         return Err(Error::InvalidEncoding("hex length must be even"));

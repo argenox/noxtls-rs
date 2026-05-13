@@ -41,12 +41,12 @@ pub struct DerNode<'a> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn parse_der_node(input: &[u8]) -> Result<(DerNode<'_>, &[u8])> {
+pub fn noxtls_parse_der_node(input: &[u8]) -> Result<(DerNode<'_>, &[u8])> {
     if input.len() < 2 {
         return Err(Error::ParseFailure("DER node too short"));
     }
     let tag = input[0];
-    let (len, len_len) = parse_der_length(&input[1..])?;
+    let (len, len_len) = noxtls_parse_der_length(&input[1..])?;
     let start = 1_usize
         .checked_add(len_len)
         .ok_or(Error::ParseFailure("DER length arithmetic overflow"))?;
@@ -82,7 +82,7 @@ pub fn parse_der_node(input: &[u8]) -> Result<(DerNode<'_>, &[u8])> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn parse_der_length(input: &[u8]) -> Result<(usize, usize)> {
+pub fn noxtls_parse_der_length(input: &[u8]) -> Result<(usize, usize)> {
     if input.is_empty() {
         return Err(Error::ParseFailure("missing DER length"));
     }

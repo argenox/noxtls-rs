@@ -25,4 +25,4 @@ Crates live under `noxtls/crates/`:
 - Preserve strong security posture defaults.
 - Provide API and implementation parity for the noxtls ecosystem where feasible.
 
-See [Getting Started](/docs/getting-started) for build commands, [Architecture](/docs/architecture) for crate boundaries, and [Crate API](/docs/api) for per-crate references.
+See [Getting Started](./getting-started) for build commands, [Architecture](./architecture) for crate boundaries, and the [TLS API topic](./api/tls) (plus sibling topic pages under `api/`) for symbol-oriented references.

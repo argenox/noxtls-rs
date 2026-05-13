@@ -18,7 +18,7 @@ Available examples:
 - `crl_app`: loads and dumps basic CRL ASN.1 envelope fields from a DER file path.
 - `req_app`: loads and dumps a CSR ASN.1 envelope from a DER/PEM file path.
 - `pem2der`: converts a certificate between PEM and DER (`<input> [output]`).
-- `parse_certificate`: parses and prints key certificate fields from a DER/PEM file path.
+- `noxtls_parse_certificate`: parses and prints key certificate fields from a DER/PEM file path.
 - `verify_chain`: validates a generated certificate against a trust anchor.
 - `embedded_no_std`: demonstrates `no_std`-friendly usage patterns.
 - `noxtls-rs`: OpenSSL-style utility with `dgst`, `enc`, `dec`, `rand`, `genpkey`, `pkcs8`, `req`, `x509`, and `verify`.
@@ -26,7 +26,7 @@ Available examples:
 X.509-oriented examples with input arguments:
 
 ```powershell
-cargo run -p noxtls --example parse_certificate -- .\certs\leaf.pem
+cargo run -p noxtls --example noxtls_parse_certificate -- .\certs\leaf.pem
 cargo run -p noxtls --example pem2der -- .\certs\leaf.pem .\certs\leaf.der
 cargo run -p noxtls --example crl_app -- .\certs\crl.der
 cargo run -p noxtls --example req_app -- .\certs\request.pem

@@ -81,7 +81,7 @@ impl DesCipher {
 ///
 /// # Returns
 /// ECB ciphertext bytes with same length as `input`.
-pub fn des_ecb_encrypt(cipher: &DesCipher, input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_des_ecb_encrypt(cipher: &DesCipher, input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(8) {
         return Err(Error::InvalidLength("des ecb input must be block-aligned"));
     }
@@ -103,7 +103,7 @@ pub fn des_ecb_encrypt(cipher: &DesCipher, input: &[u8]) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// ECB plaintext bytes with same length as `input`.
-pub fn des_ecb_decrypt(cipher: &DesCipher, input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_des_ecb_decrypt(cipher: &DesCipher, input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(8) {
         return Err(Error::InvalidLength("des ecb input must be block-aligned"));
     }
@@ -126,7 +126,7 @@ pub fn des_ecb_decrypt(cipher: &DesCipher, input: &[u8]) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// CBC ciphertext bytes with same length as `input`.
-pub fn des_cbc_encrypt(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_des_cbc_encrypt(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(8) {
         return Err(Error::InvalidLength("des cbc input must be block-aligned"));
     }
@@ -154,7 +154,7 @@ pub fn des_cbc_encrypt(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Result
 ///
 /// # Returns
 /// CBC plaintext bytes with same length as `input`.
-pub fn des_cbc_decrypt(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_des_cbc_decrypt(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(8) {
         return Err(Error::InvalidLength("des cbc input must be block-aligned"));
     }
@@ -183,8 +183,8 @@ pub fn des_cbc_decrypt(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Result
 ///
 /// # Returns
 /// Transformed bytes (encryption/decryption are identical in CTR).
-pub fn des_ctr_apply(cipher: &DesCipher, nonce_counter: &[u8; 8], input: &[u8]) -> Vec<u8> {
-    des_ctr_encrypt(cipher, nonce_counter, input)
+pub fn noxtls_des_ctr_apply(cipher: &DesCipher, nonce_counter: &[u8; 8], input: &[u8]) -> Vec<u8> {
+    noxtls_des_ctr_encrypt(cipher, nonce_counter, input)
 }
 
 /// Encrypts bytes with DES-CTR using an 8-byte initial counter block.
@@ -196,7 +196,7 @@ pub fn des_ctr_apply(cipher: &DesCipher, nonce_counter: &[u8; 8], input: &[u8]) 
 ///
 /// # Returns
 /// Ciphertext bytes with same length as `plaintext`.
-pub fn des_ctr_encrypt(cipher: &DesCipher, nonce_counter: &[u8; 8], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_des_ctr_encrypt(cipher: &DesCipher, nonce_counter: &[u8; 8], plaintext: &[u8]) -> Vec<u8> {
     des_ctr_process(cipher, nonce_counter, plaintext)
 }
 
@@ -209,7 +209,7 @@ pub fn des_ctr_encrypt(cipher: &DesCipher, nonce_counter: &[u8; 8], plaintext: &
 ///
 /// # Returns
 /// Plaintext bytes with same length as `ciphertext`.
-pub fn des_ctr_decrypt(cipher: &DesCipher, nonce_counter: &[u8; 8], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_des_ctr_decrypt(cipher: &DesCipher, nonce_counter: &[u8; 8], ciphertext: &[u8]) -> Vec<u8> {
     des_ctr_process(cipher, nonce_counter, ciphertext)
 }
 
@@ -256,8 +256,8 @@ fn des_ctr_process(cipher: &DesCipher, nonce_counter: &[u8; 8], input: &[u8]) ->
 ///
 /// # Returns
 /// Transformed bytes for CFB mode.
-pub fn des_cfb_apply(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Vec<u8> {
-    des_cfb_encrypt(cipher, iv, input)
+pub fn noxtls_des_cfb_apply(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Vec<u8> {
+    noxtls_des_cfb_encrypt(cipher, iv, input)
 }
 
 /// Encrypts bytes with DES-CFB-64 using an 8-byte IV/register.
@@ -269,7 +269,7 @@ pub fn des_cfb_apply(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Vec<u8> 
 ///
 /// # Returns
 /// Ciphertext bytes with same length as `plaintext`.
-pub fn des_cfb_encrypt(cipher: &DesCipher, iv: &[u8; 8], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_des_cfb_encrypt(cipher: &DesCipher, iv: &[u8; 8], plaintext: &[u8]) -> Vec<u8> {
     des_cfb_process(cipher, iv, plaintext, true)
 }
 
@@ -282,7 +282,7 @@ pub fn des_cfb_encrypt(cipher: &DesCipher, iv: &[u8; 8], plaintext: &[u8]) -> Ve
 ///
 /// # Returns
 /// Plaintext bytes with same length as `ciphertext`.
-pub fn des_cfb_decrypt(cipher: &DesCipher, iv: &[u8; 8], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_des_cfb_decrypt(cipher: &DesCipher, iv: &[u8; 8], ciphertext: &[u8]) -> Vec<u8> {
     des_cfb_process(cipher, iv, ciphertext, false)
 }
 
@@ -334,8 +334,8 @@ fn des_cfb_process(cipher: &DesCipher, iv: &[u8; 8], input: &[u8], encrypt: bool
 ///
 /// # Returns
 /// Transformed bytes for OFB mode.
-pub fn des_ofb_apply(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Vec<u8> {
-    des_ofb_encrypt(cipher, iv, input)
+pub fn noxtls_des_ofb_apply(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Vec<u8> {
+    noxtls_des_ofb_encrypt(cipher, iv, input)
 }
 
 /// Encrypts bytes with DES-OFB using an 8-byte IV/register.
@@ -347,7 +347,7 @@ pub fn des_ofb_apply(cipher: &DesCipher, iv: &[u8; 8], input: &[u8]) -> Vec<u8> 
 ///
 /// # Returns
 /// Ciphertext bytes with same length as `plaintext`.
-pub fn des_ofb_encrypt(cipher: &DesCipher, iv: &[u8; 8], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_des_ofb_encrypt(cipher: &DesCipher, iv: &[u8; 8], plaintext: &[u8]) -> Vec<u8> {
     des_ofb_process(cipher, iv, plaintext)
 }
 
@@ -360,7 +360,7 @@ pub fn des_ofb_encrypt(cipher: &DesCipher, iv: &[u8; 8], plaintext: &[u8]) -> Ve
 ///
 /// # Returns
 /// Plaintext bytes with same length as `ciphertext`.
-pub fn des_ofb_decrypt(cipher: &DesCipher, iv: &[u8; 8], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_des_ofb_decrypt(cipher: &DesCipher, iv: &[u8; 8], ciphertext: &[u8]) -> Vec<u8> {
     des_ofb_process(cipher, iv, ciphertext)
 }
 

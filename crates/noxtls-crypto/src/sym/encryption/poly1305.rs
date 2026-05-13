@@ -17,7 +17,7 @@
 
 use crate::sym::encryption::ChaCha20;
 
-/// Derives the 32-byte Poly1305 one-time key from ChaCha20 block counter zero (RFC 8439 §2.6).
+/// Derives the 32-byte Poly1305 one-time key from ChaCha20 block counter zero (RFC 8439 section 2.6).
 ///
 /// # Arguments
 /// * `key`: 32-byte ChaCha20 key.
@@ -25,7 +25,7 @@ use crate::sym::encryption::ChaCha20;
 ///
 /// # Returns
 /// First 32 bytes of the ChaCha20 block at counter 0.
-pub fn poly1305_key_gen(key: &[u8; 32], nonce: &[u8; 12]) -> [u8; 32] {
+pub fn noxtls_poly1305_key_gen(key: &[u8; 32], nonce: &[u8; 12]) -> [u8; 32] {
     let cipher = ChaCha20::new(key, nonce, 0);
     let block = cipher.block_output();
     let mut otk = [0_u8; 32];
@@ -41,7 +41,7 @@ pub fn poly1305_key_gen(key: &[u8; 32], nonce: &[u8; 12]) -> [u8; 32] {
 ///
 /// # Returns
 /// 16-byte authentication tag in little-endian form.
-pub fn poly1305_mac(otk: &[u8; 32], msg: &[u8]) -> [u8; 16] {
+pub fn noxtls_poly1305_mac(otk: &[u8; 32], msg: &[u8]) -> [u8; 16] {
     let mut state = Poly1305State::new(otk);
     let mut offset = 0;
     while offset < msg.len() {
@@ -69,7 +69,7 @@ pub fn poly1305_mac(otk: &[u8; 32], msg: &[u8]) -> [u8; 16] {
 ///
 /// # Returns
 /// 16-byte tag, or zero tag if `data` is empty (caller should avoid empty input for AEAD).
-pub fn poly1305_mac_padded16(otk: &[u8; 32], data: &[u8]) -> [u8; 16] {
+pub fn noxtls_poly1305_mac_padded16(otk: &[u8; 32], data: &[u8]) -> [u8; 16] {
     let mut state = Poly1305State::new(otk);
     debug_assert!(data.len() % 16 == 0);
     let mut offset = 0;
@@ -88,7 +88,7 @@ pub fn poly1305_mac_padded16(otk: &[u8; 32], data: &[u8]) -> [u8; 16] {
 ///
 /// # Returns
 /// `true` when all octets match.
-pub fn poly1305_tags_equal(a: &[u8; 16], b: &[u8; 16]) -> bool {
+pub fn noxtls_poly1305_tags_equal(a: &[u8; 16], b: &[u8; 16]) -> bool {
     let mut diff = 0_u8;
     for idx in 0..16 {
         diff |= a[idx] ^ b[idx];

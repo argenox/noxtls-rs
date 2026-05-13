@@ -327,7 +327,7 @@ impl Digest for Sha512 {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn sha512(data: &[u8]) -> [u8; 64] {
+pub fn noxtls_sha512(data: &[u8]) -> [u8; 64] {
     let mut hasher = Sha512::new();
     hasher.update(data);
     let digest = hasher.finalize();
@@ -348,7 +348,7 @@ pub fn sha512(data: &[u8]) -> [u8; 64] {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn sha384(data: &[u8]) -> [u8; 48] {
+pub fn noxtls_sha384(data: &[u8]) -> [u8; 48] {
     let mut hasher = Sha512::new_sha384();
     hasher.update(data);
     let digest = hasher.finalize();

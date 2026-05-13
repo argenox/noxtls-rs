@@ -15,7 +15,7 @@
 // See `noxtls/LICENSE` and `noxtls/LICENSE.md` in this repository for full details.
 // CONTACT: info@argenox.com
 
-use super::{poly1305_key_gen, poly1305_mac_padded16, poly1305_tags_equal, ChaCha20};
+use super::{noxtls_poly1305_key_gen, noxtls_poly1305_mac_padded16, noxtls_poly1305_tags_equal, ChaCha20};
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 
@@ -91,7 +91,7 @@ fn build_mac_data(aad: &[u8], ciphertext: &[u8]) -> Vec<u8> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn chacha20_poly1305_encrypt(
+pub fn noxtls_chacha20_poly1305_encrypt(
     key: &[u8; 32],
     nonce: &[u8; 12],
     aad: &[u8],
@@ -103,12 +103,12 @@ pub fn chacha20_poly1305_encrypt(
             "chacha20-poly1305 plaintext exceeds RFC 8439 counter range",
         ));
     }
-    let otk = poly1305_key_gen(key, nonce);
+    let otk = noxtls_poly1305_key_gen(key, nonce);
     let mut cipher = ChaCha20::new(key, nonce, 1);
     let mut ciphertext = vec![0_u8; plaintext.len()];
     cipher.apply_keystream(plaintext, &mut ciphertext)?;
     let mac_data = build_mac_data(aad, &ciphertext);
-    let tag = poly1305_mac_padded16(&otk, &mac_data);
+    let tag = noxtls_poly1305_mac_padded16(&otk, &mac_data);
     Ok((ciphertext, tag))
 }
 
@@ -131,7 +131,7 @@ pub fn chacha20_poly1305_encrypt(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn chacha20_poly1305_decrypt(
+pub fn noxtls_chacha20_poly1305_decrypt(
     key: &[u8; 32],
     nonce: &[u8; 12],
     aad: &[u8],
@@ -144,10 +144,10 @@ pub fn chacha20_poly1305_decrypt(
             "chacha20-poly1305 ciphertext exceeds RFC 8439 counter range",
         ));
     }
-    let otk = poly1305_key_gen(key, nonce);
+    let otk = noxtls_poly1305_key_gen(key, nonce);
     let mac_data = build_mac_data(aad, ciphertext);
-    let expected = poly1305_mac_padded16(&otk, &mac_data);
-    if !poly1305_tags_equal(tag, &expected) {
+    let expected = noxtls_poly1305_mac_padded16(&otk, &mac_data);
+    if !noxtls_poly1305_tags_equal(tag, &expected) {
         return Err(Error::CryptoFailure(
             "chacha20-poly1305 authentication failed",
         ));

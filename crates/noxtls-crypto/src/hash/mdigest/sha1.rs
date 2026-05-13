@@ -27,7 +27,7 @@
 ///
 /// This function does not panic.
 #[must_use]
-pub fn sha1(data: &[u8]) -> [u8; 20] {
+pub fn noxtls_sha1(data: &[u8]) -> [u8; 20] {
     let mut h0 = 0x67452301_u32;
     let mut h1 = 0xefcdab89_u32;
     let mut h2 = 0x98badcfe_u32;

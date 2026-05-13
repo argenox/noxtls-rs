@@ -308,7 +308,7 @@ fn bcrypt_hash(sha2_pass: &[u8; 64], sha2_salt: &[u8; 64]) -> [u8; BCRYPT_HASHSI
 /// # Panics
 ///
 /// This function does not panic.
-pub fn bcrypt_pbkdf_sha512(
+pub fn noxtls_bcrypt_pbkdf_sha512(
     password: &[u8],
     salt: &[u8],
     rounds: u32,
@@ -337,7 +337,7 @@ pub fn bcrypt_pbkdf_sha512(
     }
 
     let mut key = vec![0_u8; key_len];
-    let sha2_pass = super::sha512(password);
+    let sha2_pass = super::noxtls_sha512(password);
 
     let stride = key_len.div_ceil(BCRYPT_HASHSIZE);
     let mut amount = key_len.div_ceil(stride);
@@ -349,12 +349,12 @@ pub fn bcrypt_pbkdf_sha512(
         salt_block.extend_from_slice(salt);
         salt_block.extend_from_slice(&counter.to_be_bytes());
 
-        let mut sha2_salt = super::sha512(&salt_block);
+        let mut sha2_salt = super::noxtls_sha512(&salt_block);
         let mut tmp = bcrypt_hash(&sha2_pass, &sha2_salt);
         let mut out = tmp;
 
         for _ in 1..rounds {
-            sha2_salt = super::sha512(&tmp);
+            sha2_salt = super::noxtls_sha512(&tmp);
             tmp = bcrypt_hash(&sha2_pass, &sha2_salt);
             for (left, right) in out.iter_mut().zip(tmp.iter()) {
                 *left ^= *right;
@@ -527,7 +527,7 @@ const BLOWFISH_S_INIT: [[u32; 256]; 4] = [
 
 #[cfg(test)]
 mod tests {
-    use super::bcrypt_pbkdf_sha512;
+    use super::noxtls_bcrypt_pbkdf_sha512;
 
     /// Decodes a lowercase hexadecimal string into bytes for vector checks.
     ///
@@ -579,7 +579,7 @@ mod tests {
     fn bcrypt_pbkdf_vector_password_salt_round4_len32() {
         let expected =
             hex_to_bytes("5bbf0cc293587f1c3635555c27796598d47e579071bf427e9d8fbe842aba34d9");
-        let derived = bcrypt_pbkdf_sha512(b"password", b"salt", 4, 32).expect("vector must derive");
+        let derived = noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 4, 32).expect("vector must derive");
         assert_eq!(derived, expected);
     }
 
@@ -587,7 +587,7 @@ mod tests {
     fn bcrypt_pbkdf_vector_password_salt_round8_len32() {
         let expected =
             hex_to_bytes("e17e1533acc14423155493c99b9c3bbe62ea0884207a7802e7ba72eff94d085e");
-        let derived = bcrypt_pbkdf_sha512(b"password", b"salt", 8, 32).expect("vector must derive");
+        let derived = noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 8, 32).expect("vector must derive");
         assert_eq!(derived, expected);
     }
 
@@ -597,20 +597,20 @@ mod tests {
             "92855cdf05f666dca98681fdb6fa3a500e3a6e10e175d9aa70becd0d4ff95438d9f20375861eb34aa7606680c34f34c0",
         );
         let derived =
-            bcrypt_pbkdf_sha512(b"pass\x00word", b"sa\x00lt", 16, 48).expect("vector must derive");
+            noxtls_bcrypt_pbkdf_sha512(b"pass\x00word", b"sa\x00lt", 16, 48).expect("vector must derive");
         assert_eq!(derived, expected);
     }
 
     #[test]
     fn bcrypt_pbkdf_rejects_zero_rounds() {
-        let err = bcrypt_pbkdf_sha512(b"password", b"salt", 0, 32).expect_err("rounds must fail");
+        let err = noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 0, 32).expect_err("rounds must fail");
         assert!(matches!(err, noxtls_core::Error::InvalidLength(_)));
     }
 
     #[test]
     fn bcrypt_pbkdf_rejects_zero_key_length() {
         let err =
-            bcrypt_pbkdf_sha512(b"password", b"salt", 4, 0).expect_err("key length must fail");
+            noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 4, 0).expect_err("key length must fail");
         assert!(matches!(err, noxtls_core::Error::InvalidLength(_)));
     }
 }

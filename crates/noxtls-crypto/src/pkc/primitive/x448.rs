@@ -22,7 +22,7 @@ use noxtls_core::{Error, Result};
 const X448_SIZE: usize = 56;
 #[cfg(not(feature = "hazardous-legacy-crypto"))]
 const X448_DISABLED_MESSAGE: &str =
-    "x448 operations are disabled by default; enable `hazardous-legacy-crypto` to use x448";
+    "x448 operations are disabled by default; enable `hazardous-legacy-crypto` to use non-constant-time x448";
 
 /// Represents an X448 private scalar.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -103,7 +103,7 @@ impl X448PrivateKey {
     #[must_use]
     pub fn public_key(&self) -> X448PublicKey {
         X448PublicKey {
-            bytes: x448_basepoint(&self.scalar),
+            bytes: noxtls_x448_basepoint(&self.scalar),
         }
     }
 
@@ -118,7 +118,7 @@ impl X448PrivateKey {
     #[cfg(feature = "hazardous-legacy-crypto")]
     #[must_use]
     pub fn diffie_hellman(&self, peer: X448PublicKey) -> [u8; X448_SIZE] {
-        x448(&self.scalar, &peer.bytes)
+        noxtls_x448(&self.scalar, &peer.bytes)
     }
 
     /// Performs checked ECDH and rejects invalid/weak peer keys and zero shared outputs.
@@ -144,7 +144,7 @@ impl X448PrivateKey {
             peer.validate()?;
             let shared = self.diffie_hellman(peer);
             if is_all_zero(&shared) {
-                return Err(Error::CryptoFailure("x448 shared secret is all-zero"));
+                return Err(Error::CryptoFailure("noxtls_x448 shared secret is all-zero"));
             }
             Ok(shared)
         }
@@ -196,12 +196,12 @@ impl X448PublicKey {
     pub fn validate(self) -> Result<()> {
         if is_all_zero(&self.bytes) {
             return Err(Error::CryptoFailure(
-                "x448 peer public key is low-order (zero)",
+                "noxtls_x448 peer public key is low-order (zero)",
             ));
         }
         if is_montgomery_u_one(&self.bytes) {
             return Err(Error::CryptoFailure(
-                "x448 peer public key is low-order (u=1)",
+                "noxtls_x448 peer public key is low-order (u=1)",
             ));
         }
         Ok(())
@@ -222,7 +222,7 @@ impl X448PublicKey {
 /// This function does not panic.
 #[must_use]
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn x448(scalar: &[u8; X448_SIZE], u: &[u8; X448_SIZE]) -> [u8; X448_SIZE] {
+pub fn noxtls_x448(scalar: &[u8; X448_SIZE], u: &[u8; X448_SIZE]) -> [u8; X448_SIZE] {
     let k = clamp_scalar(*scalar);
     let x1 = FieldElement448::from_bytes(u);
     let mut x2 = FieldElement448::one();
@@ -274,10 +274,10 @@ pub fn x448(scalar: &[u8; X448_SIZE], u: &[u8; X448_SIZE]) -> [u8; X448_SIZE] {
 /// This function does not panic.
 #[must_use]
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn x448_basepoint(scalar: &[u8; X448_SIZE]) -> [u8; X448_SIZE] {
+pub fn noxtls_x448_basepoint(scalar: &[u8; X448_SIZE]) -> [u8; X448_SIZE] {
     let mut basepoint = [0_u8; X448_SIZE];
     basepoint[0] = 5;
-    x448(scalar, &basepoint)
+    noxtls_x448(scalar, &basepoint)
 }
 
 /// Computes X448 shared secret and validates non-zero output.
@@ -293,7 +293,7 @@ pub fn x448_basepoint(scalar: &[u8; X448_SIZE]) -> [u8; X448_SIZE] {
 ///
 /// Forwards errors from [`X448PrivateKey::diffie_hellman_checked`].
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn x448_shared_secret(
+pub fn noxtls_x448_shared_secret(
     private_key: X448PrivateKey,
     peer_public_key: X448PublicKey,
 ) -> Result<[u8; X448_SIZE]> {
@@ -312,12 +312,12 @@ pub fn x448_shared_secret(
 ///
 /// Returns DRBG errors from [`HmacDrbgSha256::generate`], or [`Error::InvalidLength`] if the DRBG output is not exactly `X448_SIZE` bytes.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn x448_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<X448PrivateKey> {
+pub fn noxtls_x448_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<X448PrivateKey> {
     let scalar = drbg.generate(X448_SIZE, b"x448_private_scalar")?;
     let bytes: [u8; X448_SIZE] = scalar
         .as_slice()
         .try_into()
-        .map_err(|_| Error::InvalidLength("x448 private scalar length mismatch"))?;
+        .map_err(|_| Error::InvalidLength("noxtls_x448 private scalar length mismatch"))?;
     Ok(X448PrivateKey::from_bytes(bytes))
 }
 
@@ -766,7 +766,7 @@ fn is_montgomery_u_one(bytes: &[u8; X448_SIZE]) -> bool {
 
 #[cfg(all(test, feature = "hazardous-legacy-crypto"))]
 mod tests {
-    use super::{x448, X448_SIZE};
+    use super::{noxtls_x448, X448_SIZE};
 
     /// Decodes fixed-length hexadecimal into a 56-byte array.
     ///
@@ -825,12 +825,12 @@ mod tests {
 
         let mut basepoint = [0_u8; X448_SIZE];
         basepoint[0] = 5;
-        let alice_public = x448(&alice_private, &basepoint);
-        let bob_public = x448(&bob_private, &basepoint);
+        let alice_public = noxtls_x448(&alice_private, &basepoint);
+        let bob_public = noxtls_x448(&bob_private, &basepoint);
         assert_eq!(alice_public, alice_public_expected);
         assert_eq!(bob_public, bob_public_expected);
-        let shared_ab = x448(&alice_private, &bob_public);
-        let shared_ba = x448(&bob_private, &alice_public);
+        let shared_ab = noxtls_x448(&alice_private, &bob_public);
+        let shared_ba = noxtls_x448(&bob_private, &alice_public);
 
         assert_eq!(shared_ab, shared_expected);
         assert_eq!(shared_ba, shared_expected);
@@ -861,6 +861,6 @@ mod tests {
             "ce3e4ff95a60dc6697da1db1d85e6afbdf79b50a2412d7546d5f239fe14fbaadeb445fc66a01b0779d98223961111e21766282f73dd96b6f",
         );
 
-        assert_eq!(x448(&scalar, &point), expected);
+        assert_eq!(noxtls_x448(&scalar, &point), expected);
     }
 }

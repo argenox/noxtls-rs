@@ -74,18 +74,18 @@ Add it to your project:
 cargo add noxtls
 ```
 
-Or pin a version in `Cargo.toml` (use the version you intend to ship against; this repository’s workspace is currently **0.1.3**):
+Or pin a version in `Cargo.toml` (use the version you intend to ship against; this repository’s workspace is currently **0.2.1**):
 
 ```toml
 [dependencies]
-noxtls = "0.1.3"
+noxtls = "0.2.1"
 ```
 
 **Defaults:** the crate enables `std` and `alloc` by default for typical host applications. For `no_std` builds, disable default features and opt in explicitly:
 
 ```toml
 [dependencies]
-noxtls = { version = "0.1.3", default-features = false, features = ["alloc"] }
+noxtls = { version = "0.2.1", default-features = false, features = ["alloc"] }
 ```
 
 **Common Cargo features** (see `crates/noxtls/Cargo.toml` for the complete list):

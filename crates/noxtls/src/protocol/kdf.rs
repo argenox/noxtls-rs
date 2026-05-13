@@ -18,8 +18,8 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    hkdf_expand_sha256, hkdf_expand_sha384, hkdf_extract_sha256, hkdf_extract_sha384, hmac_sha256,
-    hmac_sha384, sha256, sha384,
+    noxtls_hkdf_expand_sha256, noxtls_hkdf_expand_sha384, noxtls_hkdf_extract_sha256, noxtls_hkdf_extract_sha384, noxtls_hmac_sha256,
+    noxtls_hmac_sha384, noxtls_sha256, noxtls_sha384,
 };
 
 /// Identifies the hash algorithm selected by a cipher suite or version profile for HKDF and transcript work.
@@ -67,10 +67,10 @@ impl HashAlgorithm {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn hkdf_extract_for_hash(hash_algorithm: HashAlgorithm, ikm: &[u8]) -> Vec<u8> {
+pub fn noxtls_hkdf_extract_for_hash(hash_algorithm: HashAlgorithm, ikm: &[u8]) -> Vec<u8> {
     match hash_algorithm {
-        HashAlgorithm::Sha256 => hkdf_extract_sha256(&[0_u8; 32], ikm).to_vec(),
-        HashAlgorithm::Sha384 => hkdf_extract_sha384(&[0_u8; 48], ikm).to_vec(),
+        HashAlgorithm::Sha256 => noxtls_hkdf_extract_sha256(&[0_u8; 32], ikm).to_vec(),
+        HashAlgorithm::Sha384 => noxtls_hkdf_extract_sha384(&[0_u8; 48], ikm).to_vec(),
     }
 }
 
@@ -90,14 +90,14 @@ pub fn hkdf_extract_for_hash(hash_algorithm: HashAlgorithm, ikm: &[u8]) -> Vec<u
 ///
 /// This function does not panic.
 #[must_use]
-pub fn hkdf_extract_with_salt_for_hash(
+pub fn noxtls_hkdf_extract_with_salt_for_hash(
     hash_algorithm: HashAlgorithm,
     salt: &[u8],
     ikm: &[u8],
 ) -> Vec<u8> {
     match hash_algorithm {
-        HashAlgorithm::Sha256 => hkdf_extract_sha256(salt, ikm).to_vec(),
-        HashAlgorithm::Sha384 => hkdf_extract_sha384(salt, ikm).to_vec(),
+        HashAlgorithm::Sha256 => noxtls_hkdf_extract_sha256(salt, ikm).to_vec(),
+        HashAlgorithm::Sha384 => noxtls_hkdf_extract_sha384(salt, ikm).to_vec(),
     }
 }
 
@@ -121,15 +121,15 @@ pub fn hkdf_extract_with_salt_for_hash(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn hkdf_expand_for_hash(
+pub fn noxtls_hkdf_expand_for_hash(
     hash_algorithm: HashAlgorithm,
     prk: &[u8],
     info: &[u8],
     len: usize,
 ) -> Result<Vec<u8>> {
     match hash_algorithm {
-        HashAlgorithm::Sha256 => hkdf_expand_sha256(prk, info, len),
-        HashAlgorithm::Sha384 => hkdf_expand_sha384(prk, info, len),
+        HashAlgorithm::Sha256 => noxtls_hkdf_expand_sha256(prk, info, len),
+        HashAlgorithm::Sha384 => noxtls_hkdf_expand_sha384(prk, info, len),
     }
 }
 
@@ -154,7 +154,7 @@ pub fn hkdf_expand_for_hash(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn tls13_expand_label_for_hash(
+pub fn noxtls_tls13_expand_label_for_hash(
     hash_algorithm: HashAlgorithm,
     secret: &[u8],
     label: &[u8],
@@ -172,7 +172,7 @@ pub fn tls13_expand_label_for_hash(
     hkdf_label.extend_from_slice(&full_label);
     hkdf_label.push(context.len() as u8);
     hkdf_label.extend_from_slice(context);
-    hkdf_expand_for_hash(hash_algorithm, secret, &hkdf_label, len)
+    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, &hkdf_label, len)
 }
 
 /// Computes the TLS `verify_data` / Finished MAC output using the suite-selected transcript hash.
@@ -191,14 +191,14 @@ pub fn tls13_expand_label_for_hash(
 ///
 /// This function does not panic.
 #[must_use]
-pub fn finished_hmac_for_hash(
+pub fn noxtls_finished_hmac_for_hash(
     hash_algorithm: HashAlgorithm,
     key: &[u8],
     transcript_hash: &[u8],
 ) -> Vec<u8> {
     match hash_algorithm {
-        HashAlgorithm::Sha256 => hmac_sha256(key, transcript_hash).to_vec(),
-        HashAlgorithm::Sha384 => hmac_sha384(key, transcript_hash).to_vec(),
+        HashAlgorithm::Sha256 => noxtls_hmac_sha256(key, transcript_hash).to_vec(),
+        HashAlgorithm::Sha384 => noxtls_hmac_sha384(key, transcript_hash).to_vec(),
     }
 }
 
@@ -217,9 +217,9 @@ pub fn finished_hmac_for_hash(
 ///
 /// This function does not panic.
 #[must_use]
-pub fn hash_bytes_for_algorithm(hash_algorithm: HashAlgorithm, input: &[u8]) -> Vec<u8> {
+pub fn noxtls_hash_bytes_for_algorithm(hash_algorithm: HashAlgorithm, input: &[u8]) -> Vec<u8> {
     match hash_algorithm {
-        HashAlgorithm::Sha256 => sha256(input).to_vec(),
-        HashAlgorithm::Sha384 => sha384(input).to_vec(),
+        HashAlgorithm::Sha256 => noxtls_sha256(input).to_vec(),
+        HashAlgorithm::Sha384 => noxtls_sha384(input).to_vec(),
     }
 }

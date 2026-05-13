@@ -15,7 +15,7 @@
 // See `noxtls/LICENSE` and `noxtls/LICENSE.md` in this repository for full details.
 // CONTACT: info@argenox.com
 
-use super::{sha256, sha384, sha512};
+use super::{noxtls_sha256, noxtls_sha384, noxtls_sha512};
 use crate::internal_alloc::Vec;
 
 /// Computes HMAC-SHA256 for the provided key and message.
@@ -31,7 +31,7 @@ use crate::internal_alloc::Vec;
 ///
 /// Panics only if the internal digest serialization is not 32 bytes (indicates a programming error).
 #[must_use]
-pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+pub fn noxtls_hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
     hmac_with_block(key, data, 64, HashVariant::Sha256)
         .try_into()
         .expect("hmac-sha256 output is always 32 bytes")
@@ -50,7 +50,7 @@ pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
 ///
 /// Panics only if the internal digest serialization is not 64 bytes (indicates a programming error).
 #[must_use]
-pub fn hmac_sha512(key: &[u8], data: &[u8]) -> [u8; 64] {
+pub fn noxtls_hmac_sha512(key: &[u8], data: &[u8]) -> [u8; 64] {
     hmac_with_block(key, data, 128, HashVariant::Sha512)
         .try_into()
         .expect("hmac-sha512 output is always 64 bytes")
@@ -69,7 +69,7 @@ pub fn hmac_sha512(key: &[u8], data: &[u8]) -> [u8; 64] {
 ///
 /// Panics only if the internal digest serialization is not 48 bytes (indicates a programming error).
 #[must_use]
-pub fn hmac_sha384(key: &[u8], data: &[u8]) -> [u8; 48] {
+pub fn noxtls_hmac_sha384(key: &[u8], data: &[u8]) -> [u8; 48] {
     hmac_with_block(key, data, 128, HashVariant::Sha384)
         .try_into()
         .expect("hmac-sha384 output is always 48 bytes")
@@ -102,9 +102,9 @@ fn hmac_with_block(key: &[u8], data: &[u8], block_size: usize, variant: HashVari
     let mut k0 = vec![0_u8; block_size];
     if key.len() > block_size {
         let digest = match variant {
-            HashVariant::Sha256 => sha256(key).to_vec(),
-            HashVariant::Sha384 => sha384(key).to_vec(),
-            HashVariant::Sha512 => sha512(key).to_vec(),
+            HashVariant::Sha256 => noxtls_sha256(key).to_vec(),
+            HashVariant::Sha384 => noxtls_sha384(key).to_vec(),
+            HashVariant::Sha512 => noxtls_sha512(key).to_vec(),
         };
         k0[..digest.len()].copy_from_slice(&digest);
     } else {
@@ -121,16 +121,16 @@ fn hmac_with_block(key: &[u8], data: &[u8], block_size: usize, variant: HashVari
     let mut inner = ipad;
     inner.extend_from_slice(data);
     let inner_hash = match variant {
-        HashVariant::Sha256 => sha256(&inner).to_vec(),
-        HashVariant::Sha384 => sha384(&inner).to_vec(),
-        HashVariant::Sha512 => sha512(&inner).to_vec(),
+        HashVariant::Sha256 => noxtls_sha256(&inner).to_vec(),
+        HashVariant::Sha384 => noxtls_sha384(&inner).to_vec(),
+        HashVariant::Sha512 => noxtls_sha512(&inner).to_vec(),
     };
 
     let mut outer = opad;
     outer.extend_from_slice(&inner_hash);
     match variant {
-        HashVariant::Sha256 => sha256(&outer).to_vec(),
-        HashVariant::Sha384 => sha384(&outer).to_vec(),
-        HashVariant::Sha512 => sha512(&outer).to_vec(),
+        HashVariant::Sha256 => noxtls_sha256(&outer).to_vec(),
+        HashVariant::Sha384 => noxtls_sha384(&outer).to_vec(),
+        HashVariant::Sha512 => noxtls_sha512(&outer).to_vec(),
     }
 }

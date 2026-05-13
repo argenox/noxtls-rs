@@ -17,7 +17,7 @@
 
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
-use noxtls_crypto::{aes_gcm_decrypt, aes_gcm_encrypt, sha256, AesCipher};
+use noxtls_crypto::{noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, noxtls_sha256, AesCipher};
 #[cfg(all(feature = "std", unix))]
 use std::io::Write;
 #[cfg(all(feature = "std", unix))]
@@ -462,7 +462,7 @@ impl TicketStore {
         let key = derive_ticket_store_aead_key(encryption_key)?;
         let cipher = AesCipher::new(&key)?;
         let aad = ticket_store_encryption_aad(*nonce, plaintext.len())?;
-        let (ciphertext, tag) = aes_gcm_encrypt(&cipher, nonce, &aad, &plaintext)?;
+        let (ciphertext, tag) = noxtls_aes_gcm_encrypt(&cipher, nonce, &aad, &plaintext)?;
         let ciphertext_len = u32::try_from(ciphertext.len()).map_err(|_| {
             Error::InvalidLength("ticket store ciphertext length exceeds u32 range")
         })?;
@@ -534,7 +534,7 @@ impl TicketStore {
         let key = derive_ticket_store_aead_key(encryption_key)?;
         let cipher = AesCipher::new(&key)?;
         let aad = ticket_store_encryption_aad(nonce, ciphertext_len)?;
-        let plaintext = aes_gcm_decrypt(&cipher, &nonce, &aad, ciphertext, &tag)
+        let plaintext = noxtls_aes_gcm_decrypt(&cipher, &nonce, &aad, ciphertext, &tag)
             .map_err(|_| Error::ParseFailure("ticket store at-rest authentication failed"))?;
         Self::from_bytes(&plaintext)
     }
@@ -674,7 +674,7 @@ impl Default for TicketStore {
 /// # Panics
 ///
 /// This function does not panic.
-pub(crate) fn ticket_age_matches_policy(
+pub(crate) fn noxtls_ticket_age_matches_policy(
     ticket: &ResumptionTicket,
     offered_obfuscated_age: u32,
     current_time_ms: u64,
@@ -865,7 +865,7 @@ fn derive_ticket_store_aead_key(encryption_key: &[u8]) -> Result<[u8; 32]> {
             "ticket store encryption key must not be empty",
         ));
     }
-    Ok(sha256(encryption_key))
+    Ok(noxtls_sha256(encryption_key))
 }
 
 /// Builds deterministic AEAD additional authenticated data for encrypted ticket-store payloads.
@@ -932,7 +932,7 @@ fn generate_ticket_store_persistence_nonce(path: &std::path::Path) -> [u8; 12] {
     material.extend_from_slice(path.as_os_str().to_string_lossy().as_bytes());
     material.extend_from_slice(&counter.to_be_bytes());
     material.extend_from_slice(&nanos.to_be_bytes());
-    let digest = sha256(&material);
+    let digest = noxtls_sha256(&material);
     let mut nonce = [0_u8; 12];
     nonce.copy_from_slice(&digest[..12]);
     nonce

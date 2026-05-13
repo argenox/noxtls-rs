@@ -23,16 +23,16 @@ use noxtls_crypto::{
     OID_ID_MLDSA65,
 };
 #[cfg(feature = "std")]
-use noxtls_pem::{der_to_pem_file, pem_file_to_der};
+use noxtls_pem::{noxtls_der_to_pem_file, noxtls_pem_file_to_der};
 use noxtls_pem::{
-    ec_private_key_pem_to_der_sec1, private_key_der_to_pem_pkcs8, private_key_pem_to_der_pkcs8,
-    public_key_der_to_pem_spki, public_key_pem_to_der_spki, rsa_private_key_pem_to_der_pkcs1,
-    rsa_public_key_der_to_pem_pkcs1, rsa_public_key_pem_to_der_pkcs1,
+    noxtls_ec_private_key_pem_to_der_sec1, noxtls_private_key_der_to_pem_pkcs8, noxtls_private_key_pem_to_der_pkcs8,
+    noxtls_public_key_der_to_pem_spki, noxtls_public_key_pem_to_der_spki, noxtls_rsa_private_key_pem_to_der_pkcs1,
+    noxtls_rsa_public_key_der_to_pem_pkcs1, noxtls_rsa_public_key_pem_to_der_pkcs1,
 };
 #[cfg(feature = "std")]
 use std::path::Path;
 
-use super::parse_der_node;
+use super::noxtls_parse_der_node;
 
 const OID_RSA_ENCRYPTION: &[u8] = &[0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01];
 const OID_EC_PUBLIC_KEY: &[u8] = &[0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01];
@@ -79,7 +79,7 @@ pub struct SpkiPublicKeyInfoDerParts {
 ///
 /// # Returns
 /// DER-encoded PKCS#1 `RSAPublicKey` bytes.
-pub fn rsa_public_key_to_pkcs1_der(public: &RsaPublicKey) -> Result<Vec<u8>> {
+pub fn noxtls_rsa_public_key_to_pkcs1_der(public: &RsaPublicKey) -> Result<Vec<u8>> {
     let modulus = encode_der_integer(&public.n.to_be_bytes());
     let exponent = encode_der_integer(&public.e.to_be_bytes());
     encode_der_sequence(&[modulus, exponent].concat())
@@ -92,8 +92,8 @@ pub fn rsa_public_key_to_pkcs1_der(public: &RsaPublicKey) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// DER-encoded `SubjectPublicKeyInfo` bytes.
-pub fn rsa_public_key_to_spki_der(public: &RsaPublicKey) -> Result<Vec<u8>> {
-    let pkcs1 = rsa_public_key_to_pkcs1_der(public)?;
+pub fn noxtls_rsa_public_key_to_spki_der(public: &RsaPublicKey) -> Result<Vec<u8>> {
+    let pkcs1 = noxtls_rsa_public_key_to_pkcs1_der(public)?;
     encode_spki_public_key_info_der(OID_RSA_ENCRYPTION, None, &pkcs1)
 }
 
@@ -104,9 +104,9 @@ pub fn rsa_public_key_to_spki_der(public: &RsaPublicKey) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// PEM-encoded SPKI public key.
-pub fn rsa_public_key_to_pem_spki(public: &RsaPublicKey) -> Result<String> {
-    let der = rsa_public_key_to_spki_der(public)?;
-    public_key_der_to_pem_spki(&der)
+pub fn noxtls_rsa_public_key_to_pem_spki(public: &RsaPublicKey) -> Result<String> {
+    let der = noxtls_rsa_public_key_to_spki_der(public)?;
+    noxtls_public_key_der_to_pem_spki(&der)
 }
 
 /// Serializes `RsaPublicKey` into PEM PKCS#1 `RSA PUBLIC KEY`.
@@ -116,9 +116,9 @@ pub fn rsa_public_key_to_pem_spki(public: &RsaPublicKey) -> Result<String> {
 ///
 /// # Returns
 /// PEM-encoded PKCS#1 RSA public key.
-pub fn rsa_public_key_to_pem_pkcs1(public: &RsaPublicKey) -> Result<String> {
-    let der = rsa_public_key_to_pkcs1_der(public)?;
-    rsa_public_key_der_to_pem_pkcs1(&der)
+pub fn noxtls_rsa_public_key_to_pem_pkcs1(public: &RsaPublicKey) -> Result<String> {
+    let der = noxtls_rsa_public_key_to_pkcs1_der(public)?;
+    noxtls_rsa_public_key_der_to_pem_pkcs1(&der)
 }
 
 /// Serializes `P256PublicKey` into SPKI DER (`id-ecPublicKey` + `prime256v1`).
@@ -128,7 +128,7 @@ pub fn rsa_public_key_to_pem_pkcs1(public: &RsaPublicKey) -> Result<String> {
 ///
 /// # Returns
 /// DER-encoded `SubjectPublicKeyInfo` bytes.
-pub fn p256_public_key_to_spki_der(public: &P256PublicKey) -> Result<Vec<u8>> {
+pub fn noxtls_p256_public_key_to_spki_der(public: &P256PublicKey) -> Result<Vec<u8>> {
     let sec1 = public.to_uncompressed()?;
     encode_spki_public_key_info_der(OID_EC_PUBLIC_KEY, Some(OID_PRIME256V1), &sec1)
 }
@@ -140,9 +140,9 @@ pub fn p256_public_key_to_spki_der(public: &P256PublicKey) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// PEM-encoded SPKI public key.
-pub fn p256_public_key_to_pem_spki(public: &P256PublicKey) -> Result<String> {
-    let der = p256_public_key_to_spki_der(public)?;
-    public_key_der_to_pem_spki(&der)
+pub fn noxtls_p256_public_key_to_pem_spki(public: &P256PublicKey) -> Result<String> {
+    let der = noxtls_p256_public_key_to_spki_der(public)?;
+    noxtls_public_key_der_to_pem_spki(&der)
 }
 
 /// Serializes `X25519PublicKey` into SPKI DER (RFC 8410).
@@ -152,7 +152,7 @@ pub fn p256_public_key_to_pem_spki(public: &P256PublicKey) -> Result<String> {
 ///
 /// # Returns
 /// DER-encoded `SubjectPublicKeyInfo` bytes.
-pub fn x25519_public_key_to_spki_der(public: X25519PublicKey) -> Result<Vec<u8>> {
+pub fn noxtls_x25519_public_key_to_spki_der(public: X25519PublicKey) -> Result<Vec<u8>> {
     encode_spki_public_key_info_der(OID_X25519, None, &public.bytes)
 }
 
@@ -163,9 +163,9 @@ pub fn x25519_public_key_to_spki_der(public: X25519PublicKey) -> Result<Vec<u8>>
 ///
 /// # Returns
 /// PEM-encoded SPKI public key.
-pub fn x25519_public_key_to_pem_spki(public: X25519PublicKey) -> Result<String> {
-    let der = x25519_public_key_to_spki_der(public)?;
-    public_key_der_to_pem_spki(&der)
+pub fn noxtls_x25519_public_key_to_pem_spki(public: X25519PublicKey) -> Result<String> {
+    let der = noxtls_x25519_public_key_to_spki_der(public)?;
+    noxtls_public_key_der_to_pem_spki(&der)
 }
 
 /// Serializes `X448PublicKey` into SPKI DER (RFC 8410).
@@ -175,7 +175,7 @@ pub fn x25519_public_key_to_pem_spki(public: X25519PublicKey) -> Result<String> 
 ///
 /// # Returns
 /// DER-encoded `SubjectPublicKeyInfo` bytes.
-pub fn x448_public_key_to_spki_der(public: X448PublicKey) -> Result<Vec<u8>> {
+pub fn noxtls_x448_public_key_to_spki_der(public: X448PublicKey) -> Result<Vec<u8>> {
     encode_spki_public_key_info_der(OID_X448, None, &public.bytes)
 }
 
@@ -186,9 +186,9 @@ pub fn x448_public_key_to_spki_der(public: X448PublicKey) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// PEM-encoded SPKI public key.
-pub fn x448_public_key_to_pem_spki(public: X448PublicKey) -> Result<String> {
-    let der = x448_public_key_to_spki_der(public)?;
-    public_key_der_to_pem_spki(&der)
+pub fn noxtls_x448_public_key_to_pem_spki(public: X448PublicKey) -> Result<String> {
+    let der = noxtls_x448_public_key_to_spki_der(public)?;
+    noxtls_public_key_der_to_pem_spki(&der)
 }
 
 /// Serializes `Ed25519PublicKey` into SPKI DER (RFC 8410 `id-Ed25519`).
@@ -206,7 +206,7 @@ pub fn x448_public_key_to_pem_spki(public: X448PublicKey) -> Result<String> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_public_key_to_spki_der(public: Ed25519PublicKey) -> Result<Vec<u8>> {
+pub fn noxtls_ed25519_public_key_to_spki_der(public: Ed25519PublicKey) -> Result<Vec<u8>> {
     encode_spki_public_key_info_der(OID_ED25519, None, &public.to_bytes())
 }
 
@@ -225,9 +225,9 @@ pub fn ed25519_public_key_to_spki_der(public: Ed25519PublicKey) -> Result<Vec<u8
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_public_key_to_pem_spki(public: Ed25519PublicKey) -> Result<String> {
-    let der = ed25519_public_key_to_spki_der(public)?;
-    public_key_der_to_pem_spki(&der)
+pub fn noxtls_ed25519_public_key_to_pem_spki(public: Ed25519PublicKey) -> Result<String> {
+    let der = noxtls_ed25519_public_key_to_spki_der(public)?;
+    noxtls_public_key_der_to_pem_spki(&der)
 }
 
 /// Serializes `P256PrivateKey` into PKCS#8 DER (`id-ecPublicKey` + `prime256v1`).
@@ -245,7 +245,7 @@ pub fn ed25519_public_key_to_pem_spki(public: Ed25519PublicKey) -> Result<String
 /// # Panics
 ///
 /// This function does not panic.
-pub fn p256_private_key_to_pkcs8_der(private: &P256PrivateKey) -> Result<Vec<u8>> {
+pub fn noxtls_p256_private_key_to_pkcs8_der(private: &P256PrivateKey) -> Result<Vec<u8>> {
     let scalar = private.to_bytes()?;
     let sec1 = encode_der_sequence(
         &[encode_der_integer(&[0x01]), encode_der_node(0x04, &scalar)].concat(),
@@ -268,9 +268,9 @@ pub fn p256_private_key_to_pkcs8_der(private: &P256PrivateKey) -> Result<Vec<u8>
 /// # Panics
 ///
 /// This function does not panic.
-pub fn p256_private_key_to_pem_pkcs8(private: &P256PrivateKey) -> Result<String> {
-    let der = p256_private_key_to_pkcs8_der(private)?;
-    private_key_der_to_pem_pkcs8(&der)
+pub fn noxtls_p256_private_key_to_pem_pkcs8(private: &P256PrivateKey) -> Result<String> {
+    let der = noxtls_p256_private_key_to_pkcs8_der(private)?;
+    noxtls_private_key_der_to_pem_pkcs8(&der)
 }
 
 /// Serializes `X25519PrivateKey` into PKCS#8 DER (`id-X25519`).
@@ -288,7 +288,7 @@ pub fn p256_private_key_to_pem_pkcs8(private: &P256PrivateKey) -> Result<String>
 /// # Panics
 ///
 /// This function does not panic.
-pub fn x25519_private_key_to_pkcs8_der(private: X25519PrivateKey) -> Result<Vec<u8>> {
+pub fn noxtls_x25519_private_key_to_pkcs8_der(private: X25519PrivateKey) -> Result<Vec<u8>> {
     let curve_private_key = encode_der_node(0x04, &private.to_bytes());
     encode_pkcs8_private_key_info_der(OID_X25519, None, &curve_private_key)
 }
@@ -308,9 +308,9 @@ pub fn x25519_private_key_to_pkcs8_der(private: X25519PrivateKey) -> Result<Vec<
 /// # Panics
 ///
 /// This function does not panic.
-pub fn x25519_private_key_to_pem_pkcs8(private: X25519PrivateKey) -> Result<String> {
-    let der = x25519_private_key_to_pkcs8_der(private)?;
-    private_key_der_to_pem_pkcs8(&der)
+pub fn noxtls_x25519_private_key_to_pem_pkcs8(private: X25519PrivateKey) -> Result<String> {
+    let der = noxtls_x25519_private_key_to_pkcs8_der(private)?;
+    noxtls_private_key_der_to_pem_pkcs8(&der)
 }
 
 /// Serializes `X448PrivateKey` into PKCS#8 DER (`id-X448`).
@@ -328,7 +328,7 @@ pub fn x25519_private_key_to_pem_pkcs8(private: X25519PrivateKey) -> Result<Stri
 /// # Panics
 ///
 /// This function does not panic.
-pub fn x448_private_key_to_pkcs8_der(private: X448PrivateKey) -> Result<Vec<u8>> {
+pub fn noxtls_x448_private_key_to_pkcs8_der(private: X448PrivateKey) -> Result<Vec<u8>> {
     let curve_private_key = encode_der_node(0x04, &private.to_bytes());
     encode_pkcs8_private_key_info_der(OID_X448, None, &curve_private_key)
 }
@@ -348,9 +348,9 @@ pub fn x448_private_key_to_pkcs8_der(private: X448PrivateKey) -> Result<Vec<u8>>
 /// # Panics
 ///
 /// This function does not panic.
-pub fn x448_private_key_to_pem_pkcs8(private: X448PrivateKey) -> Result<String> {
-    let der = x448_private_key_to_pkcs8_der(private)?;
-    private_key_der_to_pem_pkcs8(&der)
+pub fn noxtls_x448_private_key_to_pem_pkcs8(private: X448PrivateKey) -> Result<String> {
+    let der = noxtls_x448_private_key_to_pkcs8_der(private)?;
+    noxtls_private_key_der_to_pem_pkcs8(&der)
 }
 
 /// Serializes `Ed25519PrivateKey` into PKCS#8 DER (`id-Ed25519`).
@@ -368,7 +368,7 @@ pub fn x448_private_key_to_pem_pkcs8(private: X448PrivateKey) -> Result<String> 
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_private_key_to_pkcs8_der(private: &Ed25519PrivateKey) -> Result<Vec<u8>> {
+pub fn noxtls_ed25519_private_key_to_pkcs8_der(private: &Ed25519PrivateKey) -> Result<Vec<u8>> {
     let curve_private_key = encode_der_node(0x04, &private.to_seed());
     encode_pkcs8_private_key_info_der(OID_ED25519, None, &curve_private_key)
 }
@@ -388,9 +388,9 @@ pub fn ed25519_private_key_to_pkcs8_der(private: &Ed25519PrivateKey) -> Result<V
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_private_key_to_pem_pkcs8(private: &Ed25519PrivateKey) -> Result<String> {
-    let der = ed25519_private_key_to_pkcs8_der(private)?;
-    private_key_der_to_pem_pkcs8(&der)
+pub fn noxtls_ed25519_private_key_to_pem_pkcs8(private: &Ed25519PrivateKey) -> Result<String> {
+    let der = noxtls_ed25519_private_key_to_pkcs8_der(private)?;
+    noxtls_private_key_der_to_pem_pkcs8(&der)
 }
 
 /// Builds `RsaPrivateKey` from PKCS#1 DER bytes.
@@ -400,8 +400,8 @@ pub fn ed25519_private_key_to_pem_pkcs8(private: &Ed25519PrivateKey) -> Result<S
 ///
 /// # Returns
 /// Parsed RSA private key usable by `noxtls-crypto`.
-pub fn rsa_private_key_from_pkcs1_der(der: &[u8]) -> Result<RsaPrivateKey> {
-    let parts = parse_pkcs1_rsa_private_key_der(der)?;
+pub fn noxtls_rsa_private_key_from_pkcs1_der(der: &[u8]) -> Result<RsaPrivateKey> {
+    let parts = noxtls_parse_pkcs1_rsa_private_key_der(der)?;
     RsaPrivateKey::from_be_bytes(&parts.modulus, &parts.private_exponent)
 }
 
@@ -412,14 +412,14 @@ pub fn rsa_private_key_from_pkcs1_der(der: &[u8]) -> Result<RsaPrivateKey> {
 ///
 /// # Returns
 /// Parsed RSA private key usable by `noxtls-crypto`.
-pub fn rsa_private_key_from_pkcs8_der(der: &[u8]) -> Result<RsaPrivateKey> {
-    let info = parse_pkcs8_private_key_info_der(der)?;
+pub fn noxtls_rsa_private_key_from_pkcs8_der(der: &[u8]) -> Result<RsaPrivateKey> {
+    let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_RSA_ENCRYPTION {
         return Err(Error::UnsupportedFeature(
             "pkcs8 private key algorithm is not RSA",
         ));
     }
-    rsa_private_key_from_pkcs1_der(&info.private_key)
+    noxtls_rsa_private_key_from_pkcs1_der(&info.private_key)
 }
 
 /// Builds `P256PrivateKey` from PKCS#8 DER bytes for `id-ecPublicKey` + `prime256v1`.
@@ -429,8 +429,8 @@ pub fn rsa_private_key_from_pkcs8_der(der: &[u8]) -> Result<RsaPrivateKey> {
 ///
 /// # Returns
 /// Parsed P-256 private key usable by `noxtls-crypto`.
-pub fn p256_private_key_from_pkcs8_der(der: &[u8]) -> Result<P256PrivateKey> {
-    let info = parse_pkcs8_private_key_info_der(der)?;
+pub fn noxtls_p256_private_key_from_pkcs8_der(der: &[u8]) -> Result<P256PrivateKey> {
+    let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_EC_PUBLIC_KEY {
         return Err(Error::UnsupportedFeature(
             "pkcs8 private key algorithm is not EC",
@@ -452,8 +452,8 @@ pub fn p256_private_key_from_pkcs8_der(der: &[u8]) -> Result<P256PrivateKey> {
 ///
 /// # Returns
 /// Parsed X25519 private key usable by `noxtls-crypto`.
-pub fn x25519_private_key_from_pkcs8_der(der: &[u8]) -> Result<X25519PrivateKey> {
-    let info = parse_pkcs8_private_key_info_der(der)?;
+pub fn noxtls_x25519_private_key_from_pkcs8_der(der: &[u8]) -> Result<X25519PrivateKey> {
+    let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_X25519 {
         return Err(Error::UnsupportedFeature(
             "pkcs8 private key algorithm is not X25519",
@@ -475,8 +475,8 @@ pub fn x25519_private_key_from_pkcs8_der(der: &[u8]) -> Result<X25519PrivateKey>
 ///
 /// # Returns
 /// Parsed X448 private key usable by `noxtls-crypto`.
-pub fn x448_private_key_from_pkcs8_der(der: &[u8]) -> Result<X448PrivateKey> {
-    let info = parse_pkcs8_private_key_info_der(der)?;
+pub fn noxtls_x448_private_key_from_pkcs8_der(der: &[u8]) -> Result<X448PrivateKey> {
+    let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_X448 {
         return Err(Error::UnsupportedFeature(
             "pkcs8 private key algorithm is not X448",
@@ -507,8 +507,8 @@ pub fn x448_private_key_from_pkcs8_der(der: &[u8]) -> Result<X448PrivateKey> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_private_key_from_pkcs8_der(der: &[u8]) -> Result<Ed25519PrivateKey> {
-    let info = parse_pkcs8_private_key_info_der(der)?;
+pub fn noxtls_ed25519_private_key_from_pkcs8_der(der: &[u8]) -> Result<Ed25519PrivateKey> {
+    let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_ED25519 {
         return Err(Error::UnsupportedFeature(
             "pkcs8 private key algorithm is not Ed25519",
@@ -530,7 +530,7 @@ pub fn ed25519_private_key_from_pkcs8_der(der: &[u8]) -> Result<Ed25519PrivateKe
 ///
 /// # Returns
 /// Parsed P-256 private key usable by `noxtls-crypto`.
-pub fn p256_private_key_from_sec1_der(der: &[u8]) -> Result<P256PrivateKey> {
+pub fn noxtls_p256_private_key_from_sec1_der(der: &[u8]) -> Result<P256PrivateKey> {
     let scalar = parse_sec1_ec_private_key_scalar(der)?;
     P256PrivateKey::from_bytes(scalar)
 }
@@ -542,8 +542,8 @@ pub fn p256_private_key_from_sec1_der(der: &[u8]) -> Result<P256PrivateKey> {
 ///
 /// # Returns
 /// Parsed RSA public key usable by `noxtls-crypto`.
-pub fn rsa_public_key_from_pkcs1_der(der: &[u8]) -> Result<RsaPublicKey> {
-    let parts = parse_pkcs1_rsa_public_key_der(der)?;
+pub fn noxtls_rsa_public_key_from_pkcs1_der(der: &[u8]) -> Result<RsaPublicKey> {
+    let parts = noxtls_parse_pkcs1_rsa_public_key_der(der)?;
     RsaPublicKey::from_be_bytes(&parts.modulus, &parts.public_exponent)
 }
 
@@ -554,14 +554,14 @@ pub fn rsa_public_key_from_pkcs1_der(der: &[u8]) -> Result<RsaPublicKey> {
 ///
 /// # Returns
 /// Parsed RSA public key usable by `noxtls-crypto`.
-pub fn rsa_public_key_from_spki_der(der: &[u8]) -> Result<RsaPublicKey> {
-    let info = parse_spki_public_key_info_der(der)?;
+pub fn noxtls_rsa_public_key_from_spki_der(der: &[u8]) -> Result<RsaPublicKey> {
+    let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_RSA_ENCRYPTION {
         return Err(Error::UnsupportedFeature(
             "spki public key algorithm is not RSA",
         ));
     }
-    rsa_public_key_from_pkcs1_der(&info.subject_public_key)
+    noxtls_rsa_public_key_from_pkcs1_der(&info.subject_public_key)
 }
 
 /// Builds `P256PublicKey` from DER SPKI bytes for `id-ecPublicKey` + `prime256v1`.
@@ -571,8 +571,8 @@ pub fn rsa_public_key_from_spki_der(der: &[u8]) -> Result<RsaPublicKey> {
 ///
 /// # Returns
 /// Parsed P-256 public key usable by `noxtls-crypto`.
-pub fn p256_public_key_from_spki_der(der: &[u8]) -> Result<P256PublicKey> {
-    let info = parse_spki_public_key_info_der(der)?;
+pub fn noxtls_p256_public_key_from_spki_der(der: &[u8]) -> Result<P256PublicKey> {
+    let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_EC_PUBLIC_KEY {
         return Err(Error::UnsupportedFeature(
             "spki public key algorithm is not EC",
@@ -591,15 +591,15 @@ pub fn p256_public_key_from_spki_der(der: &[u8]) -> Result<P256PublicKey> {
 ///
 /// # Returns
 /// Fixed-width `(r, s)` scalars suitable for `noxtls_crypto::p256_ecdsa_verify_*` APIs.
-pub fn parse_ecdsa_signature_der(signature_der: &[u8]) -> Result<([u8; 32], [u8; 32])> {
-    let (seq, rem) = parse_der_node(signature_der)?;
+pub fn noxtls_parse_ecdsa_signature_der(signature_der: &[u8]) -> Result<([u8; 32], [u8; 32])> {
+    let (seq, rem) = noxtls_parse_der_node(signature_der)?;
     if seq.tag != 0x30 || !rem.is_empty() {
         return Err(Error::ParseFailure(
             "ecdsa signature must be top-level DER sequence",
         ));
     }
-    let (r_node, rest) = parse_der_node(seq.body)?;
-    let (s_node, tail) = parse_der_node(rest)?;
+    let (r_node, rest) = noxtls_parse_der_node(seq.body)?;
+    let (s_node, tail) = noxtls_parse_der_node(rest)?;
     if r_node.tag != 0x02 || s_node.tag != 0x02 || !tail.is_empty() {
         return Err(Error::ParseFailure(
             "ecdsa signature sequence must contain r and s integers only",
@@ -663,8 +663,8 @@ fn der_integer_to_p256_scalar(value: &[u8]) -> Result<[u8; 32]> {
 ///
 /// # Returns
 /// Parsed X25519 public key usable by `noxtls-crypto`.
-pub fn x25519_public_key_from_spki_der(der: &[u8]) -> Result<X25519PublicKey> {
-    let info = parse_spki_public_key_info_der(der)?;
+pub fn noxtls_x25519_public_key_from_spki_der(der: &[u8]) -> Result<X25519PublicKey> {
+    let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_X25519 {
         return Err(Error::UnsupportedFeature(
             "spki public key algorithm is not X25519",
@@ -690,8 +690,8 @@ pub fn x25519_public_key_from_spki_der(der: &[u8]) -> Result<X25519PublicKey> {
 ///
 /// # Returns
 /// Parsed X448 public key usable by `noxtls-crypto`.
-pub fn x448_public_key_from_spki_der(der: &[u8]) -> Result<X448PublicKey> {
-    let info = parse_spki_public_key_info_der(der)?;
+pub fn noxtls_x448_public_key_from_spki_der(der: &[u8]) -> Result<X448PublicKey> {
+    let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_X448 {
         return Err(Error::UnsupportedFeature(
             "spki public key algorithm is not X448",
@@ -726,8 +726,8 @@ pub fn x448_public_key_from_spki_der(der: &[u8]) -> Result<X448PublicKey> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_public_key_from_spki_der(der: &[u8]) -> Result<Ed25519PublicKey> {
-    let info = parse_spki_public_key_info_der(der)?;
+pub fn noxtls_ed25519_public_key_from_spki_der(der: &[u8]) -> Result<Ed25519PublicKey> {
+    let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_ED25519 {
         return Err(Error::UnsupportedFeature(
             "spki public key algorithm is not Ed25519",
@@ -753,8 +753,8 @@ pub fn ed25519_public_key_from_spki_der(der: &[u8]) -> Result<Ed25519PublicKey> 
 ///
 /// # Returns
 /// Parsed ML-DSA public key usable by `noxtls-crypto`.
-pub fn mldsa_public_key_from_spki_der(der: &[u8]) -> Result<MlDsaPublicKey> {
-    let info = parse_spki_public_key_info_der(der)?;
+pub fn noxtls_mldsa_public_key_from_spki_der(der: &[u8]) -> Result<MlDsaPublicKey> {
+    let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_ID_MLDSA65 {
         return Err(Error::UnsupportedFeature(
             "spki public key algorithm is not ML-DSA-65",
@@ -775,9 +775,9 @@ pub fn mldsa_public_key_from_spki_der(der: &[u8]) -> Result<MlDsaPublicKey> {
 ///
 /// # Returns
 /// Parsed RSA private key usable by `noxtls-crypto`.
-pub fn rsa_private_key_from_pem_pkcs1(pem: &str) -> Result<RsaPrivateKey> {
-    let der = rsa_private_key_pem_to_der_pkcs1(pem)?;
-    rsa_private_key_from_pkcs1_der(&der)
+pub fn noxtls_rsa_private_key_from_pem_pkcs1(pem: &str) -> Result<RsaPrivateKey> {
+    let der = noxtls_rsa_private_key_pem_to_der_pkcs1(pem)?;
+    noxtls_rsa_private_key_from_pkcs1_der(&der)
 }
 
 /// Builds `RsaPrivateKey` from PEM PKCS#8 `PRIVATE KEY` text.
@@ -787,9 +787,9 @@ pub fn rsa_private_key_from_pem_pkcs1(pem: &str) -> Result<RsaPrivateKey> {
 ///
 /// # Returns
 /// Parsed RSA private key usable by `noxtls-crypto`.
-pub fn rsa_private_key_from_pem_pkcs8(pem: &str) -> Result<RsaPrivateKey> {
-    let der = private_key_pem_to_der_pkcs8(pem)?;
-    rsa_private_key_from_pkcs8_der(&der)
+pub fn noxtls_rsa_private_key_from_pem_pkcs8(pem: &str) -> Result<RsaPrivateKey> {
+    let der = noxtls_private_key_pem_to_der_pkcs8(pem)?;
+    noxtls_rsa_private_key_from_pkcs8_der(&der)
 }
 
 /// Builds `P256PrivateKey` from PEM PKCS#8 `PRIVATE KEY` text.
@@ -799,9 +799,9 @@ pub fn rsa_private_key_from_pem_pkcs8(pem: &str) -> Result<RsaPrivateKey> {
 ///
 /// # Returns
 /// Parsed P-256 private key usable by `noxtls-crypto`.
-pub fn p256_private_key_from_pem_pkcs8(pem: &str) -> Result<P256PrivateKey> {
-    let der = private_key_pem_to_der_pkcs8(pem)?;
-    p256_private_key_from_pkcs8_der(&der)
+pub fn noxtls_p256_private_key_from_pem_pkcs8(pem: &str) -> Result<P256PrivateKey> {
+    let der = noxtls_private_key_pem_to_der_pkcs8(pem)?;
+    noxtls_p256_private_key_from_pkcs8_der(&der)
 }
 
 /// Builds `X25519PrivateKey` from PEM PKCS#8 `PRIVATE KEY` text.
@@ -811,9 +811,9 @@ pub fn p256_private_key_from_pem_pkcs8(pem: &str) -> Result<P256PrivateKey> {
 ///
 /// # Returns
 /// Parsed X25519 private key usable by `noxtls-crypto`.
-pub fn x25519_private_key_from_pem_pkcs8(pem: &str) -> Result<X25519PrivateKey> {
-    let der = private_key_pem_to_der_pkcs8(pem)?;
-    x25519_private_key_from_pkcs8_der(&der)
+pub fn noxtls_x25519_private_key_from_pem_pkcs8(pem: &str) -> Result<X25519PrivateKey> {
+    let der = noxtls_private_key_pem_to_der_pkcs8(pem)?;
+    noxtls_x25519_private_key_from_pkcs8_der(&der)
 }
 
 /// Builds `X448PrivateKey` from PEM PKCS#8 `PRIVATE KEY` text.
@@ -823,9 +823,9 @@ pub fn x25519_private_key_from_pem_pkcs8(pem: &str) -> Result<X25519PrivateKey> 
 ///
 /// # Returns
 /// Parsed X448 private key usable by `noxtls-crypto`.
-pub fn x448_private_key_from_pem_pkcs8(pem: &str) -> Result<X448PrivateKey> {
-    let der = private_key_pem_to_der_pkcs8(pem)?;
-    x448_private_key_from_pkcs8_der(&der)
+pub fn noxtls_x448_private_key_from_pem_pkcs8(pem: &str) -> Result<X448PrivateKey> {
+    let der = noxtls_private_key_pem_to_der_pkcs8(pem)?;
+    noxtls_x448_private_key_from_pkcs8_der(&der)
 }
 
 /// Builds `Ed25519PrivateKey` from PEM PKCS#8 `PRIVATE KEY` text.
@@ -843,9 +843,9 @@ pub fn x448_private_key_from_pem_pkcs8(pem: &str) -> Result<X448PrivateKey> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_private_key_from_pem_pkcs8(pem: &str) -> Result<Ed25519PrivateKey> {
-    let der = private_key_pem_to_der_pkcs8(pem)?;
-    ed25519_private_key_from_pkcs8_der(&der)
+pub fn noxtls_ed25519_private_key_from_pem_pkcs8(pem: &str) -> Result<Ed25519PrivateKey> {
+    let der = noxtls_private_key_pem_to_der_pkcs8(pem)?;
+    noxtls_ed25519_private_key_from_pkcs8_der(&der)
 }
 
 /// Builds `P256PrivateKey` from PEM SEC1 `EC PRIVATE KEY` text.
@@ -855,9 +855,9 @@ pub fn ed25519_private_key_from_pem_pkcs8(pem: &str) -> Result<Ed25519PrivateKey
 ///
 /// # Returns
 /// Parsed P-256 private key usable by `noxtls-crypto`.
-pub fn p256_private_key_from_pem_sec1(pem: &str) -> Result<P256PrivateKey> {
-    let der = ec_private_key_pem_to_der_sec1(pem)?;
-    p256_private_key_from_sec1_der(&der)
+pub fn noxtls_p256_private_key_from_pem_sec1(pem: &str) -> Result<P256PrivateKey> {
+    let der = noxtls_ec_private_key_pem_to_der_sec1(pem)?;
+    noxtls_p256_private_key_from_sec1_der(&der)
 }
 
 /// Builds `RsaPublicKey` from PEM SPKI `PUBLIC KEY` text.
@@ -867,9 +867,9 @@ pub fn p256_private_key_from_pem_sec1(pem: &str) -> Result<P256PrivateKey> {
 ///
 /// # Returns
 /// Parsed RSA public key usable by `noxtls-crypto`.
-pub fn rsa_public_key_from_pem_spki(pem: &str) -> Result<RsaPublicKey> {
-    let der = public_key_pem_to_der_spki(pem)?;
-    rsa_public_key_from_spki_der(&der)
+pub fn noxtls_rsa_public_key_from_pem_spki(pem: &str) -> Result<RsaPublicKey> {
+    let der = noxtls_public_key_pem_to_der_spki(pem)?;
+    noxtls_rsa_public_key_from_spki_der(&der)
 }
 
 /// Builds `RsaPublicKey` from PEM PKCS#1 `RSA PUBLIC KEY` text.
@@ -879,9 +879,9 @@ pub fn rsa_public_key_from_pem_spki(pem: &str) -> Result<RsaPublicKey> {
 ///
 /// # Returns
 /// Parsed RSA public key usable by `noxtls-crypto`.
-pub fn rsa_public_key_from_pem_pkcs1(pem: &str) -> Result<RsaPublicKey> {
-    let der = rsa_public_key_pem_to_der_pkcs1(pem)?;
-    rsa_public_key_from_pkcs1_der(&der)
+pub fn noxtls_rsa_public_key_from_pem_pkcs1(pem: &str) -> Result<RsaPublicKey> {
+    let der = noxtls_rsa_public_key_pem_to_der_pkcs1(pem)?;
+    noxtls_rsa_public_key_from_pkcs1_der(&der)
 }
 
 /// Builds `P256PublicKey` from PEM SPKI `PUBLIC KEY` text.
@@ -891,9 +891,9 @@ pub fn rsa_public_key_from_pem_pkcs1(pem: &str) -> Result<RsaPublicKey> {
 ///
 /// # Returns
 /// Parsed P-256 public key usable by `noxtls-crypto`.
-pub fn p256_public_key_from_pem_spki(pem: &str) -> Result<P256PublicKey> {
-    let der = public_key_pem_to_der_spki(pem)?;
-    p256_public_key_from_spki_der(&der)
+pub fn noxtls_p256_public_key_from_pem_spki(pem: &str) -> Result<P256PublicKey> {
+    let der = noxtls_public_key_pem_to_der_spki(pem)?;
+    noxtls_p256_public_key_from_spki_der(&der)
 }
 
 /// Builds `X25519PublicKey` from PEM SPKI `PUBLIC KEY` text.
@@ -903,9 +903,9 @@ pub fn p256_public_key_from_pem_spki(pem: &str) -> Result<P256PublicKey> {
 ///
 /// # Returns
 /// Parsed X25519 public key usable by `noxtls-crypto`.
-pub fn x25519_public_key_from_pem_spki(pem: &str) -> Result<X25519PublicKey> {
-    let der = public_key_pem_to_der_spki(pem)?;
-    x25519_public_key_from_spki_der(&der)
+pub fn noxtls_x25519_public_key_from_pem_spki(pem: &str) -> Result<X25519PublicKey> {
+    let der = noxtls_public_key_pem_to_der_spki(pem)?;
+    noxtls_x25519_public_key_from_spki_der(&der)
 }
 
 /// Builds `X448PublicKey` from PEM SPKI `PUBLIC KEY` text.
@@ -915,9 +915,9 @@ pub fn x25519_public_key_from_pem_spki(pem: &str) -> Result<X25519PublicKey> {
 ///
 /// # Returns
 /// Parsed X448 public key usable by `noxtls-crypto`.
-pub fn x448_public_key_from_pem_spki(pem: &str) -> Result<X448PublicKey> {
-    let der = public_key_pem_to_der_spki(pem)?;
-    x448_public_key_from_spki_der(&der)
+pub fn noxtls_x448_public_key_from_pem_spki(pem: &str) -> Result<X448PublicKey> {
+    let der = noxtls_public_key_pem_to_der_spki(pem)?;
+    noxtls_x448_public_key_from_spki_der(&der)
 }
 
 /// Builds `Ed25519PublicKey` from PEM SPKI `PUBLIC KEY` text.
@@ -935,9 +935,9 @@ pub fn x448_public_key_from_pem_spki(pem: &str) -> Result<X448PublicKey> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_public_key_from_pem_spki(pem: &str) -> Result<Ed25519PublicKey> {
-    let der = public_key_pem_to_der_spki(pem)?;
-    ed25519_public_key_from_spki_der(&der)
+pub fn noxtls_ed25519_public_key_from_pem_spki(pem: &str) -> Result<Ed25519PublicKey> {
+    let der = noxtls_public_key_pem_to_der_spki(pem)?;
+    noxtls_ed25519_public_key_from_spki_der(&der)
 }
 
 /// Reads one PKCS#8 `PRIVATE KEY` PEM file and parses it as `P256PrivateKey`.
@@ -956,9 +956,9 @@ pub fn ed25519_public_key_from_pem_spki(pem: &str) -> Result<Ed25519PublicKey> {
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn p256_private_key_from_pem_file_pkcs8(path: &Path) -> Result<P256PrivateKey> {
-    let der = pem_file_to_der(path, "PRIVATE KEY")?;
-    p256_private_key_from_pkcs8_der(&der)
+pub fn noxtls_p256_private_key_from_pem_file_pkcs8(path: &Path) -> Result<P256PrivateKey> {
+    let der = noxtls_pem_file_to_der(path, "PRIVATE KEY")?;
+    noxtls_p256_private_key_from_pkcs8_der(&der)
 }
 
 /// Encodes `P256PrivateKey` as PKCS#8 PEM and writes it to a file.
@@ -978,9 +978,9 @@ pub fn p256_private_key_from_pem_file_pkcs8(path: &Path) -> Result<P256PrivateKe
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn p256_private_key_to_pem_file_pkcs8(path: &Path, private: &P256PrivateKey) -> Result<()> {
-    let der = p256_private_key_to_pkcs8_der(private)?;
-    der_to_pem_file(path, &der, "PRIVATE KEY")
+pub fn noxtls_p256_private_key_to_pem_file_pkcs8(path: &Path, private: &P256PrivateKey) -> Result<()> {
+    let der = noxtls_p256_private_key_to_pkcs8_der(private)?;
+    noxtls_der_to_pem_file(path, &der, "PRIVATE KEY")
 }
 
 /// Reads one PKCS#8 `PRIVATE KEY` PEM file and parses it as `X25519PrivateKey`.
@@ -999,9 +999,9 @@ pub fn p256_private_key_to_pem_file_pkcs8(path: &Path, private: &P256PrivateKey)
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn x25519_private_key_from_pem_file_pkcs8(path: &Path) -> Result<X25519PrivateKey> {
-    let der = pem_file_to_der(path, "PRIVATE KEY")?;
-    x25519_private_key_from_pkcs8_der(&der)
+pub fn noxtls_x25519_private_key_from_pem_file_pkcs8(path: &Path) -> Result<X25519PrivateKey> {
+    let der = noxtls_pem_file_to_der(path, "PRIVATE KEY")?;
+    noxtls_x25519_private_key_from_pkcs8_der(&der)
 }
 
 /// Encodes `X25519PrivateKey` as PKCS#8 PEM and writes it to a file.
@@ -1021,9 +1021,9 @@ pub fn x25519_private_key_from_pem_file_pkcs8(path: &Path) -> Result<X25519Priva
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn x25519_private_key_to_pem_file_pkcs8(path: &Path, private: X25519PrivateKey) -> Result<()> {
-    let der = x25519_private_key_to_pkcs8_der(private)?;
-    der_to_pem_file(path, &der, "PRIVATE KEY")
+pub fn noxtls_x25519_private_key_to_pem_file_pkcs8(path: &Path, private: X25519PrivateKey) -> Result<()> {
+    let der = noxtls_x25519_private_key_to_pkcs8_der(private)?;
+    noxtls_der_to_pem_file(path, &der, "PRIVATE KEY")
 }
 
 /// Reads one PKCS#8 `PRIVATE KEY` PEM file and parses it as `X448PrivateKey`.
@@ -1042,9 +1042,9 @@ pub fn x25519_private_key_to_pem_file_pkcs8(path: &Path, private: X25519PrivateK
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn x448_private_key_from_pem_file_pkcs8(path: &Path) -> Result<X448PrivateKey> {
-    let der = pem_file_to_der(path, "PRIVATE KEY")?;
-    x448_private_key_from_pkcs8_der(&der)
+pub fn noxtls_x448_private_key_from_pem_file_pkcs8(path: &Path) -> Result<X448PrivateKey> {
+    let der = noxtls_pem_file_to_der(path, "PRIVATE KEY")?;
+    noxtls_x448_private_key_from_pkcs8_der(&der)
 }
 
 /// Encodes `X448PrivateKey` as PKCS#8 PEM and writes it to a file.
@@ -1064,9 +1064,9 @@ pub fn x448_private_key_from_pem_file_pkcs8(path: &Path) -> Result<X448PrivateKe
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn x448_private_key_to_pem_file_pkcs8(path: &Path, private: X448PrivateKey) -> Result<()> {
-    let der = x448_private_key_to_pkcs8_der(private)?;
-    der_to_pem_file(path, &der, "PRIVATE KEY")
+pub fn noxtls_x448_private_key_to_pem_file_pkcs8(path: &Path, private: X448PrivateKey) -> Result<()> {
+    let der = noxtls_x448_private_key_to_pkcs8_der(private)?;
+    noxtls_der_to_pem_file(path, &der, "PRIVATE KEY")
 }
 
 /// Reads one PKCS#8 `PRIVATE KEY` PEM file and parses it as `Ed25519PrivateKey`.
@@ -1085,9 +1085,9 @@ pub fn x448_private_key_to_pem_file_pkcs8(path: &Path, private: X448PrivateKey) 
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn ed25519_private_key_from_pem_file_pkcs8(path: &Path) -> Result<Ed25519PrivateKey> {
-    let der = pem_file_to_der(path, "PRIVATE KEY")?;
-    ed25519_private_key_from_pkcs8_der(&der)
+pub fn noxtls_ed25519_private_key_from_pem_file_pkcs8(path: &Path) -> Result<Ed25519PrivateKey> {
+    let der = noxtls_pem_file_to_der(path, "PRIVATE KEY")?;
+    noxtls_ed25519_private_key_from_pkcs8_der(&der)
 }
 
 /// Encodes `Ed25519PrivateKey` as PKCS#8 PEM and writes it to a file.
@@ -1107,12 +1107,12 @@ pub fn ed25519_private_key_from_pem_file_pkcs8(path: &Path) -> Result<Ed25519Pri
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn ed25519_private_key_to_pem_file_pkcs8(
+pub fn noxtls_ed25519_private_key_to_pem_file_pkcs8(
     path: &Path,
     private: &Ed25519PrivateKey,
 ) -> Result<()> {
-    let der = ed25519_private_key_to_pkcs8_der(private)?;
-    der_to_pem_file(path, &der, "PRIVATE KEY")
+    let der = noxtls_ed25519_private_key_to_pkcs8_der(private)?;
+    noxtls_der_to_pem_file(path, &der, "PRIVATE KEY")
 }
 
 /// Parses PKCS#1 RSAPrivateKey DER and returns key field parts.
@@ -1122,15 +1122,15 @@ pub fn ed25519_private_key_to_pem_file_pkcs8(
 ///
 /// # Returns
 /// Parsed RSA private-key fields (`n`, `e`, `d`).
-pub fn parse_pkcs1_rsa_private_key_der(der: &[u8]) -> Result<RsaPrivateKeyDerParts> {
-    let (seq, tail) = parse_der_node(der)?;
+pub fn noxtls_parse_pkcs1_rsa_private_key_der(der: &[u8]) -> Result<RsaPrivateKeyDerParts> {
+    let (seq, tail) = noxtls_parse_der_node(der)?;
     if seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure(
             "pkcs1 rsa private key must be top-level sequence",
         ));
     }
     let mut cursor = seq.body;
-    let (version, rest) = parse_der_node(cursor)?;
+    let (version, rest) = noxtls_parse_der_node(cursor)?;
     if version.tag != 0x02 || version.body.is_empty() {
         return Err(Error::ParseFailure("pkcs1 rsa private key missing version"));
     }
@@ -1159,8 +1159,8 @@ pub fn parse_pkcs1_rsa_private_key_der(der: &[u8]) -> Result<RsaPrivateKeyDerPar
 ///
 /// # Returns
 /// Parsed RSA public-key fields (`n`, `e`).
-pub fn parse_pkcs1_rsa_public_key_der(der: &[u8]) -> Result<RsaPublicKeyDerParts> {
-    let (seq, tail) = parse_der_node(der)?;
+pub fn noxtls_parse_pkcs1_rsa_public_key_der(der: &[u8]) -> Result<RsaPublicKeyDerParts> {
+    let (seq, tail) = noxtls_parse_der_node(der)?;
     if seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure(
             "pkcs1 rsa public key must be top-level sequence",
@@ -1187,24 +1187,24 @@ pub fn parse_pkcs1_rsa_public_key_der(der: &[u8]) -> Result<RsaPublicKeyDerParts
 ///
 /// # Returns
 /// Parsed algorithm OID and private-key octet string payload.
-pub fn parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8PrivateKeyInfoDerParts> {
-    let (seq, tail) = parse_der_node(der)?;
+pub fn noxtls_parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8PrivateKeyInfoDerParts> {
+    let (seq, tail) = noxtls_parse_der_node(der)?;
     if seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure(
             "pkcs8 private key must be top-level sequence",
         ));
     }
-    let (version, rest) = parse_der_node(seq.body)?;
+    let (version, rest) = noxtls_parse_der_node(seq.body)?;
     if version.tag != 0x02 || version.body.is_empty() {
         return Err(Error::ParseFailure("pkcs8 private key missing version"));
     }
-    let (algorithm, rest) = parse_der_node(rest)?;
+    let (algorithm, rest) = noxtls_parse_der_node(rest)?;
     if algorithm.tag != 0x30 {
         return Err(Error::ParseFailure(
             "pkcs8 private key missing algorithm identifier",
         ));
     }
-    let (oid, params_tail) = parse_der_node(algorithm.body)?;
+    let (oid, params_tail) = noxtls_parse_der_node(algorithm.body)?;
     if oid.tag != 0x06 {
         return Err(Error::ParseFailure(
             "pkcs8 private key algorithm missing oid",
@@ -1213,7 +1213,7 @@ pub fn parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8PrivateKeyInf
     let algorithm_parameters_oid = if params_tail.is_empty() {
         None
     } else {
-        let (params, tail) = parse_der_node(params_tail)?;
+        let (params, tail) = noxtls_parse_der_node(params_tail)?;
         if !tail.is_empty() {
             return Err(Error::ParseFailure(
                 "unsupported pkcs8 algorithm parameters",
@@ -1229,7 +1229,7 @@ pub fn parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8PrivateKeyInf
             ));
         }
     };
-    let (private_key, _rest) = parse_der_node(rest)?;
+    let (private_key, _rest) = noxtls_parse_der_node(rest)?;
     if private_key.tag != 0x04 {
         return Err(Error::ParseFailure(
             "pkcs8 private key missing private key octets",
@@ -1249,23 +1249,23 @@ pub fn parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8PrivateKeyInf
 ///
 /// # Returns
 /// Parsed algorithm OID and subject public key bit-string payload bytes.
-pub fn parse_spki_public_key_info_der(der: &[u8]) -> Result<SpkiPublicKeyInfoDerParts> {
-    let (seq, tail) = parse_der_node(der)?;
+pub fn noxtls_parse_spki_public_key_info_der(der: &[u8]) -> Result<SpkiPublicKeyInfoDerParts> {
+    let (seq, tail) = noxtls_parse_der_node(der)?;
     if seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("spki must be top-level sequence"));
     }
-    let (algorithm, rest) = parse_der_node(seq.body)?;
+    let (algorithm, rest) = noxtls_parse_der_node(seq.body)?;
     if algorithm.tag != 0x30 {
         return Err(Error::ParseFailure("spki missing algorithm identifier"));
     }
-    let (oid, params_tail) = parse_der_node(algorithm.body)?;
+    let (oid, params_tail) = noxtls_parse_der_node(algorithm.body)?;
     if oid.tag != 0x06 {
         return Err(Error::ParseFailure("spki algorithm missing oid"));
     }
     let algorithm_parameters_oid = if params_tail.is_empty() {
         None
     } else {
-        let (params, tail) = parse_der_node(params_tail)?;
+        let (params, tail) = noxtls_parse_der_node(params_tail)?;
         if !tail.is_empty() {
             return Err(Error::ParseFailure("unsupported spki algorithm parameters"));
         }
@@ -1277,7 +1277,7 @@ pub fn parse_spki_public_key_info_der(der: &[u8]) -> Result<SpkiPublicKeyInfoDer
             return Err(Error::ParseFailure("unsupported spki algorithm parameters"));
         }
     };
-    let (subject_public_key, rest) = parse_der_node(rest)?;
+    let (subject_public_key, rest) = noxtls_parse_der_node(rest)?;
     if subject_public_key.tag != 0x03 || !rest.is_empty() {
         return Err(Error::ParseFailure(
             "spki missing subject public key bit string",
@@ -1313,7 +1313,7 @@ fn parse_der_integer<'a>(
     input: &'a [u8],
     missing_message: &'static str,
 ) -> Result<(Vec<u8>, &'a [u8])> {
-    let (node, rest) = parse_der_node(input)?;
+    let (node, rest) = noxtls_parse_der_node(input)?;
     if node.tag != 0x02 || node.body.is_empty() {
         return Err(Error::ParseFailure(missing_message));
     }
@@ -1371,13 +1371,13 @@ fn parse_der_bit_string(input: &[u8]) -> Result<Vec<u8>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn parse_sec1_ec_private_key_scalar(der: &[u8]) -> Result<[u8; 32]> {
-    let (seq, tail) = parse_der_node(der)?;
+    let (seq, tail) = noxtls_parse_der_node(der)?;
     if seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure(
             "sec1 ec private key must be top-level sequence",
         ));
     }
-    let (version, rest) = parse_der_node(seq.body)?;
+    let (version, rest) = noxtls_parse_der_node(seq.body)?;
     if version.tag != 0x02 || version.body.is_empty() {
         return Err(Error::ParseFailure("sec1 ec private key missing version"));
     }
@@ -1386,7 +1386,7 @@ fn parse_sec1_ec_private_key_scalar(der: &[u8]) -> Result<[u8; 32]> {
             "unsupported sec1 ec private key version",
         ));
     }
-    let (private_key, _rest) = parse_der_node(rest)?;
+    let (private_key, _rest) = noxtls_parse_der_node(rest)?;
     if private_key.tag != 0x04 {
         return Err(Error::ParseFailure(
             "sec1 ec private key missing private key octets",
@@ -1425,7 +1425,7 @@ fn parse_x25519_private_key_bytes(input: &[u8]) -> Result<[u8; 32]> {
         scalar.copy_from_slice(input);
         return Ok(scalar);
     }
-    let (inner, tail) = parse_der_node(input)?;
+    let (inner, tail) = noxtls_parse_der_node(input)?;
     if inner.tag != 0x04 || !tail.is_empty() || inner.body.len() != 32 {
         return Err(Error::ParseFailure("invalid x25519 private key bytes"));
     }
@@ -1457,7 +1457,7 @@ fn parse_x448_private_key_bytes(input: &[u8]) -> Result<[u8; 56]> {
         scalar.copy_from_slice(input);
         return Ok(scalar);
     }
-    let (inner, tail) = parse_der_node(input)?;
+    let (inner, tail) = noxtls_parse_der_node(input)?;
     if inner.tag != 0x04 || !tail.is_empty() || inner.body.len() != 56 {
         return Err(Error::ParseFailure("invalid x448 private key bytes"));
     }
@@ -1490,7 +1490,7 @@ fn parse_ed25519_private_key_seed(input: &[u8]) -> Result<[u8; 32]> {
         seed.copy_from_slice(input);
         return Ok(seed);
     }
-    let (inner, tail) = parse_der_node(input)?;
+    let (inner, tail) = noxtls_parse_der_node(input)?;
     if inner.tag != 0x04 || !tail.is_empty() || inner.body.len() != 32 {
         return Err(Error::ParseFailure("invalid ed25519 private key bytes"));
     }
@@ -1683,7 +1683,7 @@ fn encode_pkcs8_private_key_info_der(
 #[cfg(test)]
 mod ed25519_pkcs8_tests {
     use super::*;
-    use noxtls_pem::private_key_der_to_pem_pkcs8;
+    use noxtls_pem::noxtls_private_key_der_to_pem_pkcs8;
     #[cfg(feature = "std")]
     use std::{
         fs,
@@ -1721,9 +1721,9 @@ mod ed25519_pkcs8_tests {
     fn ed25519_pkcs8_nested_octet_parses_and_spki_roundtrips() {
         let seed = sample_ed25519_seed();
         let der = ed25519_pkcs8_der_nested_octet(&seed);
-        let sk = ed25519_private_key_from_pkcs8_der(&der).expect("pkcs8 nested");
-        let pk_der = ed25519_public_key_to_spki_der(sk.verifying_key()).expect("spki der");
-        let pk_back = ed25519_public_key_from_spki_der(&pk_der).expect("spki parse");
+        let sk = noxtls_ed25519_private_key_from_pkcs8_der(&der).expect("pkcs8 nested");
+        let pk_der = noxtls_ed25519_public_key_to_spki_der(sk.verifying_key()).expect("spki der");
+        let pk_back = noxtls_ed25519_public_key_from_spki_der(&pk_der).expect("spki parse");
         assert_eq!(pk_back.to_bytes(), sk.verifying_key().to_bytes());
     }
 
@@ -1732,7 +1732,7 @@ mod ed25519_pkcs8_tests {
     fn ed25519_pkcs8_raw_seed_in_private_key_field_parses() {
         let seed = core::array::from_fn(|i| i as u8 + 7);
         let der = ed25519_pkcs8_der_raw_seed(&seed);
-        let sk = ed25519_private_key_from_pkcs8_der(&der).expect("pkcs8 raw");
+        let sk = noxtls_ed25519_private_key_from_pkcs8_der(&der).expect("pkcs8 raw");
         let expect = Ed25519PrivateKey::from_seed(&seed)
             .verifying_key()
             .to_bytes();
@@ -1744,8 +1744,8 @@ mod ed25519_pkcs8_tests {
     fn ed25519_pem_pkcs8_roundtrip() {
         let seed = [9_u8; 32];
         let der = ed25519_pkcs8_der_nested_octet(&seed);
-        let pem = private_key_der_to_pem_pkcs8(&der).expect("pem encode");
-        let sk = ed25519_private_key_from_pem_pkcs8(&pem).expect("pem decode");
+        let pem = noxtls_private_key_der_to_pem_pkcs8(&der).expect("pem encode");
+        let sk = noxtls_ed25519_private_key_from_pem_pkcs8(&pem).expect("pem decode");
         assert_eq!(
             sk.verifying_key().to_bytes(),
             Ed25519PrivateKey::from_seed(&seed)
@@ -1759,8 +1759,8 @@ mod ed25519_pkcs8_tests {
     fn ed25519_pem_spki_roundtrip() {
         let sk = Ed25519PrivateKey::from_seed(&sample_ed25519_seed());
         let pk = sk.verifying_key();
-        let pem = ed25519_public_key_to_pem_spki(pk).expect("pem spki");
-        let pk_back = ed25519_public_key_from_pem_spki(&pem).expect("pem parse");
+        let pem = noxtls_ed25519_public_key_to_pem_spki(pk).expect("pem spki");
+        let pk_back = noxtls_ed25519_public_key_from_pem_spki(&pem).expect("pem parse");
         assert_eq!(pk_back.to_bytes(), pk.to_bytes());
     }
 
@@ -1770,8 +1770,8 @@ mod ed25519_pkcs8_tests {
         let mut scalar = [0_u8; 32];
         scalar[31] = 1;
         let sk = P256PrivateKey::from_bytes(scalar).expect("p256 seed");
-        let der = p256_private_key_to_pkcs8_der(&sk).expect("serialize");
-        let decoded = p256_private_key_from_pkcs8_der(&der).expect("parse");
+        let der = noxtls_p256_private_key_to_pkcs8_der(&sk).expect("serialize");
+        let decoded = noxtls_p256_private_key_from_pkcs8_der(&der).expect("parse");
         let expected_pub = sk
             .public_key()
             .expect("pub a")
@@ -1789,8 +1789,8 @@ mod ed25519_pkcs8_tests {
     #[test]
     fn x25519_pkcs8_serialize_roundtrip() {
         let private = X25519PrivateKey::from_bytes([0x21; 32]);
-        let der = x25519_private_key_to_pkcs8_der(private.clone()).expect("serialize");
-        let decoded = x25519_private_key_from_pkcs8_der(&der).expect("parse");
+        let der = noxtls_x25519_private_key_to_pkcs8_der(private.clone()).expect("serialize");
+        let decoded = noxtls_x25519_private_key_from_pkcs8_der(&der).expect("parse");
         assert_eq!(decoded.public_key().bytes, private.public_key().bytes);
     }
 
@@ -1798,8 +1798,8 @@ mod ed25519_pkcs8_tests {
     #[test]
     fn x448_pkcs8_serialize_roundtrip() {
         let private = X448PrivateKey::from_bytes([0x37; 56]);
-        let der = x448_private_key_to_pkcs8_der(private.clone()).expect("serialize");
-        let decoded = x448_private_key_from_pkcs8_der(&der).expect("parse");
+        let der = noxtls_x448_private_key_to_pkcs8_der(private.clone()).expect("serialize");
+        let decoded = noxtls_x448_private_key_from_pkcs8_der(&der).expect("parse");
         assert_eq!(decoded.to_bytes(), private.to_bytes());
     }
 
@@ -1807,8 +1807,8 @@ mod ed25519_pkcs8_tests {
     #[test]
     fn ed25519_pkcs8_serialize_roundtrip() {
         let private = Ed25519PrivateKey::from_seed(&sample_ed25519_seed());
-        let der = ed25519_private_key_to_pkcs8_der(&private).expect("serialize");
-        let decoded = ed25519_private_key_from_pkcs8_der(&der).expect("parse");
+        let der = noxtls_ed25519_private_key_to_pkcs8_der(&private).expect("serialize");
+        let decoded = noxtls_ed25519_private_key_from_pkcs8_der(&der).expect("parse");
         assert_eq!(
             decoded.verifying_key().to_bytes(),
             private.verifying_key().to_bytes()
@@ -1847,8 +1847,8 @@ mod ed25519_pkcs8_tests {
     fn ed25519_pkcs8_file_roundtrip() {
         let path = unique_temp_file("ed25519_pkcs8");
         let private = Ed25519PrivateKey::from_seed(&sample_ed25519_seed());
-        ed25519_private_key_to_pem_file_pkcs8(&path, &private).expect("write");
-        let decoded = ed25519_private_key_from_pem_file_pkcs8(&path).expect("read");
+        noxtls_ed25519_private_key_to_pem_file_pkcs8(&path, &private).expect("write");
+        let decoded = noxtls_ed25519_private_key_from_pem_file_pkcs8(&path).expect("read");
         assert_eq!(
             decoded.verifying_key().to_bytes(),
             private.verifying_key().to_bytes()
@@ -1862,8 +1862,8 @@ mod ed25519_pkcs8_tests {
     fn x25519_pkcs8_file_roundtrip() {
         let path = unique_temp_file("x25519_pkcs8");
         let private = X25519PrivateKey::from_bytes([0x42; 32]);
-        x25519_private_key_to_pem_file_pkcs8(&path, private.clone()).expect("write");
-        let decoded = x25519_private_key_from_pem_file_pkcs8(&path).expect("read");
+        noxtls_x25519_private_key_to_pem_file_pkcs8(&path, private.clone()).expect("write");
+        let decoded = noxtls_x25519_private_key_from_pem_file_pkcs8(&path).expect("read");
         assert_eq!(decoded.public_key().bytes, private.public_key().bytes);
         let _ = fs::remove_file(path);
     }
@@ -1876,8 +1876,8 @@ mod ed25519_pkcs8_tests {
         let mut scalar = [0_u8; 32];
         scalar[31] = 3;
         let private = P256PrivateKey::from_bytes(scalar).expect("p256");
-        p256_private_key_to_pem_file_pkcs8(&path, &private).expect("write");
-        let decoded = p256_private_key_from_pem_file_pkcs8(&path).expect("read");
+        noxtls_p256_private_key_to_pem_file_pkcs8(&path, &private).expect("write");
+        let decoded = noxtls_p256_private_key_from_pem_file_pkcs8(&path).expect("read");
         let expected_pub = private
             .public_key()
             .expect("pub a")
@@ -1898,8 +1898,8 @@ mod ed25519_pkcs8_tests {
     fn x448_pkcs8_file_roundtrip() {
         let path = unique_temp_file("x448_pkcs8");
         let private = X448PrivateKey::from_bytes([0x17; 56]);
-        x448_private_key_to_pem_file_pkcs8(&path, private.clone()).expect("write");
-        let decoded = x448_private_key_from_pem_file_pkcs8(&path).expect("read");
+        noxtls_x448_private_key_to_pem_file_pkcs8(&path, private.clone()).expect("write");
+        let decoded = noxtls_x448_private_key_from_pem_file_pkcs8(&path).expect("read");
         assert_eq!(decoded.to_bytes(), private.to_bytes());
         let _ = fs::remove_file(path);
     }

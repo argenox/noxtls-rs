@@ -23,7 +23,7 @@
 use crate::drbg::HmacDrbgSha256;
 #[cfg(not(feature = "std"))]
 use crate::internal_alloc::Vec;
-use crate::{sha3_256, shake256};
+use crate::{noxtls_sha3_256, noxtls_shake256};
 use noxtls_core::{Error, Result};
 
 /// Byte length of ML-KEM-768 encoded decapsulation keys.
@@ -212,7 +212,7 @@ impl MlKemPublicKey {
 ///
 /// # Returns
 /// `(private, public)` encoded keypair wrappers.
-pub fn mlkem_generate_keypair_auto(
+pub fn noxtls_mlkem_generate_keypair_auto(
     drbg: &mut HmacDrbgSha256,
 ) -> Result<(MlKemPrivateKey, MlKemPublicKey)> {
     let key_seed = drbg.generate(32, b"mlkem keygen seed")?;
@@ -234,7 +234,7 @@ pub fn mlkem_generate_keypair_auto(
     let mut private_bytes = Vec::with_capacity(MLKEM_PRIVATE_KEY_LEN);
     private_bytes.extend_from_slice(&polyvec_to_bytes(&s));
     private_bytes.extend_from_slice(&public_bytes);
-    let hpk = sha3_256(&public_bytes);
+    let hpk = noxtls_sha3_256(&public_bytes);
     private_bytes.extend_from_slice(&hpk);
     let z = derive_hash_block(MLKEM_XOF_DOMAIN_EXPAND, b"mlkem-keygen-z", &key_seed);
     private_bytes.extend_from_slice(&z);
@@ -257,7 +257,7 @@ pub fn mlkem_generate_keypair_auto(
 ///
 /// # Returns
 /// `(ciphertext, shared_secret)` where ciphertext is 1088 bytes and shared secret is 32 bytes.
-pub fn mlkem_encapsulate_auto(
+pub fn noxtls_mlkem_encapsulate_auto(
     public_key: &MlKemPublicKey,
     drbg: &mut HmacDrbgSha256,
 ) -> Result<(Vec<u8>, [u8; MLKEM_SHARED_SECRET_LEN])> {
@@ -266,7 +266,7 @@ pub fn mlkem_encapsulate_auto(
         .as_slice()
         .try_into()
         .map_err(|_| Error::InvalidLength("mlkem encapsulate message must be 32 bytes"))?;
-    let hpk = sha3_256(public_key.as_bytes());
+    let hpk = noxtls_sha3_256(public_key.as_bytes());
     let (k_bar, coins) = derive_k_and_coins(&m, &hpk);
     let (ciphertext, _) = encapsulate_from_message(public_key.as_bytes(), &m, &coins)?;
     let shared_secret = derive_shared_secret(&k_bar, &ciphertext);
@@ -277,11 +277,11 @@ pub fn mlkem_encapsulate_auto(
 ///
 /// # Arguments
 /// * `private_key`: Recipient private key.
-/// * `ciphertext`: Encapsulated bytes produced by `mlkem_encapsulate_auto`.
+/// * `ciphertext`: Encapsulated bytes produced by `noxtls_mlkem_encapsulate_auto`.
 ///
 /// # Returns
 /// 32-byte shared secret.
-pub fn mlkem_decapsulate(
+pub fn noxtls_mlkem_decapsulate(
     private_key: &MlKemPrivateKey,
     ciphertext: &[u8],
 ) -> Result<[u8; MLKEM_SHARED_SECRET_LEN]> {
@@ -304,7 +304,7 @@ pub fn mlkem_decapsulate(
 
     let mut z_input = Vec::with_capacity(z.len() + MLKEM_SHARED_SECRET_LEN);
     z_input.extend_from_slice(&z);
-    z_input.extend_from_slice(&sha3_256(ciphertext));
+    z_input.extend_from_slice(&noxtls_sha3_256(ciphertext));
     let fallback_k = fips203_j(&z_input);
     let selected_k = select_32(valid_mask, &k_bar, &fallback_k);
     Ok(derive_shared_secret(&selected_k, ciphertext))
@@ -402,7 +402,7 @@ fn derive_shared_secret(
 ) -> [u8; MLKEM_SHARED_SECRET_LEN] {
     let mut input = Vec::with_capacity(MLKEM_SHARED_SECRET_LEN + MLKEM_SHARED_SECRET_LEN);
     input.extend_from_slice(key_material);
-    input.extend_from_slice(&sha3_256(ciphertext));
+    input.extend_from_slice(&noxtls_sha3_256(ciphertext));
     fips203_kdf(&input)
 }
 
@@ -455,7 +455,7 @@ fn expand_seed(label: &[u8], seed: &[u8], out_len: usize) -> Vec<u8> {
     input.push(MLKEM_XOF_DOMAIN_EXPAND);
     input.extend_from_slice(label);
     input.extend_from_slice(seed);
-    shake256(&input, out_len)
+    noxtls_shake256(&input, out_len)
 }
 
 /// Derives one fixed 32-byte block from a domain label and seed.
@@ -478,7 +478,7 @@ fn derive_hash_block(domain: u8, label: &[u8], seed: &[u8]) -> [u8; 32] {
     input.push(domain);
     input.extend_from_slice(label);
     input.extend_from_slice(seed);
-    let digest = shake256(&input, 32);
+    let digest = noxtls_shake256(&input, 32);
     let mut out = [0_u8; 32];
     out.copy_from_slice(&digest);
     out
@@ -682,7 +682,7 @@ fn fips203_g(input: &[u8]) -> [u8; 64] {
     let mut domain_input = Vec::with_capacity(1 + input.len());
     domain_input.push(MLKEM_XOF_DOMAIN_G);
     domain_input.extend_from_slice(input);
-    let expanded = shake256(&domain_input, 64);
+    let expanded = noxtls_shake256(&domain_input, 64);
     let mut out = [0_u8; 64];
     out.copy_from_slice(&expanded);
     out
@@ -705,7 +705,7 @@ fn fips203_kdf(input: &[u8]) -> [u8; 32] {
     let mut domain_input = Vec::with_capacity(1 + input.len());
     domain_input.push(MLKEM_XOF_DOMAIN_KDF);
     domain_input.extend_from_slice(input);
-    let expanded = shake256(&domain_input, 32);
+    let expanded = noxtls_shake256(&domain_input, 32);
     let mut out = [0_u8; 32];
     out.copy_from_slice(&expanded);
     out
@@ -728,7 +728,7 @@ fn fips203_j(input: &[u8]) -> [u8; 32] {
     let mut domain_input = Vec::with_capacity(1 + input.len());
     domain_input.push(MLKEM_XOF_DOMAIN_J);
     domain_input.extend_from_slice(input);
-    let expanded = shake256(&domain_input, 32);
+    let expanded = noxtls_shake256(&domain_input, 32);
     let mut out = [0_u8; 32];
     out.copy_from_slice(&expanded);
     out

@@ -18,11 +18,11 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    p256_ecdsa_sign_sha256, rsassa_sha256_sign, P256PrivateKey, P256PublicKey, RsaPrivateKey,
+    noxtls_p256_ecdsa_sign_sha256, noxtls_rsassa_sha256_sign, P256PrivateKey, P256PublicKey, RsaPrivateKey,
     RsaPublicKey,
 };
 
-use super::{p256_public_key_to_spki_der, rsa_public_key_to_spki_der};
+use super::{noxtls_p256_public_key_to_spki_der, noxtls_rsa_public_key_to_spki_der};
 
 /// Writes DER INTEGER encoding for a positive integer value.
 ///
@@ -31,7 +31,7 @@ use super::{p256_public_key_to_spki_der, rsa_public_key_to_spki_der};
 ///
 /// # Returns
 /// DER-encoded INTEGER TLV bytes.
-pub fn write_der_integer(value: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_write_der_integer(value: &[u8]) -> Result<Vec<u8>> {
     if value.is_empty() {
         return Err(Error::InvalidLength("der integer value must not be empty"));
     }
@@ -55,7 +55,7 @@ pub fn write_der_integer(value: &[u8]) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// DER-encoded SEQUENCE TLV bytes.
-pub fn write_der_sequence(encoded_children: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_write_der_sequence(encoded_children: &[u8]) -> Result<Vec<u8>> {
     let mut out = vec![0x30];
     out.extend_from_slice(&encode_der_len(encoded_children.len())?);
     out.extend_from_slice(encoded_children);
@@ -69,7 +69,7 @@ pub fn write_der_sequence(encoded_children: &[u8]) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// DER-encoded OBJECT IDENTIFIER TLV bytes.
-pub fn write_der_oid(oid_content: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_write_der_oid(oid_content: &[u8]) -> Result<Vec<u8>> {
     if oid_content.is_empty() {
         return Err(Error::InvalidLength("der oid value must not be empty"));
     }
@@ -86,7 +86,7 @@ pub fn write_der_oid(oid_content: &[u8]) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// DER-encoded BIT STRING TLV bytes.
-pub fn write_der_bit_string(bits: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_write_der_bit_string(bits: &[u8]) -> Result<Vec<u8>> {
     let mut out = vec![0x03];
     out.extend_from_slice(&encode_der_len(bits.len() + 1)?);
     out.push(0x00); // unused-bit count
@@ -102,13 +102,13 @@ pub fn write_der_bit_string(bits: &[u8]) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// DER bytes containing a minimal certificate-like sequence.
-pub fn write_minimal_certificate_der(serial: &[u8], raw_tbs: &[u8]) -> Result<Vec<u8>> {
-    let serial_der = write_der_integer(serial)?;
+pub fn noxtls_write_minimal_certificate_der(serial: &[u8], raw_tbs: &[u8]) -> Result<Vec<u8>> {
+    let serial_der = noxtls_write_der_integer(serial)?;
     let mut tbs_children = Vec::new();
     tbs_children.extend_from_slice(&serial_der);
     tbs_children.extend_from_slice(raw_tbs);
-    let tbs_der = write_der_sequence(&tbs_children)?;
-    write_der_sequence(&tbs_der)
+    let tbs_der = noxtls_write_der_sequence(&tbs_children)?;
+    noxtls_write_der_sequence(&tbs_der)
 }
 
 /// Writes a self-signed X.509 v3 certificate using RSA PKCS#1 v1.5 SHA-256.
@@ -123,7 +123,7 @@ pub fn write_minimal_certificate_der(serial: &[u8], raw_tbs: &[u8]) -> Result<Ve
 ///
 /// # Returns
 /// DER-encoded X.509 certificate.
-pub fn write_self_signed_certificate_rsa_sha256(
+pub fn noxtls_write_self_signed_certificate_rsa_sha256(
     serial: &[u8],
     common_name: &str,
     not_before: &str,
@@ -131,7 +131,7 @@ pub fn write_self_signed_certificate_rsa_sha256(
     public_key: &RsaPublicKey,
     private_key: &RsaPrivateKey,
 ) -> Result<Vec<u8>> {
-    let spki_der = rsa_public_key_to_spki_der(public_key)?;
+    let spki_der = noxtls_rsa_public_key_to_spki_der(public_key)?;
     let tbs_der = build_certificate_tbs(
         serial,
         common_name,
@@ -141,7 +141,7 @@ pub fn write_self_signed_certificate_rsa_sha256(
         &spki_der,
         true,
     )?;
-    let signature = rsassa_sha256_sign(private_key, &tbs_der)?;
+    let signature = noxtls_rsassa_sha256_sign(private_key, &tbs_der)?;
     build_certificate_der(
         &tbs_der,
         &algorithm_identifier_sha256_with_rsa()?,
@@ -161,7 +161,7 @@ pub fn write_self_signed_certificate_rsa_sha256(
 ///
 /// # Returns
 /// DER-encoded X.509 certificate.
-pub fn write_self_signed_certificate_p256_sha256(
+pub fn noxtls_write_self_signed_certificate_p256_sha256(
     serial: &[u8],
     common_name: &str,
     not_before: &str,
@@ -169,7 +169,7 @@ pub fn write_self_signed_certificate_p256_sha256(
     public_key: &P256PublicKey,
     private_key: &P256PrivateKey,
 ) -> Result<Vec<u8>> {
-    let spki_der = p256_public_key_to_spki_der(public_key)?;
+    let spki_der = noxtls_p256_public_key_to_spki_der(public_key)?;
     let tbs_der = build_certificate_tbs(
         serial,
         common_name,
@@ -179,7 +179,7 @@ pub fn write_self_signed_certificate_p256_sha256(
         &spki_der,
         true,
     )?;
-    let (r, s) = p256_ecdsa_sign_sha256(private_key, &tbs_der)?;
+    let (r, s) = noxtls_p256_ecdsa_sign_sha256(private_key, &tbs_der)?;
     let signature_der = write_ecdsa_signature_der(&r, &s)?;
     build_certificate_der(
         &tbs_der,
@@ -197,14 +197,14 @@ pub fn write_self_signed_certificate_p256_sha256(
 ///
 /// # Returns
 /// DER-encoded CertificationRequest.
-pub fn write_csr_rsa_sha256(
+pub fn noxtls_write_csr_rsa_sha256(
     common_name: &str,
     public_key: &RsaPublicKey,
     private_key: &RsaPrivateKey,
 ) -> Result<Vec<u8>> {
-    let spki_der = rsa_public_key_to_spki_der(public_key)?;
+    let spki_der = noxtls_rsa_public_key_to_spki_der(public_key)?;
     let cri_der = build_csr_info(common_name, &spki_der)?;
-    let signature = rsassa_sha256_sign(private_key, &cri_der)?;
+    let signature = noxtls_rsassa_sha256_sign(private_key, &cri_der)?;
     build_csr_der(
         &cri_der,
         &algorithm_identifier_sha256_with_rsa()?,
@@ -221,14 +221,14 @@ pub fn write_csr_rsa_sha256(
 ///
 /// # Returns
 /// DER-encoded CertificationRequest.
-pub fn write_csr_p256_sha256(
+pub fn noxtls_write_csr_p256_sha256(
     common_name: &str,
     public_key: &P256PublicKey,
     private_key: &P256PrivateKey,
 ) -> Result<Vec<u8>> {
-    let spki_der = p256_public_key_to_spki_der(public_key)?;
+    let spki_der = noxtls_p256_public_key_to_spki_der(public_key)?;
     let cri_der = build_csr_info(common_name, &spki_der)?;
-    let (r, s) = p256_ecdsa_sign_sha256(private_key, &cri_der)?;
+    let (r, s) = noxtls_p256_ecdsa_sign_sha256(private_key, &cri_der)?;
     let signature_der = write_ecdsa_signature_der(&r, &s)?;
     build_csr_der(
         &cri_der,
@@ -241,7 +241,7 @@ pub fn write_csr_p256_sha256(
 ///
 /// # Arguments
 ///
-/// * `serial` — Serial number body for `write_der_integer`.
+/// * `serial` — Serial number body for `noxtls_write_der_integer`.
 /// * `common_name` — Subject and issuer common name string.
 /// * `not_before` / `not_after` — Validity strings passed to `write_validity`.
 /// * `signature_algorithm` — Pre-encoded `AlgorithmIdentifier` DER bytes for the TBS field.
@@ -268,8 +268,8 @@ fn build_certificate_tbs(
     spki_der: &[u8],
     is_ca: bool,
 ) -> Result<Vec<u8>> {
-    let version_ctx = write_der_explicit_context(0, &write_der_integer(&[0x02])?)?;
-    let serial_der = write_der_integer(serial)?;
+    let version_ctx = write_der_explicit_context(0, &noxtls_write_der_integer(&[0x02])?)?;
+    let serial_der = noxtls_write_der_integer(serial)?;
     let name_der = write_common_name(common_name)?;
     let validity = write_validity(not_before, not_after)?;
     let extensions = write_der_explicit_context(3, &write_extensions(is_ca)?)?;
@@ -282,7 +282,7 @@ fn build_certificate_tbs(
     tbs_children.extend_from_slice(&name_der);
     tbs_children.extend_from_slice(spki_der);
     tbs_children.extend_from_slice(&extensions);
-    write_der_sequence(&tbs_children)
+    noxtls_write_der_sequence(&tbs_children)
 }
 
 /// Builds the top-level X.509 `Certificate` SEQUENCE from TBS, algorithm identifier, and signature.
@@ -309,12 +309,12 @@ fn build_certificate_der(
     signature_algorithm: &[u8],
     signature: &[u8],
 ) -> Result<Vec<u8>> {
-    let signature_bit_string = write_der_bit_string(signature)?;
+    let signature_bit_string = noxtls_write_der_bit_string(signature)?;
     let mut cert_children = Vec::new();
     cert_children.extend_from_slice(tbs_der);
     cert_children.extend_from_slice(signature_algorithm);
     cert_children.extend_from_slice(&signature_bit_string);
-    write_der_sequence(&cert_children)
+    noxtls_write_der_sequence(&cert_children)
 }
 
 /// Builds CertificationRequestInfo DER for PKCS#10.
@@ -336,7 +336,7 @@ fn build_certificate_der(
 ///
 /// This function does not panic unless otherwise noted.
 fn build_csr_info(common_name: &str, spki_der: &[u8]) -> Result<Vec<u8>> {
-    let version = write_der_integer(&[0x00])?;
+    let version = noxtls_write_der_integer(&[0x00])?;
     let subject = write_common_name(common_name)?;
     let attributes = write_der_explicit_context(0, &[])?;
     let mut info_children = Vec::new();
@@ -344,7 +344,7 @@ fn build_csr_info(common_name: &str, spki_der: &[u8]) -> Result<Vec<u8>> {
     info_children.extend_from_slice(&subject);
     info_children.extend_from_slice(spki_der);
     info_children.extend_from_slice(&attributes);
-    write_der_sequence(&info_children)
+    noxtls_write_der_sequence(&info_children)
 }
 
 /// Builds final PKCS#10 CSR DER from CRI, AlgorithmIdentifier, and raw signature bytes.
@@ -367,12 +367,12 @@ fn build_csr_info(common_name: &str, spki_der: &[u8]) -> Result<Vec<u8>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn build_csr_der(cri_der: &[u8], signature_algorithm: &[u8], signature: &[u8]) -> Result<Vec<u8>> {
-    let signature_bit_string = write_der_bit_string(signature)?;
+    let signature_bit_string = noxtls_write_der_bit_string(signature)?;
     let mut csr_children = Vec::new();
     csr_children.extend_from_slice(cri_der);
     csr_children.extend_from_slice(signature_algorithm);
     csr_children.extend_from_slice(&signature_bit_string);
-    write_der_sequence(&csr_children)
+    noxtls_write_der_sequence(&csr_children)
 }
 
 /// Builds AlgorithmIdentifier for sha256WithRSAEncryption.
@@ -393,12 +393,12 @@ fn build_csr_der(cri_der: &[u8], signature_algorithm: &[u8], signature: &[u8]) -
 ///
 /// This function does not panic unless otherwise noted.
 fn algorithm_identifier_sha256_with_rsa() -> Result<Vec<u8>> {
-    let oid = write_der_oid(&[0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x0B])?;
+    let oid = noxtls_write_der_oid(&[0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x0B])?;
     let null = write_der_null()?;
     let mut body = Vec::new();
     body.extend_from_slice(&oid);
     body.extend_from_slice(&null);
-    write_der_sequence(&body)
+    noxtls_write_der_sequence(&body)
 }
 
 /// Builds AlgorithmIdentifier for ecdsa-with-SHA256.
@@ -419,8 +419,8 @@ fn algorithm_identifier_sha256_with_rsa() -> Result<Vec<u8>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn algorithm_identifier_ecdsa_sha256() -> Result<Vec<u8>> {
-    let oid = write_der_oid(&[0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x04, 0x03, 0x02])?;
-    write_der_sequence(&oid)
+    let oid = noxtls_write_der_oid(&[0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x04, 0x03, 0x02])?;
+    noxtls_write_der_sequence(&oid)
 }
 
 /// Builds Name ::= SEQUENCE OF RDN containing one commonName UTF8String.
@@ -444,14 +444,14 @@ fn write_common_name(common_name: &str) -> Result<Vec<u8>> {
     if common_name.is_empty() {
         return Err(Error::InvalidLength("common name must not be empty"));
     }
-    let oid_cn = write_der_oid(&[0x55, 0x04, 0x03])?;
+    let oid_cn = noxtls_write_der_oid(&[0x55, 0x04, 0x03])?;
     let value = write_der_utf8_string(common_name.as_bytes())?;
     let mut atv = Vec::new();
     atv.extend_from_slice(&oid_cn);
     atv.extend_from_slice(&value);
-    let atv_seq = write_der_sequence(&atv)?;
+    let atv_seq = noxtls_write_der_sequence(&atv)?;
     let rdn_set = write_der_set(&atv_seq)?;
-    write_der_sequence(&rdn_set)
+    noxtls_write_der_sequence(&rdn_set)
 }
 
 /// Builds Validity ::= SEQUENCE { notBefore, notAfter } with UTC/generalized time tags.
@@ -478,7 +478,7 @@ fn write_validity(not_before: &str, not_after: &str) -> Result<Vec<u8>> {
     let mut body = Vec::new();
     body.extend_from_slice(&not_before_der);
     body.extend_from_slice(&not_after_der);
-    write_der_sequence(&body)
+    noxtls_write_der_sequence(&body)
 }
 
 /// Builds v3 basic constraints extension sequence.
@@ -500,7 +500,7 @@ fn write_validity(not_before: &str, not_after: &str) -> Result<Vec<u8>> {
 /// This function does not panic unless otherwise noted.
 fn write_extensions(is_ca: bool) -> Result<Vec<u8>> {
     let ext = write_basic_constraints_extension(is_ca)?;
-    write_der_sequence(&ext)
+    noxtls_write_der_sequence(&ext)
 }
 
 /// Writes one BasicConstraints extension with critical flag and cA boolean.
@@ -521,18 +521,18 @@ fn write_extensions(is_ca: bool) -> Result<Vec<u8>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn write_basic_constraints_extension(is_ca: bool) -> Result<Vec<u8>> {
-    let oid = write_der_oid(&[0x55, 0x1D, 0x13])?;
+    let oid = noxtls_write_der_oid(&[0x55, 0x1D, 0x13])?;
     let critical = write_der_boolean(true)?;
     let value_seq = {
         let ca = write_der_boolean(is_ca)?;
-        write_der_sequence(&ca)?
+        noxtls_write_der_sequence(&ca)?
     };
     let ext_value = write_der_octet_string(&value_seq)?;
     let mut ext_body = Vec::new();
     ext_body.extend_from_slice(&oid);
     ext_body.extend_from_slice(&critical);
     ext_body.extend_from_slice(&ext_value);
-    write_der_sequence(&ext_body)
+    noxtls_write_der_sequence(&ext_body)
 }
 
 /// Writes DER NULL value.
@@ -739,12 +739,12 @@ fn write_der_time(time: &str) -> Result<Vec<u8>> {
 ///
 /// This function does not panic unless otherwise noted.
 fn write_ecdsa_signature_der(r: &[u8; 32], s: &[u8; 32]) -> Result<Vec<u8>> {
-    let r_der = write_der_integer(r)?;
-    let s_der = write_der_integer(s)?;
+    let r_der = noxtls_write_der_integer(r)?;
+    let s_der = noxtls_write_der_integer(s)?;
     let mut body = Vec::new();
     body.extend_from_slice(&r_der);
     body.extend_from_slice(&s_der);
-    write_der_sequence(&body)
+    noxtls_write_der_sequence(&body)
 }
 
 /// Encodes a DER definite length prefix in short or long form for the given content length.

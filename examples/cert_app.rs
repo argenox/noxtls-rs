@@ -20,8 +20,8 @@
 use noxtls_core::Result;
 use noxtls_crypto::P256PrivateKey;
 use noxtls_x509::{
-    certificate_matches_hostname, parse_certificate, validate_certificate_chain,
-    write_self_signed_certificate_p256_sha256,
+    noxtls_certificate_matches_hostname, noxtls_parse_certificate, noxtls_validate_certificate_chain,
+    noxtls_write_self_signed_certificate_p256_sha256,
 };
 
 /// Connect-style certificate verification demo using generated certificates.
@@ -45,11 +45,11 @@ fn main() -> Result<()> {
     let leaf_der = make_self_signed_cert("server.noxtls.local", [0x66; 32], &[0x20])?;
     let anchor_der = make_self_signed_cert("server.noxtls.local", [0x66; 32], &[0x20])?;
 
-    let leaf = parse_certificate(&leaf_der)?;
-    let anchor = parse_certificate(&anchor_der)?;
+    let leaf = noxtls_parse_certificate(&leaf_der)?;
+    let anchor = noxtls_parse_certificate(&anchor_der)?;
 
-    let hostname_ok = certificate_matches_hostname(&leaf, "server.noxtls.local");
-    let chain_result = validate_certificate_chain(&leaf, &[], &[anchor], "20260101000000Z");
+    let hostname_ok = noxtls_certificate_matches_hostname(&leaf, "server.noxtls.local");
+    let chain_result = noxtls_validate_certificate_chain(&leaf, &[], &[anchor], "20260101000000Z");
 
     println!("hostname_ok={hostname_ok}");
     match chain_result {
@@ -81,7 +81,7 @@ fn main() -> Result<()> {
 fn make_self_signed_cert(common_name: &str, seed: [u8; 32], serial: &[u8]) -> Result<Vec<u8>> {
     let private = P256PrivateKey::from_bytes(seed)?;
     let public = private.public_key()?;
-    write_self_signed_certificate_p256_sha256(
+    noxtls_write_self_signed_certificate_p256_sha256(
         serial,
         common_name,
         "240101000000Z",

@@ -41,7 +41,7 @@ pub type MonotonicMillis = u64;
 /// This function does not panic.
 #[cfg(feature = "std")]
 #[must_use]
-pub fn unix_timestamp_secs() -> u64 {
+pub fn noxtls_unix_timestamp_secs() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

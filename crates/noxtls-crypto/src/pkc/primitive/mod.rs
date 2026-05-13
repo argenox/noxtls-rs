@@ -18,7 +18,7 @@
 //! Concrete public-key implementations (RSA, ECC, X25519/X448, Ed25519, ML-KEM, ML-DSA).
 //!
 //! Submodules are private; this module re-exports the supported API and provides
-//! [`ecc_generate_keypair_auto`] for unified ECC key generation.
+//! [`noxtls_ecc_generate_keypair_auto`] for unified ECC key generation.
 
 mod bignum;
 mod ed25519;
@@ -36,44 +36,44 @@ use noxtls_core::Error;
 use noxtls_core::Result;
 
 pub use ed25519::{
-    ed25519_generate_private_key_auto, ed25519_public_key_from_subject_public_key_info,
-    ed25519_verify, Ed25519PrivateKey, Ed25519PublicKey,
+    noxtls_ed25519_generate_private_key_auto, noxtls_ed25519_public_key_from_subject_public_key_info,
+    noxtls_ed25519_verify, Ed25519PrivateKey, Ed25519PublicKey,
 };
 pub use mldsa::{
-    mldsa_generate_keypair_auto, mldsa_public_key_from_subject_public_key_info, mldsa_verify,
+    noxtls_mldsa_generate_keypair_auto, noxtls_mldsa_public_key_from_subject_public_key_info, noxtls_mldsa_verify,
     MlDsaPrivateKey, MlDsaPublicKey, OID_ID_MLDSA65,
 };
 pub use mlkem::{
-    mlkem_decapsulate, mlkem_encapsulate_auto, mlkem_generate_keypair_auto, MlKemPrivateKey,
+    noxtls_mlkem_decapsulate, noxtls_mlkem_encapsulate_auto, noxtls_mlkem_generate_keypair_auto, MlKemPrivateKey,
     MlKemPublicKey, MLKEM_CIPHERTEXT_LEN, MLKEM_PRIVATE_KEY_LEN, MLKEM_PUBLIC_KEY_LEN,
     MLKEM_SHARED_SECRET_LEN,
 };
 pub use p256::{
-    p256_ecdh_shared_secret, p256_ecdsa_sign_digest, p256_ecdsa_sign_digest_auto,
-    p256_ecdsa_sign_sha256, p256_ecdsa_sign_sha256_auto, p256_ecdsa_verify_digest,
-    p256_ecdsa_verify_sha256, p256_generate_private_key_auto, P256PrivateKey, P256PublicKey,
+    noxtls_p256_ecdh_shared_secret, noxtls_p256_ecdsa_sign_digest, noxtls_p256_ecdsa_sign_digest_auto,
+    noxtls_p256_ecdsa_sign_sha256, noxtls_p256_ecdsa_sign_sha256_auto, noxtls_p256_ecdsa_verify_digest,
+    noxtls_p256_ecdsa_verify_sha256, noxtls_p256_generate_private_key_auto, P256PrivateKey, P256PublicKey,
 };
-pub use pq_selftest::run_pq_self_tests;
+pub use pq_selftest::noxtls_run_pq_self_tests;
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub use rsa::{rsa_generate_keypair_auto, rsa_generate_keypair_with_exponent_auto};
+pub use rsa::{noxtls_rsa_generate_keypair_auto, noxtls_rsa_generate_keypair_with_exponent_auto};
 pub use rsa::{
-    rsa_generate_keypair_secure_auto, rsa_generate_keypair_with_policy_auto,
-    rsaes_oaep_sha256_decrypt, rsaes_oaep_sha256_decrypt_crt_only, rsaes_oaep_sha256_encrypt_auto,
-    rsaes_pkcs1_v15_decrypt, rsaes_pkcs1_v15_decrypt_crt_only, rsaes_pkcs1_v15_encrypt_auto,
-    rsassa_pss_sha256_sign, rsassa_pss_sha256_sign_auto, rsassa_pss_sha256_verify,
-    rsassa_pss_sha384_sign, rsassa_pss_sha384_sign_auto, rsassa_pss_sha384_verify,
-    rsassa_sha1_sign, rsassa_sha1_verify, rsassa_sha256_sign, rsassa_sha256_verify,
-    rsassa_sha384_sign, rsassa_sha384_verify, rsassa_sha512_sign, rsassa_sha512_verify,
+    noxtls_rsa_generate_keypair_secure_auto, noxtls_rsa_generate_keypair_with_policy_auto,
+    noxtls_rsaes_oaep_sha256_decrypt, noxtls_rsaes_oaep_sha256_decrypt_crt_only, noxtls_rsaes_oaep_sha256_encrypt_auto,
+    noxtls_rsaes_pkcs1_v15_decrypt, noxtls_rsaes_pkcs1_v15_decrypt_crt_only, noxtls_rsaes_pkcs1_v15_encrypt_auto,
+    noxtls_rsassa_pss_sha256_sign, noxtls_rsassa_pss_sha256_sign_auto, noxtls_rsassa_pss_sha256_verify,
+    noxtls_rsassa_pss_sha384_sign, noxtls_rsassa_pss_sha384_sign_auto, noxtls_rsassa_pss_sha384_verify,
+    noxtls_rsassa_sha1_sign, noxtls_rsassa_sha1_verify, noxtls_rsassa_sha256_sign, noxtls_rsassa_sha256_verify,
+    noxtls_rsassa_sha384_sign, noxtls_rsassa_sha384_verify, noxtls_rsassa_sha512_sign, noxtls_rsassa_sha512_verify,
     RsaKeySizePolicy, RsaPrivateKey, RsaPublicKey,
 };
 pub use x25519::{
-    x25519, x25519_basepoint, x25519_generate_private_key_auto, x25519_shared_secret,
+    noxtls_x25519, noxtls_x25519_basepoint, noxtls_x25519_generate_private_key_auto, noxtls_x25519_shared_secret,
     X25519PrivateKey, X25519PublicKey,
 };
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub use x448::x448_generate_private_key_auto;
+pub use x448::noxtls_x448_generate_private_key_auto;
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub use x448::{x448, x448_basepoint, x448_shared_secret};
+pub use x448::{noxtls_x448, noxtls_x448_basepoint, noxtls_x448_shared_secret};
 pub use x448::{X448PrivateKey, X448PublicKey};
 
 /// Selects one supported elliptic-curve key algorithm for unified key generation.
@@ -131,24 +131,24 @@ pub enum EccPublicKey {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ecc_generate_keypair_auto(
+pub fn noxtls_ecc_generate_keypair_auto(
     algorithm: EccKeyAlgorithm,
     drbg: &mut HmacDrbgSha256,
 ) -> Result<(EccPrivateKey, EccPublicKey)> {
     match algorithm {
         EccKeyAlgorithm::P256 => {
-            let private = p256_generate_private_key_auto(drbg)?;
+            let private = noxtls_p256_generate_private_key_auto(drbg)?;
             let public = private.public_key()?;
             Ok((EccPrivateKey::P256(private), EccPublicKey::P256(public)))
         }
         EccKeyAlgorithm::X25519 => {
-            let private = x25519_generate_private_key_auto(drbg)?;
+            let private = noxtls_x25519_generate_private_key_auto(drbg)?;
             let public = private.clone().public_key();
             Ok((EccPrivateKey::X25519(private), EccPublicKey::X25519(public)))
         }
         #[cfg(feature = "hazardous-legacy-crypto")]
         EccKeyAlgorithm::X448 => {
-            let private = x448_generate_private_key_auto(drbg)?;
+            let private = noxtls_x448_generate_private_key_auto(drbg)?;
             let public = private.clone().public_key();
             Ok((EccPrivateKey::X448(private), EccPublicKey::X448(public)))
         }
@@ -157,7 +157,7 @@ pub fn ecc_generate_keypair_auto(
             "x448 operations are disabled by default; enable `hazardous-legacy-crypto` to use non-constant-time x448 implementation",
         )),
         EccKeyAlgorithm::Ed25519 => {
-            let private = ed25519_generate_private_key_auto(drbg)?;
+            let private = noxtls_ed25519_generate_private_key_auto(drbg)?;
             let public = private.verifying_key();
             Ok((
                 EccPrivateKey::Ed25519(private),

@@ -19,8 +19,8 @@ use crate::drbg::HmacDrbgSha256;
 use noxtls_core::{Error, Result};
 
 use super::{
-    mldsa_generate_keypair_auto, mldsa_verify, mlkem_decapsulate, mlkem_encapsulate_auto,
-    mlkem_generate_keypair_auto,
+    noxtls_mldsa_generate_keypair_auto, noxtls_mldsa_verify, noxtls_mlkem_decapsulate, noxtls_mlkem_encapsulate_auto,
+    noxtls_mlkem_generate_keypair_auto,
 };
 
 /// Runs deterministic ML-KEM and ML-DSA self-tests for startup-time assurance.
@@ -36,7 +36,7 @@ use super::{
 /// # Panics
 ///
 /// This function does not panic.
-pub fn run_pq_self_tests() -> Result<()> {
+pub fn noxtls_run_pq_self_tests() -> Result<()> {
     run_mlkem_self_test()?;
     run_mldsa_self_test()?;
     Ok(())
@@ -57,9 +57,9 @@ pub fn run_pq_self_tests() -> Result<()> {
 /// This function does not panic.
 fn run_mlkem_self_test() -> Result<()> {
     let mut drbg = HmacDrbgSha256::new(b"pq-selftest-mlkem-entropy-seed", b"nonce", b"selftest")?;
-    let (private, public) = mlkem_generate_keypair_auto(&mut drbg)?;
-    let (ciphertext, shared_sender) = mlkem_encapsulate_auto(&public, &mut drbg)?;
-    let shared_receiver = mlkem_decapsulate(&private, &ciphertext)?;
+    let (private, public) = noxtls_mlkem_generate_keypair_auto(&mut drbg)?;
+    let (ciphertext, shared_sender) = noxtls_mlkem_encapsulate_auto(&public, &mut drbg)?;
+    let shared_receiver = noxtls_mlkem_decapsulate(&private, &ciphertext)?;
     if shared_sender != shared_receiver {
         return Err(Error::CryptoFailure(
             "pq self-test mlkem shared secret mismatch",
@@ -83,12 +83,12 @@ fn run_mlkem_self_test() -> Result<()> {
 /// This function does not panic.
 fn run_mldsa_self_test() -> Result<()> {
     let mut drbg = HmacDrbgSha256::new(b"pq-selftest-mldsa-entropy-seed", b"nonce", b"selftest")?;
-    let (private, public) = mldsa_generate_keypair_auto(&mut drbg)?;
+    let (private, public) = noxtls_mldsa_generate_keypair_auto(&mut drbg)?;
     let message = b"pq-selftest-message";
     let mut signature = private.sign(message);
-    mldsa_verify(&public, message, &signature)?;
+    noxtls_mldsa_verify(&public, message, &signature)?;
     signature[0] ^= 0x01;
-    if mldsa_verify(&public, message, &signature).is_ok() {
+    if noxtls_mldsa_verify(&public, message, &signature).is_ok() {
         return Err(Error::CryptoFailure(
             "pq self-test mldsa tamper check unexpectedly passed",
         ));

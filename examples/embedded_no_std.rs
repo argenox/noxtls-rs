@@ -18,7 +18,7 @@
 //! `std` example that prints the same `cargo check` hint used for `no_std` + `alloc` NoxTLS builds.
 
 use noxtls_core::Result;
-use noxtls_crypto::sha256;
+use noxtls_crypto::noxtls_sha256;
 
 /// Demonstrates APIs that are friendly to `no_std` + `alloc` builds when used from a hosted binary.
 ///
@@ -38,7 +38,7 @@ use noxtls_crypto::sha256;
 ///
 /// This function does not panic.
 fn main() -> Result<()> {
-    let digest = sha256(b"noxtls embedded profile demo");
+    let digest = noxtls_sha256(b"noxtls embedded profile demo");
     println!("sha256={}", to_hex(&digest));
     println!("run_no_std_check=cargo check -p noxtls --no-default-features --features alloc");
     Ok(())

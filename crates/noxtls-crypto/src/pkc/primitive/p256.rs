@@ -18,7 +18,7 @@
 use core::cmp::Ordering;
 
 use crate::drbg::HmacDrbgSha256;
-use crate::hash::sha256;
+use crate::hash::noxtls_sha256;
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 
@@ -157,7 +157,7 @@ impl P256PrivateKey {
     /// # Returns
     /// Signature tuple `(r, s)` as 32-byte big-endian scalars.
     pub fn sign_sha256(&self, message: &[u8]) -> Result<([u8; 32], [u8; 32])> {
-        let digest = sha256(message);
+        let digest = noxtls_sha256(message);
         self.sign_digest(&digest)
     }
 
@@ -174,7 +174,7 @@ impl P256PrivateKey {
         message: &[u8],
         drbg: &mut HmacDrbgSha256,
     ) -> Result<([u8; 32], [u8; 32])> {
-        let digest = sha256(message);
+        let digest = noxtls_sha256(message);
         self.sign_digest_auto(&digest, drbg)
     }
 
@@ -392,7 +392,7 @@ impl P256PublicKey {
 ///
 /// # Returns
 /// 32-byte shared secret from the resulting affine x-coordinate.
-pub fn p256_ecdh_shared_secret(
+pub fn noxtls_p256_ecdh_shared_secret(
     private_key: &P256PrivateKey,
     peer_public_key: &P256PublicKey,
 ) -> Result<[u8; 32]> {
@@ -407,7 +407,7 @@ pub fn p256_ecdh_shared_secret(
 ///
 /// # Returns
 /// Signature tuple `(r, s)` as 32-byte scalars.
-pub fn p256_ecdsa_sign_sha256(
+pub fn noxtls_p256_ecdsa_sign_sha256(
     private_key: &P256PrivateKey,
     message: &[u8],
 ) -> Result<([u8; 32], [u8; 32])> {
@@ -423,7 +423,7 @@ pub fn p256_ecdsa_sign_sha256(
 ///
 /// # Returns
 /// Signature tuple `(r, s)` as 32-byte scalars.
-pub fn p256_ecdsa_sign_sha256_auto(
+pub fn noxtls_p256_ecdsa_sign_sha256_auto(
     private_key: &P256PrivateKey,
     message: &[u8],
     drbg: &mut HmacDrbgSha256,
@@ -439,7 +439,7 @@ pub fn p256_ecdsa_sign_sha256_auto(
 ///
 /// # Returns
 /// Signature tuple `(r, s)` as 32-byte scalars.
-pub fn p256_ecdsa_sign_digest(
+pub fn noxtls_p256_ecdsa_sign_digest(
     private_key: &P256PrivateKey,
     digest: &[u8; 32],
 ) -> Result<([u8; 32], [u8; 32])> {
@@ -455,7 +455,7 @@ pub fn p256_ecdsa_sign_digest(
 ///
 /// # Returns
 /// Signature tuple `(r, s)` as 32-byte scalars.
-pub fn p256_ecdsa_sign_digest_auto(
+pub fn noxtls_p256_ecdsa_sign_digest_auto(
     private_key: &P256PrivateKey,
     digest: &[u8; 32],
     drbg: &mut HmacDrbgSha256,
@@ -473,14 +473,14 @@ pub fn p256_ecdsa_sign_digest_auto(
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn p256_ecdsa_verify_sha256(
+pub fn noxtls_p256_ecdsa_verify_sha256(
     public_key: &P256PublicKey,
     message: &[u8],
     r: &[u8; 32],
     s: &[u8; 32],
 ) -> Result<()> {
-    let digest = sha256(message);
-    p256_ecdsa_verify_digest(public_key, &digest, r, s)
+    let digest = noxtls_sha256(message);
+    noxtls_p256_ecdsa_verify_digest(public_key, &digest, r, s)
 }
 
 /// Verifies a P-256 ECDSA signature over a precomputed 32-byte digest.
@@ -493,7 +493,7 @@ pub fn p256_ecdsa_verify_sha256(
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn p256_ecdsa_verify_digest(
+pub fn noxtls_p256_ecdsa_verify_digest(
     public_key: &P256PublicKey,
     digest: &[u8; 32],
     r: &[u8; 32],
@@ -544,7 +544,7 @@ pub fn p256_ecdsa_verify_digest(
 ///
 /// # Returns
 /// Parsed `P256PrivateKey` when a generated scalar is in the valid range `(0, n)`.
-pub fn p256_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<P256PrivateKey> {
+pub fn noxtls_p256_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<P256PrivateKey> {
     for _ in 0..64 {
         let scalar = drbg.generate(32, b"p256_private_scalar")?;
         let bytes: [u8; 32] = scalar
@@ -1131,5 +1131,5 @@ fn derive_signing_nonce(private_scalar: &BigUint, digest: &[u8; 32], counter: u3
     seed.extend_from_slice(&scalar_bytes);
     seed.extend_from_slice(digest);
     seed.extend_from_slice(&counter.to_be_bytes());
-    BigUint::from_be_bytes(&sha256(&seed))
+    BigUint::from_be_bytes(&noxtls_sha256(&seed))
 }

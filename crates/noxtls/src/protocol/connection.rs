@@ -16,27 +16,27 @@
 // CONTACT: info@argenox.com
 
 use super::dtls::{
-    encode_dtls12_handshake_fragments, encode_dtls_record_packet, open_dtls13_aes128gcm_record,
-    parse_dtls_record_packet, reassemble_dtls12_handshake_fragments, seal_dtls13_aes128gcm_record,
+    noxtls_encode_dtls12_handshake_fragments, noxtls_encode_dtls_record_packet, noxtls_open_dtls13_aes128gcm_record,
+    noxtls_parse_dtls_record_packet, noxtls_reassemble_dtls12_handshake_fragments, noxtls_seal_dtls13_aes128gcm_record,
     DtlsEpochReplayTracker, DtlsFlightRetransmitTracker, DtlsRecordHeader, DtlsReplayWindow,
     DtlsReplayWindowSnapshot,
 };
-use super::handshake::{encode_handshake_message, parse_handshake_message};
+use super::handshake::{noxtls_encode_handshake_message, noxtls_parse_handshake_message};
 use super::kdf::{
-    finished_hmac_for_hash, hash_bytes_for_algorithm, hkdf_expand_for_hash, hkdf_extract_for_hash,
-    hkdf_extract_with_salt_for_hash, tls13_expand_label_for_hash, HashAlgorithm,
+    noxtls_finished_hmac_for_hash, noxtls_hash_bytes_for_algorithm, noxtls_hkdf_expand_for_hash, noxtls_hkdf_extract_for_hash,
+    noxtls_hkdf_extract_with_salt_for_hash, noxtls_tls13_expand_label_for_hash, HashAlgorithm,
 };
 use super::keyshare::{
-    derive_deterministic_mlkem768_keypair, derive_deterministic_p256_private,
-    derive_deterministic_x25519_private, derive_tls13_mlkem768_shared_secret,
-    derive_tls13_p256_shared_secret, derive_tls13_x25519_shared_secret,
-    tls13_client_hello_offers_supported_key_exchange,
+    noxtls_derive_deterministic_mlkem768_keypair, noxtls_derive_deterministic_p256_private,
+    noxtls_derive_deterministic_x25519_private, noxtls_derive_tls13_mlkem768_shared_secret,
+    noxtls_derive_tls13_p256_shared_secret, noxtls_derive_tls13_x25519_shared_secret,
+    noxtls_tls13_client_hello_offers_supported_key_exchange,
 };
-use super::psk::{ticket_age_matches_policy, ResumptionTicket, TicketStore, TicketUsagePolicy};
+use super::psk::{noxtls_ticket_age_matches_policy, ResumptionTicket, TicketStore, TicketUsagePolicy};
 use super::record::{
-    build_record_nonce, decode_tls12_ciphertext_record, decode_tls13_ciphertext_record,
-    decode_tls13_inner_plaintext, encode_tls12_ciphertext_record, encode_tls13_ciphertext_record,
-    encode_tls13_inner_plaintext,
+    noxtls_build_record_nonce, noxtls_decode_tls12_ciphertext_record, noxtls_decode_tls13_ciphertext_record,
+    noxtls_decode_tls13_inner_plaintext, noxtls_encode_tls12_ciphertext_record, noxtls_encode_tls13_ciphertext_record,
+    noxtls_encode_tls13_inner_plaintext,
 };
 use super::state::{
     AlertDescription, AlertLevel, CipherSuite, HandshakeState, RecordContentType, TlsVersion,
@@ -46,16 +46,16 @@ use crate::internal_alloc::ToOwned;
 use crate::internal_alloc::{String, Vec};
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    aes_gcm_decrypt, aes_gcm_encrypt, chacha20_poly1305_decrypt, chacha20_poly1305_encrypt,
-    ed25519_public_key_from_subject_public_key_info, ed25519_verify, hkdf_extract_sha256,
-    mldsa_verify, p256_ecdsa_verify_sha256, rsassa_pss_sha256_verify, rsassa_pss_sha384_verify,
-    sha256, tls12_prf_sha256, tls12_prf_sha384, AesCipher, HmacDrbgSha256, MlDsaPublicKey,
+    noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, noxtls_chacha20_poly1305_decrypt, noxtls_chacha20_poly1305_encrypt,
+    noxtls_ed25519_public_key_from_subject_public_key_info, noxtls_ed25519_verify, noxtls_hkdf_extract_sha256,
+    noxtls_mldsa_verify, noxtls_p256_ecdsa_verify_sha256, noxtls_rsassa_pss_sha256_verify, noxtls_rsassa_pss_sha384_verify,
+    noxtls_sha256, noxtls_tls12_prf_sha256, noxtls_tls12_prf_sha384, AesCipher, HmacDrbgSha256, MlDsaPublicKey,
     MlKemPrivateKey, P256PrivateKey, P256PublicKey, RsaPublicKey, TlsTranscriptSha256,
     TlsTranscriptSha384, X25519PrivateKey, MLKEM_CIPHERTEXT_LEN,
 };
 use noxtls_x509::{
-    certificate_matches_hostname, parse_certificate, parse_der_node, parse_ecdsa_signature_der,
-    validate_certificate_chain,
+    noxtls_certificate_matches_hostname, noxtls_parse_certificate, noxtls_parse_der_node, noxtls_parse_ecdsa_signature_der,
+    noxtls_validate_certificate_chain,
 };
 
 /// Holds connection version, handshake state, and transcript bytes.
@@ -1351,7 +1351,7 @@ impl Connection {
             None,
             self.tls12_session_id.as_deref(),
         )?;
-        let msg = encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &client_hello_body);
+        let msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &client_hello_body);
         self.append_transcript(&msg);
         self.state = HandshakeState::ClientHelloSent;
         self.tls13_early_data_offered_in_client_hello = false;
@@ -1462,7 +1462,7 @@ impl Connection {
             Some(&placeholder_offer),
             self.tls12_session_id.as_deref(),
         )?;
-        let placeholder_msg = encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &placeholder_body);
+        let placeholder_msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &placeholder_body);
         let binder = self.compute_tls13_psk_binder(psk, &placeholder_msg)?;
         let final_offer = PskClientOffer {
             identities: vec![PskIdentityOffer {
@@ -1483,7 +1483,7 @@ impl Connection {
             Some(&final_offer),
             self.tls12_session_id.as_deref(),
         )?;
-        let msg = encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &final_body);
+        let msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &final_body);
         self.append_transcript(&msg);
         self.state = HandshakeState::ClientHelloSent;
         self.tls13_early_data_offered_in_client_hello = offer_early_data;
@@ -1624,7 +1624,7 @@ impl Connection {
             Some(&placeholder_offer),
             self.tls12_session_id.as_deref(),
         )?;
-        let placeholder_msg = encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &placeholder_body);
+        let placeholder_msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &placeholder_body);
         let mut binders = Vec::with_capacity(psks.len());
         for psk in &psks {
             binders.push(self.compute_tls13_psk_binder(psk, &placeholder_msg)?);
@@ -1646,7 +1646,7 @@ impl Connection {
             Some(&final_offer),
             self.tls12_session_id.as_deref(),
         )?;
-        let msg = encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &final_body);
+        let msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &final_body);
         self.append_transcript(&msg);
         self.state = HandshakeState::ClientHelloSent;
         self.tls13_early_data_offered_in_client_hello =
@@ -1922,7 +1922,7 @@ impl Connection {
                         .ok_or(Error::StateError(
                         "client x25519 key share must be available before server x25519 key share",
                     ))?;
-                    derive_tls13_x25519_shared_secret(private, &peer_key_share)?
+                    noxtls_derive_tls13_x25519_shared_secret(private, &peer_key_share)?
                 }
                 Tls13ServerKeyShareParsed::Secp256r1(peer_uncompressed) => {
                     let private = self.tls13_client_p256_private.as_ref().ok_or(
@@ -1930,7 +1930,7 @@ impl Connection {
                             "client secp256r1 key share must be available before server secp256r1 key share",
                         ),
                     )?;
-                    derive_tls13_p256_shared_secret(private, &peer_uncompressed)?
+                    noxtls_derive_tls13_p256_shared_secret(private, &peer_uncompressed)?
                 }
                 Tls13ServerKeyShareParsed::MlKem768(peer_key_share) => {
                     let private =
@@ -1939,7 +1939,7 @@ impl Connection {
                             .ok_or(Error::StateError(
                                 "client mlkem768 key share must be available before server mlkem768 key share",
                             ))?;
-                    derive_tls13_mlkem768_shared_secret(private, &peer_key_share)?
+                    noxtls_derive_tls13_mlkem768_shared_secret(private, &peer_key_share)?
                 }
                 Tls13ServerKeyShareParsed::X25519MlKem768Hybrid { x25519, mlkem768 } => {
                     let x25519_private = self
@@ -1948,7 +1948,7 @@ impl Connection {
                         .ok_or(Error::StateError(
                         "client x25519 key share must be available before server hybrid key share",
                     ))?;
-                    let x25519_shared = derive_tls13_x25519_shared_secret(x25519_private, &x25519)?;
+                    let x25519_shared = noxtls_derive_tls13_x25519_shared_secret(x25519_private, &x25519)?;
                     let mlkem_private =
                         self.tls13_client_mlkem768_private
                             .as_ref()
@@ -1956,7 +1956,7 @@ impl Connection {
                                 "client mlkem768 key share must be available before server hybrid key share",
                             ))?;
                     let mlkem_shared =
-                        derive_tls13_mlkem768_shared_secret(mlkem_private, &mlkem768)?;
+                        noxtls_derive_tls13_mlkem768_shared_secret(mlkem_private, &mlkem768)?;
                     combine_tls13_hybrid_shared_secret(&x25519_shared, &mlkem_shared)
                 }
             });
@@ -1999,7 +1999,7 @@ impl Connection {
         );
         body.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         body.extend_from_slice(&extensions);
-        Ok(encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
+        Ok(noxtls_encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
     }
 
     /// Parses and records a TLS 1.3 EncryptedExtensions handshake message.
@@ -2023,7 +2023,7 @@ impl Connection {
                 "encrypted extensions can only be processed after server hello",
             ));
         }
-        let (handshake_type, body) = parse_handshake_message(msg)?;
+        let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_ENCRYPTED_EXTENSIONS {
             return Err(Error::ParseFailure("invalid encrypted extensions type"));
         }
@@ -2111,7 +2111,7 @@ impl Connection {
         body.push(0x00); // certificate_request_context length
         body.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         body.extend_from_slice(&extensions);
-        encode_handshake_message(HANDSHAKE_CERTIFICATE_REQUEST, &body)
+        noxtls_encode_handshake_message(HANDSHAKE_CERTIFICATE_REQUEST, &body)
     }
 
     /// Parses and records a TLS 1.3 CertificateRequest handshake message.
@@ -2135,7 +2135,7 @@ impl Connection {
                 "certificate request can only be processed after encrypted extensions",
             ));
         }
-        let (handshake_type, body) = parse_handshake_message(msg)?;
+        let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_CERTIFICATE_REQUEST {
             return Err(Error::ParseFailure("invalid certificate request type"));
         }
@@ -2248,7 +2248,7 @@ impl Connection {
         }
         body.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         body.extend_from_slice(&extensions);
-        Ok(encode_handshake_message(
+        Ok(noxtls_encode_handshake_message(
             HANDSHAKE_ENCRYPTED_EXTENSIONS,
             &body,
         ))
@@ -2277,7 +2277,7 @@ impl Connection {
                 "certificate can only be processed after encrypted extensions/certificate request",
             ));
         }
-        let (handshake_type, body) = parse_handshake_message(msg)?;
+        let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_CERTIFICATE {
             return Err(Error::ParseFailure("invalid certificate type"));
         }
@@ -2346,7 +2346,7 @@ impl Connection {
         index += 1;
         self.recv_encrypted_extensions(&messages[index])?;
         index += 1;
-        let (next_type, _) = parse_handshake_message(&messages[index])?;
+        let (next_type, _) = noxtls_parse_handshake_message(&messages[index])?;
         if next_type == HANDSHAKE_CERTIFICATE_REQUEST {
             self.recv_certificate_request(&messages[index])?;
             index += 1;
@@ -2408,7 +2408,7 @@ impl Connection {
         let mut index = 0_usize;
         self.recv_server_hello(&messages[index])?;
         index += 1;
-        let (next_type, _body) = parse_handshake_message(&messages[index])?;
+        let (next_type, _body) = noxtls_parse_handshake_message(&messages[index])?;
         if next_type != HANDSHAKE_CERTIFICATE {
             return Err(Error::ParseFailure(
                 "tls12 server handshake flight expected certificate after server hello",
@@ -2418,7 +2418,7 @@ impl Connection {
         index += 1;
 
         while index < messages.len() {
-            let (message_type, _body) = parse_handshake_message(&messages[index])?;
+            let (message_type, _body) = noxtls_parse_handshake_message(&messages[index])?;
             if message_type == HANDSHAKE_SERVER_KEY_EXCHANGE {
                 self.recv_tls12_server_key_exchange(&messages[index])?;
                 index += 1;
@@ -2516,7 +2516,7 @@ impl Connection {
             ));
         }
         let mut index = 0_usize;
-        let (next_type, _body) = parse_handshake_message(&messages[index])?;
+        let (next_type, _body) = noxtls_parse_handshake_message(&messages[index])?;
         if next_type != HANDSHAKE_CLIENT_KEY_EXCHANGE {
             return Err(Error::ParseFailure(
                 "tls12 client handshake flight expected client key exchange first",
@@ -2526,7 +2526,7 @@ impl Connection {
         index += 1;
 
         if index < messages.len() {
-            let (message_type, _body) = parse_handshake_message(&messages[index])?;
+            let (message_type, _body) = noxtls_parse_handshake_message(&messages[index])?;
             if message_type == HANDSHAKE_CERTIFICATE_VERIFY {
                 self.recv_tls12_client_certificate_verify(&messages[index])?;
                 index += 1;
@@ -2693,7 +2693,7 @@ impl Connection {
                 "tls12 certificate can only be processed after server hello",
             ));
         }
-        let (message_type, body) = parse_handshake_message(msg)?;
+        let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_CERTIFICATE {
             return Err(Error::ParseFailure(
                 "invalid tls12 certificate message type",
@@ -2733,7 +2733,7 @@ impl Connection {
                 "tls12 server key exchange can only be processed after certificate",
             ));
         }
-        let (message_type, body) = parse_handshake_message(msg)?;
+        let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_SERVER_KEY_EXCHANGE {
             return Err(Error::ParseFailure(
                 "invalid tls12 server key exchange message type",
@@ -2769,7 +2769,7 @@ impl Connection {
                 "tls12 certificate request can only be processed after certificate",
             ));
         }
-        let (message_type, body) = parse_handshake_message(msg)?;
+        let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_CERTIFICATE_REQUEST {
             return Err(Error::ParseFailure(
                 "invalid tls12 certificate request message type",
@@ -2809,7 +2809,7 @@ impl Connection {
                 "tls12 server hello done can only be processed after certificate flight",
             ));
         }
-        let (message_type, body) = parse_handshake_message(msg)?;
+        let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_SERVER_HELLO_DONE {
             return Err(Error::ParseFailure(
                 "invalid tls12 server hello done message type",
@@ -2844,7 +2844,7 @@ impl Connection {
     /// This function does not panic.
     ///
     fn recv_tls12_client_key_exchange(&mut self, msg: &[u8]) -> Result<()> {
-        let (message_type, body) = parse_handshake_message(msg)?;
+        let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_CLIENT_KEY_EXCHANGE {
             return Err(Error::ParseFailure(
                 "invalid tls12 client key exchange message type",
@@ -2879,7 +2879,7 @@ impl Connection {
     /// This function does not panic.
     ///
     fn recv_tls12_client_certificate_verify(&mut self, msg: &[u8]) -> Result<()> {
-        let (message_type, body) = parse_handshake_message(msg)?;
+        let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_CERTIFICATE_VERIFY {
             return Err(Error::ParseFailure(
                 "invalid tls12 client certificate verify message type",
@@ -2910,7 +2910,7 @@ impl Connection {
     /// This function does not panic.
     ///
     fn recv_tls12_client_finished(&mut self, msg: &[u8]) -> Result<()> {
-        let (message_type, body) = parse_handshake_message(msg)?;
+        let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_FINISHED {
             return Err(Error::ParseFailure("invalid tls12 finished message type"));
         }
@@ -2977,7 +2977,7 @@ impl Connection {
         body.extend_from_slice(certificate_der);
         body.extend_from_slice(&(certificate_extensions.len() as u16).to_be_bytes());
         body.extend_from_slice(&certificate_extensions);
-        Ok(encode_handshake_message(HANDSHAKE_CERTIFICATE, &body))
+        Ok(noxtls_encode_handshake_message(HANDSHAKE_CERTIFICATE, &body))
     }
 
     /// Parses and records a TLS 1.3 CertificateVerify handshake message.
@@ -3001,7 +3001,7 @@ impl Connection {
                 "certificate verify can only be processed after certificate",
             ));
         }
-        let (handshake_type, body) = parse_handshake_message(msg)?;
+        let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_CERTIFICATE_VERIFY {
             return Err(Error::ParseFailure("invalid certificate verify type"));
         }
@@ -3063,7 +3063,7 @@ impl Connection {
         body.extend_from_slice(&signature_scheme.to_be_bytes());
         body.extend_from_slice(&(signature.len() as u16).to_be_bytes());
         body.extend_from_slice(signature);
-        Ok(encode_handshake_message(
+        Ok(noxtls_encode_handshake_message(
             HANDSHAKE_CERTIFICATE_VERIFY,
             &body,
         ))
@@ -3103,7 +3103,7 @@ impl Connection {
                 self.selected_cipher_suite,
             )?,
             TlsVersion::Tls12 | TlsVersion::Dtls12 => {
-                let prk = hkdf_extract_for_hash(hash_algorithm, &transcript_hash);
+                let prk = noxtls_hkdf_extract_for_hash(hash_algorithm, &transcript_hash);
                 tls12_prf_for_hash(
                     hash_algorithm,
                     &prk,
@@ -3113,8 +3113,8 @@ impl Connection {
                 )?
             }
             TlsVersion::Tls10 | TlsVersion::Tls11 => {
-                let prk = hkdf_extract_for_hash(hash_algorithm, &transcript_hash);
-                hkdf_expand_for_hash(hash_algorithm, &prk, b"handshake secret", 32)?
+                let prk = noxtls_hkdf_extract_for_hash(hash_algorithm, &transcript_hash);
+                noxtls_hkdf_expand_for_hash(hash_algorithm, &prk, b"handshake secret", 32)?
             }
         };
         self.install_traffic_keys(hash_algorithm, &secret_material, &transcript_hash)?;
@@ -3174,7 +3174,7 @@ impl Connection {
     /// This function does not panic.
     ///
     pub fn recv_finished_message(&mut self, msg: &[u8]) -> Result<()> {
-        let (handshake_type, body) = parse_handshake_message(msg)?;
+        let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_FINISHED {
             return Err(Error::ParseFailure("invalid finished type"));
         }
@@ -3208,7 +3208,7 @@ impl Connection {
     ///
     pub fn build_finished_message(&self) -> Result<Vec<u8>> {
         let verify_data = self.compute_finished_verify_data()?;
-        Ok(encode_handshake_message(HANDSHAKE_FINISHED, &verify_data))
+        Ok(noxtls_encode_handshake_message(HANDSHAKE_FINISHED, &verify_data))
     }
 
     /// Builds a minimal TLS 1.3 NewSessionTicket handshake message.
@@ -3249,7 +3249,7 @@ impl Connection {
         body.extend_from_slice(&(ticket.len() as u16).to_be_bytes());
         body.extend_from_slice(ticket);
         body.extend_from_slice(&0_u16.to_be_bytes()); // extensions length
-        Ok(encode_handshake_message(
+        Ok(noxtls_encode_handshake_message(
             HANDSHAKE_NEW_SESSION_TICKET,
             &body,
         ))
@@ -3276,7 +3276,7 @@ impl Connection {
                 "new session ticket requires finished handshake state",
             ));
         }
-        let (handshake_type, body) = parse_handshake_message(msg)?;
+        let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_NEW_SESSION_TICKET {
             return Err(Error::ParseFailure("invalid new session ticket type"));
         }
@@ -3298,7 +3298,7 @@ impl Connection {
     ///
     pub fn build_key_update_message(request_update: bool) -> Vec<u8> {
         let request = if request_update { 1_u8 } else { 0_u8 };
-        encode_handshake_message(HANDSHAKE_KEY_UPDATE, &[request])
+        noxtls_encode_handshake_message(HANDSHAKE_KEY_UPDATE, &[request])
     }
 
     /// Parses a TLS 1.3 KeyUpdate handshake message and rotates traffic keys.
@@ -3322,7 +3322,7 @@ impl Connection {
                 "key update requires finished handshake state",
             ));
         }
-        let (handshake_type, body) = parse_handshake_message(msg)?;
+        let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_KEY_UPDATE {
             return Err(Error::ParseFailure("invalid key update type"));
         }
@@ -3402,7 +3402,7 @@ impl Connection {
             return Err(Error::InvalidLength("server hello random must be 32 bytes"));
         }
         let body = encode_server_hello_body(version, suite, random)?;
-        Ok(encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
+        Ok(noxtls_encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
     }
 
     /// Builds a TLS 1.3 ServerHello with an explicit ECDHE `key_share` entry (interop/tests).
@@ -3440,7 +3440,7 @@ impl Connection {
             random,
             Some((named_group, key_exchange)),
         )?;
-        Ok(encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
+        Ok(noxtls_encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
     }
 
     /// Builds a TLS ServerHello with randomness sourced from HMAC-DRBG.
@@ -3674,14 +3674,14 @@ impl Connection {
             .ok_or(Error::StateError(
                 "tls13 application server traffic secret is not installed",
             ))?;
-        let next_client_secret = tls13_expand_label_for_hash(
+        let next_client_secret = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             client_secret,
             b"traffic upd",
             &[],
             hash_len,
         )?;
-        let next_server_secret = tls13_expand_label_for_hash(
+        let next_server_secret = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             server_secret,
             b"traffic upd",
@@ -3724,15 +3724,15 @@ impl Connection {
             ));
         }
         let initial_secret =
-            hkdf_extract_sha256(&TLS13_QUIC_V1_INITIAL_SALT, destination_connection_id).to_vec();
-        let client_initial_secret = tls13_expand_label_for_hash(
+            noxtls_hkdf_extract_sha256(&TLS13_QUIC_V1_INITIAL_SALT, destination_connection_id).to_vec();
+        let client_initial_secret = noxtls_tls13_expand_label_for_hash(
             HashAlgorithm::Sha256,
             &initial_secret,
             b"client in",
             &[],
             32,
         )?;
-        let server_initial_secret = tls13_expand_label_for_hash(
+        let server_initial_secret = noxtls_tls13_expand_label_for_hash(
             HashAlgorithm::Sha256,
             &initial_secret,
             b"server in",
@@ -3781,9 +3781,9 @@ impl Connection {
             ));
         }
         let key =
-            tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic key", &[], key_len)?;
-        let iv = tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic iv", &[], 12)?;
-        let header_protection_key = tls13_expand_label_for_hash(
+            noxtls_tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic key", &[], key_len)?;
+        let iv = noxtls_tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic iv", &[], 12)?;
+        let header_protection_key = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             traffic_secret,
             b"quic hp",
@@ -3880,9 +3880,9 @@ impl Connection {
                 "tls13 application server traffic secret is not installed",
             ))?;
         let client_next_application_secret =
-            tls13_expand_label_for_hash(hash_algorithm, client_secret, b"quic ku", &[], hash_len)?;
+            noxtls_tls13_expand_label_for_hash(hash_algorithm, client_secret, b"quic ku", &[], hash_len)?;
         let server_next_application_secret =
-            tls13_expand_label_for_hash(hash_algorithm, server_secret, b"quic ku", &[], hash_len)?;
+            noxtls_tls13_expand_label_for_hash(hash_algorithm, server_secret, b"quic ku", &[], hash_len)?;
         Ok(Tls13QuicNextTrafficSecrets {
             client_next_application_secret,
             server_next_application_secret,
@@ -3961,15 +3961,15 @@ impl Connection {
                 .ok_or(Error::StateError(
                     "tls13 exporter master secret is not installed",
                 ))?;
-        let context_hash = hash_bytes_for_algorithm(hash_algorithm, context);
-        let exporter_secret = tls13_expand_label_for_hash(
+        let context_hash = noxtls_hash_bytes_for_algorithm(hash_algorithm, context);
+        let exporter_secret = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             exporter_master,
             b"exporter",
             &context_hash,
             hash_len,
         )?;
-        tls13_expand_label_for_hash(hash_algorithm, &exporter_secret, label, &context_hash, len)
+        noxtls_tls13_expand_label_for_hash(hash_algorithm, &exporter_secret, label, &context_hash, len)
     }
 
     /// Returns TLS 1.3 resumption master secret snapshot for ticket/resumption plumbing.
@@ -4038,7 +4038,7 @@ impl Connection {
                 .ok_or(Error::StateError(
                     "tls13 resumption master secret is not installed",
                 ))?;
-        tls13_expand_label_for_hash(
+        noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             resumption_master,
             b"resumption",
@@ -4136,7 +4136,7 @@ impl Connection {
         }
         let nonce = drbg.generate(16, b"tls13_ticket_nonce")?;
         let hash_algorithm = self.negotiated_hash_algorithm();
-        let identity = tls13_expand_label_for_hash(
+        let identity = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             &self.tls13_resumption_master_secret()?,
             b"ticket",
@@ -4295,8 +4295,8 @@ impl Connection {
         }
         let hash_algorithm = self.negotiated_hash_algorithm();
         let hash_len = hash_algorithm.output_len();
-        let early_secret = hkdf_extract_for_hash(hash_algorithm, psk);
-        let binder_key = tls13_expand_label_for_hash(
+        let early_secret = noxtls_hkdf_extract_for_hash(hash_algorithm, psk);
+        let binder_key = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             &early_secret,
             b"res binder",
@@ -4304,9 +4304,9 @@ impl Connection {
             hash_len,
         )?;
         let finished_key =
-            tls13_expand_label_for_hash(hash_algorithm, &binder_key, b"finished", &[], hash_len)?;
-        let transcript_hash = hash_bytes_for_algorithm(hash_algorithm, truncated_client_hello);
-        Ok(finished_hmac_for_hash(
+            noxtls_tls13_expand_label_for_hash(hash_algorithm, &binder_key, b"finished", &[], hash_len)?;
+        let transcript_hash = noxtls_hash_bytes_for_algorithm(hash_algorithm, truncated_client_hello);
+        Ok(noxtls_finished_hmac_for_hash(
             hash_algorithm,
             &finished_key,
             &transcript_hash,
@@ -4442,7 +4442,7 @@ impl Connection {
         if ticket.consumed {
             return Ok(false);
         }
-        if !ticket_age_matches_policy(ticket, offered_age, current_time_ms, max_skew_ms) {
+        if !noxtls_ticket_age_matches_policy(ticket, offered_age, current_time_ms, max_skew_ms) {
             return Ok(false);
         }
         let psk = self.derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
@@ -4506,7 +4506,7 @@ impl Connection {
                 if ticket.consumed {
                     continue;
                 }
-                if !ticket_age_matches_policy(ticket, offered_age, current_time_ms, max_skew_ms) {
+                if !noxtls_ticket_age_matches_policy(ticket, offered_age, current_time_ms, max_skew_ms) {
                     continue;
                 }
                 let psk = self.derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
@@ -4737,22 +4737,22 @@ impl Connection {
         let iv = self
             .client_write_iv
             .ok_or(Error::StateError("client write iv is not installed"))?;
-        let nonce = build_record_nonce(&iv, self.client_sequence);
+        let nonce = noxtls_build_record_nonce(&iv, self.client_sequence);
         let (ciphertext, tag) = match suite {
             CipherSuite::TlsChacha20Poly1305Sha256 => {
-                chacha20_poly1305_encrypt(&key, &nonce, aad, plaintext)?
+                noxtls_chacha20_poly1305_encrypt(&key, &nonce, aad, plaintext)?
             }
             CipherSuite::TlsAes128GcmSha256 | CipherSuite::TlsAes256GcmSha384 => {
                 let key_len = suite.tls13_traffic_key_len().ok_or(Error::StateError(
                     "tls 1.3 aes suites must define traffic key length",
                 ))?;
                 let cipher = AesCipher::new(&key[..key_len])?;
-                aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
+                noxtls_aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
             }
             CipherSuite::TlsEcdheRsaWithAes128GcmSha256
             | CipherSuite::TlsEcdheRsaWithAes256GcmSha384 => {
                 let cipher = AesCipher::new(&key[..16])?;
-                aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
+                noxtls_aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
             }
         };
         let record = ProtectedRecord {
@@ -4813,15 +4813,15 @@ impl Connection {
             ));
         }
         let (key, iv) = self.derive_tls13_early_data_record_key_iv(psk)?;
-        let nonce = build_record_nonce(&iv, sequence);
+        let nonce = noxtls_build_record_nonce(&iv, sequence);
         let (ciphertext, tag) = if self.tls13_early_data_uses_chacha20_poly1305() {
             let key_32: [u8; 32] = key.as_slice().try_into().map_err(|_| {
                 Error::InvalidLength("tls13 early-data chacha key must be 32 bytes")
             })?;
-            chacha20_poly1305_encrypt(&key_32, &nonce, aad, plaintext)?
+            noxtls_chacha20_poly1305_encrypt(&key_32, &nonce, aad, plaintext)?
         } else {
             let cipher = AesCipher::new(&key)?;
-            aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
+            noxtls_aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
         };
         Ok(ProtectedRecord {
             sequence,
@@ -4919,12 +4919,12 @@ impl Connection {
             ));
         }
         let (key, iv) = self.derive_tls13_early_data_record_key_iv(psk)?;
-        let nonce = build_record_nonce(&iv, record.sequence);
+        let nonce = noxtls_build_record_nonce(&iv, record.sequence);
         let plaintext = if self.tls13_early_data_uses_chacha20_poly1305() {
             let key_32: [u8; 32] = key.as_slice().try_into().map_err(|_| {
                 Error::InvalidLength("tls13 early-data chacha key must be 32 bytes")
             })?;
-            chacha20_poly1305_decrypt(&key_32, &nonce, aad, &record.ciphertext, &record.tag)
+            noxtls_chacha20_poly1305_decrypt(&key_32, &nonce, aad, &record.ciphertext, &record.tag)
                 .map_err(|err| {
                     self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
                         .tls13_early_data_telemetry
@@ -4934,7 +4934,7 @@ impl Connection {
                 })?
         } else {
             let cipher = AesCipher::new(&key)?;
-            aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag).map_err(
+            noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag).map_err(
                 |err| {
                     self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
                         .tls13_early_data_telemetry
@@ -5006,7 +5006,7 @@ impl Connection {
         sequence: u64,
         padding_len: usize,
     ) -> Result<Vec<u8>> {
-        let inner = encode_tls13_inner_plaintext(content, content_type, padding_len);
+        let inner = noxtls_encode_tls13_inner_plaintext(content, content_type, padding_len);
         let expected_aad = self.build_tls13_record_aad(inner.len().saturating_add(16))?;
         let aad_to_use = if aad.is_empty() {
             &expected_aad[..]
@@ -5051,7 +5051,7 @@ impl Connection {
             aad
         };
         let inner = self.open_tls13_early_data_record(psk, &record, aad_to_use)?;
-        decode_tls13_inner_plaintext(&inner)
+        noxtls_decode_tls13_inner_plaintext(&inner)
     }
 
     /// Opens a sequence of TLSCiphertext packets as server-side 0-RTT application records.
@@ -5228,22 +5228,22 @@ impl Connection {
         let iv = self
             .server_write_iv
             .ok_or(Error::StateError("server write iv is not installed"))?;
-        let nonce = build_record_nonce(&iv, record.sequence);
+        let nonce = noxtls_build_record_nonce(&iv, record.sequence);
         let plaintext = match suite {
             CipherSuite::TlsChacha20Poly1305Sha256 => {
-                chacha20_poly1305_decrypt(&key, &nonce, aad, &record.ciphertext, &record.tag)?
+                noxtls_chacha20_poly1305_decrypt(&key, &nonce, aad, &record.ciphertext, &record.tag)?
             }
             CipherSuite::TlsAes128GcmSha256 | CipherSuite::TlsAes256GcmSha384 => {
                 let key_len = suite.tls13_traffic_key_len().ok_or(Error::StateError(
                     "tls 1.3 aes suites must define traffic key length",
                 ))?;
                 let cipher = AesCipher::new(&key[..key_len])?;
-                aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
+                noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
             }
             CipherSuite::TlsEcdheRsaWithAes128GcmSha256
             | CipherSuite::TlsEcdheRsaWithAes256GcmSha384 => {
                 let cipher = AesCipher::new(&key[..16])?;
-                aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
+                noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
             }
         };
         if plaintext.len() > self.max_record_plaintext_len {
@@ -5281,22 +5281,22 @@ impl Connection {
         let iv = self
             .client_write_iv
             .ok_or(Error::StateError("client write iv is not installed"))?;
-        let nonce = build_record_nonce(&iv, record.sequence);
+        let nonce = noxtls_build_record_nonce(&iv, record.sequence);
         let plaintext = match suite {
             CipherSuite::TlsChacha20Poly1305Sha256 => {
-                chacha20_poly1305_decrypt(&key, &nonce, aad, &record.ciphertext, &record.tag)?
+                noxtls_chacha20_poly1305_decrypt(&key, &nonce, aad, &record.ciphertext, &record.tag)?
             }
             CipherSuite::TlsAes128GcmSha256 | CipherSuite::TlsAes256GcmSha384 => {
                 let key_len = suite.tls13_traffic_key_len().ok_or(Error::StateError(
                     "tls 1.3 aes suites must define traffic key length",
                 ))?;
                 let cipher = AesCipher::new(&key[..key_len])?;
-                aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
+                noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
             }
             CipherSuite::TlsEcdheRsaWithAes128GcmSha256
             | CipherSuite::TlsEcdheRsaWithAes256GcmSha384 => {
                 let cipher = AesCipher::new(&key[..16])?;
-                aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
+                noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
             }
         };
         if plaintext.len() > self.max_record_plaintext_len {
@@ -5558,7 +5558,7 @@ impl Connection {
                 "dtls12 record packet builder requires DTLS1.2 connection",
             ));
         }
-        encode_dtls_record_packet(content_type, [0xFE, 0xFD], epoch, sequence, payload)
+        noxtls_encode_dtls_record_packet(content_type, [0xFE, 0xFD], epoch, sequence, payload)
     }
 
     /// Parses a DTLS1.2 datagram record packet into header fields and payload bytes.
@@ -5582,7 +5582,7 @@ impl Connection {
                 "dtls12 record packet parser requires DTLS1.2 connection",
             ));
         }
-        let (header, payload) = parse_dtls_record_packet(packet)?;
+        let (header, payload) = noxtls_parse_dtls_record_packet(packet)?;
         if header.version != [0xFE, 0xFD] {
             return Err(Error::ParseFailure("dtls record version mismatch"));
         }
@@ -5619,7 +5619,7 @@ impl Connection {
                 "dtls12 handshake fragmentation requires DTLS1.2 connection",
             ));
         }
-        encode_dtls12_handshake_fragments(handshake_type, message_seq, body, max_fragment_len)
+        noxtls_encode_dtls12_handshake_fragments(handshake_type, message_seq, body, max_fragment_len)
     }
 
     /// Reassembles encoded DTLS1.2 handshake fragments into one complete message.
@@ -5638,7 +5638,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn reassemble_dtls12_handshake_fragments(
+    pub fn noxtls_reassemble_dtls12_handshake_fragments(
         &self,
         fragments: &[Vec<u8>],
         max_message_len: usize,
@@ -5648,7 +5648,7 @@ impl Connection {
                 "dtls12 handshake reassembly requires DTLS1.2 connection",
             ));
         }
-        reassemble_dtls12_handshake_fragments(fragments, max_message_len)
+        noxtls_reassemble_dtls12_handshake_fragments(fragments, max_message_len)
     }
 
     /// Enables or disables DTLS1.2 anti-amplification transmit budget enforcement.
@@ -5769,7 +5769,7 @@ impl Connection {
                 "dtls12 cookie challenge requires initial client-hello phase",
             ));
         }
-        let (message_type, _body) = parse_handshake_message(client_hello)?;
+        let (message_type, _body) = noxtls_parse_handshake_message(client_hello)?;
         if message_type != HANDSHAKE_CLIENT_HELLO {
             return Err(Error::ParseFailure(
                 "dtls12 cookie exchange requires client hello message",
@@ -5820,7 +5820,7 @@ impl Connection {
                 "dtls12 client cookie must not be empty",
             ));
         }
-        let (message_type, _body) = parse_handshake_message(client_hello)?;
+        let (message_type, _body) = noxtls_parse_handshake_message(client_hello)?;
         if message_type != HANDSHAKE_CLIENT_HELLO {
             return Err(Error::ParseFailure(
                 "dtls12 cookie verification requires client hello message",
@@ -5869,7 +5869,7 @@ impl Connection {
                 "dtls12 handshake sequencing requires DTLS1.2 connection",
             ));
         }
-        let (message_type, _body) = parse_handshake_message(message)?;
+        let (message_type, _body) = noxtls_parse_handshake_message(message)?;
         match self.dtls12_handshake_phase {
             Dtls12HandshakePhase::AwaitingClientKeyExchange => {
                 if message_type != HANDSHAKE_CLIENT_KEY_EXCHANGE {
@@ -6013,7 +6013,7 @@ impl Connection {
         let iv = self
             .dtls13_client_write_iv
             .ok_or(Error::StateError("dtls13 client write iv is not installed"))?;
-        let packet = seal_dtls13_aes128gcm_record(
+        let packet = noxtls_seal_dtls13_aes128gcm_record(
             self.dtls13_outbound_epoch,
             self.dtls13_outbound_sequence,
             &key,
@@ -6047,7 +6047,7 @@ impl Connection {
     ) -> Result<Vec<u8>> {
         self.ensure_dtls13_mode()?;
         let packet = self.seal_dtls13_record(plaintext)?;
-        let (header, _payload) = parse_dtls_record_packet(&packet)?;
+        let (header, _payload) = noxtls_parse_dtls_record_packet(&packet)?;
         self.dtls_retransmit_tracker.track_outbound_with_schedule(
             header.epoch,
             header.sequence,
@@ -6175,7 +6175,7 @@ impl Connection {
         let iv = self
             .dtls13_server_write_iv
             .ok_or(Error::StateError("dtls13 server write iv is not installed"))?;
-        open_dtls13_aes128gcm_record(packet, &key, &iv, &mut self.dtls13_inbound_replay_tracker)
+        noxtls_open_dtls13_aes128gcm_record(packet, &key, &iv, &mut self.dtls13_inbound_replay_tracker)
     }
 
     /// Opens one DTLS1.3 protected record using installed client traffic keys.
@@ -6206,7 +6206,7 @@ impl Connection {
         let iv = self
             .dtls13_client_write_iv
             .ok_or(Error::StateError("dtls13 client write iv is not installed"))?;
-        open_dtls13_aes128gcm_record(
+        noxtls_open_dtls13_aes128gcm_record(
             packet,
             &key,
             &iv,
@@ -6259,7 +6259,7 @@ impl Connection {
         let mut index = 0_usize;
         self.recv_encrypted_extensions(&messages[index])?;
         index += 1;
-        let (next_type, _) = parse_handshake_message(&messages[index])?;
+        let (next_type, _) = noxtls_parse_handshake_message(&messages[index])?;
         if next_type == HANDSHAKE_CERTIFICATE_REQUEST {
             self.recv_certificate_request(&messages[index])?;
             index += 1;
@@ -6341,7 +6341,7 @@ impl Connection {
         let mut message_types = Vec::with_capacity(packets.len());
         for packet in packets {
             let (_header, plaintext) = self.open_dtls13_client_record(packet)?;
-            let (handshake_type, _body) = parse_handshake_message(&plaintext)?;
+            let (handshake_type, _body) = noxtls_parse_handshake_message(&plaintext)?;
             message_types.push(handshake_type);
         }
         if message_types == [HANDSHAKE_FINISHED] {
@@ -6461,7 +6461,7 @@ impl Connection {
             .dtls13_client_write_iv
             .ok_or(Error::StateError("dtls13 client write iv is not installed"))?;
         let mut replay_tracker = DtlsEpochReplayTracker::new();
-        open_dtls13_aes128gcm_record(packet, &key, &iv, &mut replay_tracker)
+        noxtls_open_dtls13_aes128gcm_record(packet, &key, &iv, &mut replay_tracker)
     }
 
     /// Marks a tracked DTLS outbound packet as acknowledged using parsed record header fields.
@@ -6481,7 +6481,7 @@ impl Connection {
     ///
     pub fn mark_dtls13_record_acked_from_packet(&mut self, packet: &[u8]) -> Result<bool> {
         self.ensure_dtls13_mode()?;
-        let (header, _payload) = parse_dtls_record_packet(packet)?;
+        let (header, _payload) = noxtls_parse_dtls_record_packet(packet)?;
         if header.version != [0xFE, 0xFD] {
             return Err(Error::ParseFailure("dtls record version mismatch"));
         }
@@ -6725,7 +6725,7 @@ impl Connection {
         let mut material = Vec::with_capacity(cookie_secret.len() + client_hello.len());
         material.extend_from_slice(cookie_secret);
         material.extend_from_slice(client_hello);
-        let digest = hash_bytes_for_algorithm(HashAlgorithm::Sha256, &material);
+        let digest = noxtls_hash_bytes_for_algorithm(HashAlgorithm::Sha256, &material);
         let cookie_len = digest.len().min(16);
         Ok(digest[..cookie_len].to_vec())
     }
@@ -6762,7 +6762,7 @@ impl Connection {
         body.extend_from_slice(&[0xFE, 0xFD]);
         body.push(cookie.len() as u8);
         body.extend_from_slice(cookie);
-        Ok(encode_handshake_message(
+        Ok(noxtls_encode_handshake_message(
             HANDSHAKE_HELLO_VERIFY_REQUEST,
             &body,
         ))
@@ -6788,7 +6788,7 @@ impl Connection {
     /// This function does not panic.
     ///
     fn parse_dtls_packet_key(&self, packet: &[u8]) -> Result<(u16, u64)> {
-        let (header, _payload) = parse_dtls_record_packet(packet)?;
+        let (header, _payload) = noxtls_parse_dtls_record_packet(packet)?;
         if header.version != [0xFE, 0xFD] {
             return Err(Error::ParseFailure("dtls record version mismatch"));
         }
@@ -6868,7 +6868,7 @@ impl Connection {
         }
         let mut message_types = Vec::with_capacity(messages.len());
         for message in messages {
-            let (handshake_type, _body) = parse_handshake_message(message)?;
+            let (handshake_type, _body) = noxtls_parse_handshake_message(message)?;
             message_types.push(handshake_type);
         }
         if message_types == [HANDSHAKE_FINISHED] {
@@ -6980,7 +6980,7 @@ impl Connection {
         let mut payload = Vec::with_capacity(record.ciphertext.len() + record.tag.len());
         payload.extend_from_slice(&record.ciphertext);
         payload.extend_from_slice(&record.tag);
-        encode_tls12_ciphertext_record(
+        noxtls_encode_tls12_ciphertext_record(
             content_type.to_u8(),
             legacy_wire_version(self.version),
             &payload,
@@ -7012,7 +7012,7 @@ impl Connection {
         packet: &[u8],
         sequence: u64,
     ) -> Result<(ProtectedRecord, RecordContentType)> {
-        let (content_type_u8, version, payload) = decode_tls12_ciphertext_record(packet)?;
+        let (content_type_u8, version, payload) = noxtls_decode_tls12_ciphertext_record(packet)?;
         let strict_version = legacy_wire_version(self.version);
         let legacy_compat_ok = self.tls12_allow_legacy_record_versions
             && (version == [0x03, 0x01] || version == [0x03, 0x02]);
@@ -7062,7 +7062,7 @@ impl Connection {
         let mut payload = Vec::with_capacity(record.ciphertext.len() + record.tag.len());
         payload.extend_from_slice(&record.ciphertext);
         payload.extend_from_slice(&record.tag);
-        encode_tls13_ciphertext_record(&payload)
+        noxtls_encode_tls13_ciphertext_record(&payload)
     }
 
     /// Decodes one TLS 1.3 TLSCiphertext packet into a protected record at one sequence.
@@ -7086,7 +7086,7 @@ impl Connection {
     /// This function does not panic.
     ///
     fn decode_tls13_record_packet(&self, packet: &[u8], sequence: u64) -> Result<ProtectedRecord> {
-        let payload = decode_tls13_ciphertext_record(packet)?;
+        let payload = noxtls_decode_tls13_ciphertext_record(packet)?;
         let tag_offset = payload.len() - 16;
         let mut tag = [0_u8; 16];
         tag.copy_from_slice(&payload[tag_offset..]);
@@ -7548,7 +7548,7 @@ impl Connection {
                 "tls13 inner plaintext records require TLS 1.3 connection",
             ));
         }
-        let inner = encode_tls13_inner_plaintext(content, content_type, padding_len);
+        let inner = noxtls_encode_tls13_inner_plaintext(content, content_type, padding_len);
         self.seal_record(&inner, aad)
     }
 
@@ -7579,7 +7579,7 @@ impl Connection {
             ));
         }
         let inner = self.open_record(record, aad)?;
-        decode_tls13_inner_plaintext(&inner)
+        noxtls_decode_tls13_inner_plaintext(&inner)
     }
 
     /// Opens a locally-sealed TLS 1.3 record and decodes TLSInnerPlaintext for tests.
@@ -7609,7 +7609,7 @@ impl Connection {
             ));
         }
         let inner = self.open_own_record(record, aad)?;
-        decode_tls13_inner_plaintext(&inner)
+        noxtls_decode_tls13_inner_plaintext(&inner)
     }
 
     /// Seals one TLS 1.3 wire record packet from TLSInnerPlaintext content.
@@ -8043,7 +8043,7 @@ impl Connection {
         let requested_group = self.tls13_hrr_requested_group.ok_or(Error::ParseFailure(
             "hello retry request is missing requested key_share group",
         ))?;
-        if !super::keyshare::tls13_key_share_group_supported(requested_group) {
+        if !super::keyshare::noxtls_tls13_key_share_group_supported(requested_group) {
             return Err(Error::StateError(
                 "hello retry request requested unsupported key_share group",
             ));
@@ -8073,9 +8073,9 @@ impl Connection {
     fn derive_tls13_early_data_record_key_iv(&self, psk: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
         let hash_algorithm = self.negotiated_hash_algorithm();
         let hash_len = hash_algorithm.output_len();
-        let transcript_hash = hash_bytes_for_algorithm(hash_algorithm, &self.transcript);
-        let early_secret = hkdf_extract_for_hash(hash_algorithm, psk);
-        let client_early_traffic_secret = tls13_expand_label_for_hash(
+        let transcript_hash = noxtls_hash_bytes_for_algorithm(hash_algorithm, &self.transcript);
+        let early_secret = noxtls_hkdf_extract_for_hash(hash_algorithm, psk);
+        let client_early_traffic_secret = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             &early_secret,
             b"c e traffic",
@@ -8083,14 +8083,14 @@ impl Connection {
             hash_len,
         )?;
         let key_len = self.tls13_early_data_key_len();
-        let key = tls13_expand_label_for_hash(
+        let key = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             &client_early_traffic_secret,
             b"key",
             &[],
             key_len,
         )?;
-        let iv: [u8; 12] = tls13_expand_label_for_hash(
+        let iv: [u8; 12] = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             &client_early_traffic_secret,
             b"iv",
@@ -8170,10 +8170,10 @@ impl Connection {
                 .ok_or(Error::StateError(
                     "tls13 server validation time is not configured",
                 ))?;
-        let leaf = parse_certificate(&certificates[0])
+        let leaf = noxtls_parse_certificate(&certificates[0])
             .map_err(|_| Error::ParseFailure("failed to parse server leaf certificate"))?;
         if let Some(expected_hostname) = self.tls13_server_expected_hostname.as_deref() {
-            if !certificate_matches_hostname(&leaf, expected_hostname) {
+            if !noxtls_certificate_matches_hostname(&leaf, expected_hostname) {
                 return Err(Error::CryptoFailure(
                     "server certificate hostname validation failed",
                 ));
@@ -8182,13 +8182,13 @@ impl Connection {
 
         let mut parsed_intermediates = Vec::new();
         for der in &certificates[1..] {
-            let parsed = parse_certificate(der).map_err(|_| {
+            let parsed = noxtls_parse_certificate(der).map_err(|_| {
                 Error::ParseFailure("failed to parse server intermediate certificate")
             })?;
             parsed_intermediates.push(parsed);
         }
         for der in &self.tls13_server_intermediates_der {
-            let parsed = parse_certificate(der).map_err(|_| {
+            let parsed = noxtls_parse_certificate(der).map_err(|_| {
                 Error::ParseFailure("failed to parse configured server intermediate certificate")
             })?;
             parsed_intermediates.push(parsed);
@@ -8196,13 +8196,13 @@ impl Connection {
 
         let mut parsed_anchors = Vec::new();
         for der in &self.tls13_server_trust_anchors_der {
-            let parsed = parse_certificate(der).map_err(|_| {
+            let parsed = noxtls_parse_certificate(der).map_err(|_| {
                 Error::ParseFailure("failed to parse configured trust anchor certificate")
             })?;
             parsed_anchors.push(parsed);
         }
 
-        validate_certificate_chain(
+        noxtls_validate_certificate_chain(
             &leaf,
             &parsed_intermediates,
             &parsed_anchors,
@@ -8249,14 +8249,14 @@ impl Connection {
         match signature_scheme {
             TLS13_SIGALG_ECDSA_SECP256R1_SHA256 => {
                 let public_key = P256PublicKey::from_uncompressed(leaf_spki)?;
-                let (r, s) = parse_ecdsa_signature_der(signature)?;
-                p256_ecdsa_verify_sha256(&public_key, &signed_message, &r, &s).map_err(|_| {
+                let (r, s) = noxtls_parse_ecdsa_signature_der(signature)?;
+                noxtls_p256_ecdsa_verify_sha256(&public_key, &signed_message, &r, &s).map_err(|_| {
                     Error::CryptoFailure("tls13 certificate verify signature validation failed")
                 })
             }
             TLS13_SIGALG_RSA_PSS_RSAE_SHA256 => {
                 let public_key = parse_rsa_public_key_der(leaf_spki)?;
-                rsassa_pss_sha256_verify(&public_key, &signed_message, signature, 32).map_err(
+                noxtls_rsassa_pss_sha256_verify(&public_key, &signed_message, signature, 32).map_err(
                     |_| {
                         Error::CryptoFailure("tls13 certificate verify signature validation failed")
                     },
@@ -8264,15 +8264,15 @@ impl Connection {
             }
             TLS13_SIGALG_RSA_PSS_RSAE_SHA384 => {
                 let public_key = parse_rsa_public_key_der(leaf_spki)?;
-                rsassa_pss_sha384_verify(&public_key, &signed_message, signature, 48).map_err(
+                noxtls_rsassa_pss_sha384_verify(&public_key, &signed_message, signature, 48).map_err(
                     |_| {
                         Error::CryptoFailure("tls13 certificate verify signature validation failed")
                     },
                 )
             }
             TLS13_SIGALG_ED25519 => {
-                let public_key = ed25519_public_key_from_subject_public_key_info(leaf_spki)?;
-                ed25519_verify(&public_key, &signed_message, signature).map_err(|_| {
+                let public_key = noxtls_ed25519_public_key_from_subject_public_key_info(leaf_spki)?;
+                noxtls_ed25519_verify(&public_key, &signed_message, signature).map_err(|_| {
                     Error::CryptoFailure("tls13 certificate verify signature validation failed")
                 })
             }
@@ -8280,7 +8280,7 @@ impl Connection {
                 let public_key = MlDsaPublicKey::from_bytes(leaf_spki).map_err(|_| {
                     Error::ParseFailure("failed to parse mldsa server public key bytes")
                 })?;
-                mldsa_verify(&public_key, &signed_message, signature).map_err(|_| {
+                noxtls_mldsa_verify(&public_key, &signed_message, signature).map_err(|_| {
                     Error::CryptoFailure("tls13 certificate verify signature validation failed")
                 })
             }
@@ -8368,14 +8368,14 @@ impl Connection {
         let (client_key, server_key, client_iv, server_iv) = match self.version {
             TlsVersion::Tls13 | TlsVersion::Dtls13 => {
                 let hash_len = hash_algorithm.output_len();
-                let client_hs_traffic = tls13_expand_label_for_hash(
+                let client_hs_traffic = noxtls_tls13_expand_label_for_hash(
                     hash_algorithm,
                     secret,
                     b"c hs traffic",
                     transcript_hash,
                     hash_len,
                 )?;
-                let server_hs_traffic = tls13_expand_label_for_hash(
+                let server_hs_traffic = noxtls_tls13_expand_label_for_hash(
                     hash_algorithm,
                     secret,
                     b"s hs traffic",
@@ -8393,11 +8393,11 @@ impl Connection {
             }
             TlsVersion::Tls10 | TlsVersion::Tls11 | TlsVersion::Tls12 | TlsVersion::Dtls12 => {
                 let client_key_16: [u8; 16] =
-                    hkdf_expand_for_hash(hash_algorithm, secret, b"client_write_key", 16)?
+                    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, b"client_write_key", 16)?
                         .try_into()
                         .expect("hkdf output length should be 16");
                 let server_key_16: [u8; 16] =
-                    hkdf_expand_for_hash(hash_algorithm, secret, b"server_write_key", 16)?
+                    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, b"server_write_key", 16)?
                         .try_into()
                         .expect("hkdf output length should be 16");
                 let mut client_key = [0_u8; 32];
@@ -8405,11 +8405,11 @@ impl Connection {
                 client_key[..16].copy_from_slice(&client_key_16);
                 server_key[..16].copy_from_slice(&server_key_16);
                 let client_iv: [u8; 12] =
-                    hkdf_expand_for_hash(hash_algorithm, secret, b"client_write_iv", 12)?
+                    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, b"client_write_iv", 12)?
                         .try_into()
                         .expect("hkdf output length should be 12");
                 let server_iv: [u8; 12] =
-                    hkdf_expand_for_hash(hash_algorithm, secret, b"server_write_iv", 12)?
+                    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, b"server_write_iv", 12)?
                         .try_into()
                         .expect("hkdf output length should be 12");
                 (client_key, server_key, client_iv, server_iv)
@@ -8451,7 +8451,7 @@ impl Connection {
         let handshake_secret = self.handshake_secret.as_ref().ok_or(Error::StateError(
             "handshake secret must be available before tls13 application traffic keys",
         ))?;
-        let derived = tls13_expand_label_for_hash(
+        let derived = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             handshake_secret,
             b"derived",
@@ -8459,15 +8459,15 @@ impl Connection {
             hash_len,
         )?;
         let zero_ikm = vec![0_u8; hash_len];
-        let master_secret = hkdf_extract_with_salt_for_hash(hash_algorithm, &derived, &zero_ikm);
-        let client_app_secret = tls13_expand_label_for_hash(
+        let master_secret = noxtls_hkdf_extract_with_salt_for_hash(hash_algorithm, &derived, &zero_ikm);
+        let client_app_secret = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             &master_secret,
             b"c ap traffic",
             &transcript_hash,
             hash_len,
         )?;
-        let server_app_secret = tls13_expand_label_for_hash(
+        let server_app_secret = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             &master_secret,
             b"s ap traffic",
@@ -8520,14 +8520,14 @@ impl Connection {
         transcript_hash: &[u8],
     ) -> Result<()> {
         let hash_len = hash_algorithm.output_len();
-        self.tls13_exporter_master_secret = Some(tls13_expand_label_for_hash(
+        self.tls13_exporter_master_secret = Some(noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             master_secret,
             b"exp master",
             transcript_hash,
             hash_len,
         )?);
-        self.tls13_resumption_master_secret = Some(tls13_expand_label_for_hash(
+        self.tls13_resumption_master_secret = Some(noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             master_secret,
             b"res master",
@@ -8570,14 +8570,14 @@ impl Connection {
         let key_len = suite.tls13_traffic_key_len().ok_or(Error::StateError(
             "tls 1.3 record protection requires a tls 1.3 AEAD cipher suite",
         ))?;
-        let client_key_material = tls13_expand_label_for_hash(
+        let client_key_material = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             client_traffic_secret,
             b"key",
             &[],
             key_len,
         )?;
-        let server_key_material = tls13_expand_label_for_hash(
+        let server_key_material = noxtls_tls13_expand_label_for_hash(
             hash_algorithm,
             server_traffic_secret,
             b"key",
@@ -8589,11 +8589,11 @@ impl Connection {
         client_key[..key_len].copy_from_slice(&client_key_material);
         server_key[..key_len].copy_from_slice(&server_key_material);
         let client_iv: [u8; 12] =
-            tls13_expand_label_for_hash(hash_algorithm, client_traffic_secret, b"iv", &[], 12)?
+            noxtls_tls13_expand_label_for_hash(hash_algorithm, client_traffic_secret, b"iv", &[], 12)?
                 .try_into()
                 .expect("tls13 iv length should be 12");
         let server_iv: [u8; 12] =
-            tls13_expand_label_for_hash(hash_algorithm, server_traffic_secret, b"iv", &[], 12)?
+            noxtls_tls13_expand_label_for_hash(hash_algorithm, server_traffic_secret, b"iv", &[], 12)?
                 .try_into()
                 .expect("tls13 iv length should be 12");
         self.client_write_key = Some(client_key);
@@ -8664,7 +8664,7 @@ impl Connection {
         self.tls13_finished_key = match self.version {
             TlsVersion::Tls13 | TlsVersion::Dtls13 => {
                 let finished_len = hash_algorithm.output_len();
-                Some(hkdf_expand_for_hash(
+                Some(noxtls_hkdf_expand_for_hash(
                     hash_algorithm,
                     prk,
                     b"tls13 finished",
@@ -8713,13 +8713,13 @@ impl Connection {
                 let key = self.tls13_finished_key.as_ref().ok_or(Error::StateError(
                     "tls13 finished key must be available before finished",
                 ))?;
-                Ok(finished_hmac_for_hash(
+                Ok(noxtls_finished_hmac_for_hash(
                     self.negotiated_hash_algorithm(),
                     key,
                     &hash,
                 ))
             }
-            TlsVersion::Tls10 | TlsVersion::Tls11 => Ok(finished_hmac_for_hash(
+            TlsVersion::Tls10 | TlsVersion::Tls11 => Ok(noxtls_finished_hmac_for_hash(
                 self.negotiated_hash_algorithm(),
                 b"finished",
                 &hash,
@@ -8795,16 +8795,16 @@ impl Connection {
         if !self.version.uses_tls13_handshake_semantics() {
             return Ok(Tls13ClientPublicKeyShares::default());
         }
-        let x25519_private = derive_deterministic_x25519_private(random, b"tls13 client x25519");
+        let x25519_private = noxtls_derive_deterministic_x25519_private(random, b"tls13 client x25519");
         let x25519_public = x25519_private.clone().public_key().bytes;
         self.tls13_client_x25519_private = Some(x25519_private);
 
-        let p256_private = derive_deterministic_p256_private(random, b"tls13 client secp256r1")?;
+        let p256_private = noxtls_derive_deterministic_p256_private(random, b"tls13 client secp256r1")?;
         let p256_public = p256_private.public_key()?.to_uncompressed()?;
         self.tls13_client_p256_private = Some(p256_private);
 
         let (mlkem_private, mlkem_public) =
-            derive_deterministic_mlkem768_keypair(random, b"tls13 client mlkem768")?;
+            noxtls_derive_deterministic_mlkem768_keypair(random, b"tls13 client mlkem768")?;
         self.tls13_client_mlkem768_private = Some(mlkem_private);
         let mlkem_public = mlkem_public.as_bytes().to_vec();
 
@@ -8856,7 +8856,7 @@ impl Connection {
         } else {
             self.transcript_hash = TranscriptHashState::for_version(self.version);
         }
-        let message_hash = encode_handshake_message(0xFE, &prior_hash);
+        let message_hash = noxtls_encode_handshake_message(0xFE, &prior_hash);
         self.append_transcript(&message_hash);
     }
 
@@ -8908,15 +8908,15 @@ fn derive_tls13_handshake_secret(
 ) -> Result<Vec<u8>> {
     let hash_len = hash_algorithm.output_len();
     let zero_ikm = vec![0_u8; hash_len];
-    let early_secret = hkdf_extract_for_hash(hash_algorithm, &zero_ikm);
+    let early_secret = noxtls_hkdf_extract_for_hash(hash_algorithm, &zero_ikm);
     let derived =
-        tls13_expand_label_for_hash(hash_algorithm, &early_secret, b"derived", &[], hash_len)?;
+        noxtls_tls13_expand_label_for_hash(hash_algorithm, &early_secret, b"derived", &[], hash_len)?;
     let mut handshake_secret =
-        hkdf_extract_with_salt_for_hash(hash_algorithm, &derived, shared_secret);
+        noxtls_hkdf_extract_with_salt_for_hash(hash_algorithm, &derived, shared_secret);
     if let Some(selected) = suite {
         if selected.hash_algorithm() != hash_algorithm {
             handshake_secret =
-                hkdf_extract_with_salt_for_hash(selected.hash_algorithm(), &derived, shared_secret);
+                noxtls_hkdf_extract_with_salt_for_hash(selected.hash_algorithm(), &derived, shared_secret);
         }
     }
     Ok(handshake_secret)
@@ -8938,7 +8938,7 @@ fn derive_tls13_handshake_secret(
 /// This function does not panic.
 ///
 fn combine_tls13_hybrid_shared_secret(classical: &[u8; 32], pq: &[u8; 32]) -> [u8; 32] {
-    sha256(&[classical.as_slice(), pq.as_slice()].concat())
+    noxtls_sha256(&[classical.as_slice(), pq.as_slice()].concat())
 }
 
 /// Routes TLS 1.2 PRF derivation through suite-selected hash policy.
@@ -8971,8 +8971,8 @@ fn tls12_prf_for_hash(
     len: usize,
 ) -> Result<Vec<u8>> {
     match hash_algorithm {
-        HashAlgorithm::Sha256 => tls12_prf_sha256(secret, label, seed, len),
-        HashAlgorithm::Sha384 => tls12_prf_sha384(secret, label, seed, len),
+        HashAlgorithm::Sha256 => noxtls_tls12_prf_sha256(secret, label, seed, len),
+        HashAlgorithm::Sha384 => noxtls_tls12_prf_sha384(secret, label, seed, len),
     }
 }
 
@@ -9050,7 +9050,7 @@ fn extract_first_psk_binder_from_client_hello(client_hello: &[u8]) -> Result<Vec
 /// This function does not panic.
 ///
 fn zero_client_hello_psk_binders(client_hello: &[u8]) -> Result<Vec<u8>> {
-    let (handshake_type, body) = parse_handshake_message(client_hello)?;
+    let (handshake_type, body) = noxtls_parse_handshake_message(client_hello)?;
     if handshake_type != HANDSHAKE_CLIENT_HELLO {
         return Err(Error::ParseFailure("invalid client hello type"));
     }
@@ -9359,7 +9359,7 @@ fn encode_server_hello_body_with_key_share(
             key_share.extend_from_slice(&(bytes.len() as u16).to_be_bytes());
             key_share.extend_from_slice(bytes);
         } else {
-            let private = derive_deterministic_x25519_private(random, b"tls13 server x25519");
+            let private = noxtls_derive_deterministic_x25519_private(random, b"tls13 server x25519");
             let public = private.public_key().bytes;
             key_share.extend_from_slice(&TLS13_KEY_SHARE_GROUP_X25519.to_be_bytes());
             key_share.extend_from_slice(&32_u16.to_be_bytes());
@@ -9403,7 +9403,7 @@ fn parse_server_hello(msg: &[u8]) -> Result<ParsedServerHello> {
         });
     }
 
-    let (handshake_type, body) = parse_handshake_message(msg)?;
+    let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
     if handshake_type != HANDSHAKE_SERVER_HELLO {
         return Err(Error::ParseFailure("invalid server hello type"));
     }
@@ -9628,7 +9628,7 @@ fn is_tls13_suite(suite: CipherSuite) -> bool {
 /// This function does not panic.
 ///
 fn parse_client_hello_info(msg: &[u8]) -> Result<ClientHelloInfo> {
-    let (handshake_type, body) = parse_handshake_message(msg)?;
+    let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
     if handshake_type != HANDSHAKE_CLIENT_HELLO {
         return Err(Error::ParseFailure("invalid client hello type"));
     }
@@ -9797,7 +9797,7 @@ fn suite_allowed_by_extensions(
                     | CipherSuite::TlsAes256GcmSha384
                     | CipherSuite::TlsChacha20Poly1305Sha256
             ) {
-                return tls13_client_hello_offers_supported_key_exchange(
+                return noxtls_tls13_client_hello_offers_supported_key_exchange(
                     &extensions.supported_versions,
                     &extensions.key_share_groups,
                     &extensions.signature_algorithms,
@@ -11234,16 +11234,16 @@ fn build_tls13_server_certificate_verify_message(transcript_hash: &[u8]) -> Vec<
 /// This function does not panic.
 ///
 fn parse_rsa_public_key_der(public_key_der: &[u8]) -> Result<RsaPublicKey> {
-    let (rsa_seq, rem) = parse_der_node(public_key_der)
+    let (rsa_seq, rem) = noxtls_parse_der_node(public_key_der)
         .map_err(|_| Error::ParseFailure("failed to parse server RSA public key"))?;
     if rsa_seq.tag != 0x30 || !rem.is_empty() {
         return Err(Error::ParseFailure(
             "invalid server RSA public key sequence",
         ));
     }
-    let (modulus_node, rest) = parse_der_node(rsa_seq.body)
+    let (modulus_node, rest) = noxtls_parse_der_node(rsa_seq.body)
         .map_err(|_| Error::ParseFailure("failed to parse server RSA modulus"))?;
-    let (exponent_node, tail) = parse_der_node(rest)
+    let (exponent_node, tail) = noxtls_parse_der_node(rest)
         .map_err(|_| Error::ParseFailure("failed to parse server RSA exponent"))?;
     if modulus_node.tag != 0x02 || exponent_node.tag != 0x02 || !tail.is_empty() {
         return Err(Error::ParseFailure(

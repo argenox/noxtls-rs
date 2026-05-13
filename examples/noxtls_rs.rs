@@ -24,20 +24,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use noxtls_core::{Error, Result};
 #[cfg(feature = "hazardous-legacy-crypto")]
-use noxtls_crypto::x448_generate_private_key_auto;
+use noxtls_crypto::noxtls_x448_generate_private_key_auto;
 use noxtls_crypto::{
-    aes_gcm_decrypt, aes_gcm_encrypt, decode_hex, sha1, sha256, sha384, sha3_256, sha3_384,
-    sha3_512, sha512, x25519_generate_private_key_auto, AesCipher, HmacDrbgSha256, P256PrivateKey,
+    noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, noxtls_decode_hex, noxtls_sha1, noxtls_sha256, noxtls_sha384, noxtls_sha3_256, noxtls_sha3_384,
+    noxtls_sha3_512, noxtls_sha512, noxtls_x25519_generate_private_key_auto, AesCipher, HmacDrbgSha256, P256PrivateKey,
     P256PublicKey,
 };
 #[cfg(feature = "hazardous-legacy-crypto")]
-use noxtls_x509::x448_public_key_to_pem_spki;
+use noxtls_x509::noxtls_x448_public_key_to_pem_spki;
 use noxtls_x509::{
-    certificate_der_to_pem, certificate_matches_hostname, certificate_pem_to_der, der_to_pem,
-    p256_public_key_to_pem_spki, parse_certificate, parse_der_node,
-    parse_pkcs8_private_key_info_der, private_key_der_to_pem_pkcs8, private_key_pem_to_der_pkcs8,
-    validate_certificate_chain, write_csr_p256_sha256, write_self_signed_certificate_p256_sha256,
-    x25519_public_key_to_pem_spki,
+    noxtls_certificate_der_to_pem, noxtls_certificate_matches_hostname, noxtls_certificate_pem_to_der, noxtls_der_to_pem,
+    noxtls_p256_public_key_to_pem_spki, noxtls_parse_certificate, noxtls_parse_der_node,
+    noxtls_parse_pkcs8_private_key_info_der, noxtls_private_key_der_to_pem_pkcs8, noxtls_private_key_pem_to_der_pkcs8,
+    noxtls_validate_certificate_chain, noxtls_write_csr_p256_sha256, noxtls_write_self_signed_certificate_p256_sha256,
+    noxtls_x25519_public_key_to_pem_spki,
 };
 
 /// Runs an OpenSSL-style noxtls utility for digests, encryption, randomness, keys, and X.509.
@@ -296,7 +296,7 @@ fn run_enc(args: &[String]) -> Result<()> {
         return Err(Error::StateError("provide either --in or --text for enc"));
     }
 
-    let key = decode_hex(key_hex.ok_or(Error::StateError("missing encryption key"))?)?;
+    let key = noxtls_decode_hex(key_hex.ok_or(Error::StateError("missing encryption key"))?)?;
     let nonce = if let Some(explicit_nonce_hex) = nonce_hex {
         parse_fixed_hex::<12>(explicit_nonce_hex, "nonce must be 12 bytes of hex")?
     } else {
@@ -315,7 +315,7 @@ fn run_enc(args: &[String]) -> Result<()> {
             .to_vec()
     };
     let cipher = AesCipher::new(&key)?;
-    let (ciphertext, tag) = aes_gcm_encrypt(&cipher, &nonce, aad.as_bytes(), &plaintext)?;
+    let (ciphertext, tag) = noxtls_aes_gcm_encrypt(&cipher, &nonce, aad.as_bytes(), &plaintext)?;
 
     if let Some(path) = output_file {
         fs::write(path, &ciphertext)
@@ -419,7 +419,7 @@ fn run_dec(args: &[String]) -> Result<()> {
         ));
     }
 
-    let key = decode_hex(key_hex.ok_or(Error::StateError("missing decryption key"))?)?;
+    let key = noxtls_decode_hex(key_hex.ok_or(Error::StateError("missing decryption key"))?)?;
     let nonce = parse_fixed_hex::<12>(
         nonce_hex.ok_or(Error::StateError("missing nonce value"))?,
         "nonce must be 12 bytes of hex",
@@ -431,10 +431,10 @@ fn run_dec(args: &[String]) -> Result<()> {
     let ciphertext = if let Some(path) = input_file {
         fs::read(path).map_err(|_| Error::StateError("failed to read ciphertext file"))?
     } else {
-        decode_hex(ciphertext_hex.ok_or(Error::StateError("missing ciphertext hex"))?)?
+        noxtls_decode_hex(ciphertext_hex.ok_or(Error::StateError("missing ciphertext hex"))?)?
     };
     let cipher = AesCipher::new(&key)?;
-    let plaintext = aes_gcm_decrypt(&cipher, &nonce, aad.as_bytes(), &ciphertext, &tag)?;
+    let plaintext = noxtls_aes_gcm_decrypt(&cipher, &nonce, aad.as_bytes(), &ciphertext, &tag)?;
 
     if let Some(path) = output_file {
         fs::write(path, &plaintext)
@@ -591,31 +591,31 @@ fn run_genpkey(args: &[String]) -> Result<()> {
                     "P256_PRIVATE_SCALAR_HEX={}\n",
                     to_hex(&generated.private_scalar())
                 ),
-                p256_public_key_to_pem_spki(&public)?,
+                noxtls_p256_public_key_to_pem_spki(&public)?,
             )
         }
         "x25519" => {
-            let private = x25519_generate_private_key_auto(&mut drbg)?;
+            let private = noxtls_x25519_generate_private_key_auto(&mut drbg)?;
             let public = private.public_key();
             (
                 format!(
                     "X25519_PRIVATE_SCALAR_HEX={}\n",
                     to_hex(&private.clamped_scalar())
                 ),
-                x25519_public_key_to_pem_spki(public)?,
+                noxtls_x25519_public_key_to_pem_spki(public)?,
             )
         }
         "x448" => {
             #[cfg(feature = "hazardous-legacy-crypto")]
             {
-                let private = x448_generate_private_key_auto(&mut drbg)?;
+                let private = noxtls_x448_generate_private_key_auto(&mut drbg)?;
                 let public = private.public_key();
                 (
                     format!(
                         "X448_PRIVATE_SCALAR_HEX={}\n",
                         to_hex(&private.clamped_scalar())
                     ),
-                    x448_public_key_to_pem_spki(public)?,
+                    noxtls_x448_public_key_to_pem_spki(public)?,
                 )
             }
             #[cfg(not(feature = "hazardous-legacy-crypto"))]
@@ -725,7 +725,7 @@ fn run_pkcs8(args: &[String]) -> Result<()> {
 
     let input_path = input_path.ok_or(Error::StateError("missing pkcs8 input path"))?;
     let pkcs8_der = read_pkcs8_der(input_path, input_format)?;
-    let info = parse_pkcs8_private_key_info_der(&pkcs8_der)?;
+    let info = noxtls_parse_pkcs8_private_key_info_der(&pkcs8_der)?;
     if let Some(expected_algorithm) = algorithm {
         validate_pkcs8_algorithm(expected_algorithm, &info.algorithm_oid)?;
     }
@@ -808,14 +808,14 @@ fn run_req(args: &[String]) -> Result<()> {
     let private =
         parse_p256_private_key_hex(key_hex.ok_or(Error::StateError("missing req key value"))?)?;
     let public = private.public_key()?;
-    let csr_der = write_csr_p256_sha256(
+    let csr_der = noxtls_write_csr_p256_sha256(
         subject.ok_or(Error::StateError("missing req subject value"))?,
         &public,
         &private,
     )?;
     match output_format {
         "pem" => {
-            let csr_pem = der_to_pem(&csr_der, "CERTIFICATE REQUEST")?;
+            let csr_pem = noxtls_der_to_pem(&csr_der, "CERTIFICATE REQUEST")?;
             if let Some(path) = output_path {
                 fs::write(path, csr_pem)
                     .map_err(|_| Error::StateError("failed to write CSR PEM output"))?;
@@ -933,11 +933,11 @@ fn run_x509(args: &[String]) -> Result<()> {
         )?;
         let public = private.public_key()?;
         let serial = if let Some(value) = serial_hex {
-            decode_hex(value)?
+            noxtls_decode_hex(value)?
         } else {
             vec![0x01]
         };
-        let cert_der = write_self_signed_certificate_p256_sha256(
+        let cert_der = noxtls_write_self_signed_certificate_p256_sha256(
             &serial,
             subject.ok_or(Error::StateError("missing x509 subject value"))?,
             not_before,
@@ -947,7 +947,7 @@ fn run_x509(args: &[String]) -> Result<()> {
         )?;
         match output_format {
             "pem" => {
-                let cert_pem = certificate_der_to_pem(&cert_der)?;
+                let cert_pem = noxtls_certificate_der_to_pem(&cert_der)?;
                 if let Some(path) = output_path {
                     fs::write(path, cert_pem)
                         .map_err(|_| Error::StateError("failed to write certificate PEM output"))?;
@@ -970,7 +970,7 @@ fn run_x509(args: &[String]) -> Result<()> {
 
     let cert_der =
         read_certificate_der(input_path.ok_or(Error::StateError("missing x509 input path"))?)?;
-    let cert = parse_certificate(&cert_der)?;
+    let cert = noxtls_parse_certificate(&cert_der)?;
     println!("version=v{}", cert.version);
     println!("serial_len={}B", cert.serial.len());
     println!("not_before={}", cert.not_before);
@@ -1042,15 +1042,15 @@ fn run_verify(args: &[String]) -> Result<()> {
     let ca_der = read_certificate_der(
         ca_path.ok_or(Error::StateError("missing verify trust anchor path"))?,
     )?;
-    let leaf = parse_certificate(&leaf_der)?;
-    let anchor = parse_certificate(&ca_der)?;
+    let leaf = noxtls_parse_certificate(&leaf_der)?;
+    let anchor = noxtls_parse_certificate(&ca_der)?;
     if let Some(name) = hostname {
-        if !certificate_matches_hostname(&leaf, name) {
+        if !noxtls_certificate_matches_hostname(&leaf, name) {
             println!("verify_ok=false reason=hostname_mismatch");
             return Err(Error::StateError("certificate hostname mismatch"));
         }
     }
-    match validate_certificate_chain(&leaf, &[], &[anchor], verify_time) {
+    match noxtls_validate_certificate_chain(&leaf, &[], &[anchor], verify_time) {
         Ok(report) => {
             println!("verify_ok=true chain_len={}", report.chain_len);
             println!("trust_anchor_index={}", report.trust_anchor_index);
@@ -1084,7 +1084,7 @@ fn run_hash_legacy(args: &[String]) -> Result<()> {
     let input = args
         .first()
         .ok_or(Error::StateError("missing hash input"))?;
-    let digest = sha256(input.as_bytes());
+    let digest = noxtls_sha256(input.as_bytes());
     println!("sha256={}", to_hex(&digest));
     Ok(())
 }
@@ -1173,13 +1173,13 @@ fn run_decrypt_legacy(args: &[String]) -> Result<()> {
 ///
 fn digest_bytes(algorithm: &str, input: &[u8]) -> Result<Vec<u8>> {
     match algorithm {
-        "sha1" => Ok(sha1(input).to_vec()),
-        "sha256" => Ok(sha256(input).to_vec()),
-        "sha384" => Ok(sha384(input).to_vec()),
-        "sha512" => Ok(sha512(input).to_vec()),
-        "sha3-256" => Ok(sha3_256(input).to_vec()),
-        "sha3-384" => Ok(sha3_384(input).to_vec()),
-        "sha3-512" => Ok(sha3_512(input).to_vec()),
+        "sha1" => Ok(noxtls_sha1(input).to_vec()),
+        "sha256" => Ok(noxtls_sha256(input).to_vec()),
+        "sha384" => Ok(noxtls_sha384(input).to_vec()),
+        "sha512" => Ok(noxtls_sha512(input).to_vec()),
+        "sha3-256" => Ok(noxtls_sha3_256(input).to_vec()),
+        "sha3-384" => Ok(noxtls_sha3_384(input).to_vec()),
+        "sha3-512" => Ok(noxtls_sha3_512(input).to_vec()),
         _ => Err(Error::StateError("unsupported digest algorithm")),
     }
 }
@@ -1203,14 +1203,14 @@ fn digest_bytes(algorithm: &str, input: &[u8]) -> Result<Vec<u8>> {
 ///
 fn make_cli_drbg(seed_hex: Option<&str>) -> Result<HmacDrbgSha256> {
     let seed = if let Some(text) = seed_hex {
-        decode_hex(text)?
+        noxtls_decode_hex(text)?
     } else {
         collect_best_effort_entropy()
     };
     if seed.len() < 16 {
         return Err(Error::StateError("seed material must be at least 16 bytes"));
     }
-    let digest = sha512(&seed);
+    let digest = noxtls_sha512(&seed);
     HmacDrbgSha256::new(&digest[0..32], &digest[32..48], &digest[48..64])
 }
 
@@ -1236,7 +1236,7 @@ fn read_certificate_der(path: &str) -> Result<Vec<u8>> {
     if bytes.starts_with(b"-----BEGIN CERTIFICATE-----") {
         let pem_text = std::str::from_utf8(&bytes)
             .map_err(|_| Error::InvalidEncoding("certificate PEM must be UTF-8"))?;
-        return certificate_pem_to_der(pem_text);
+        return noxtls_certificate_pem_to_der(pem_text);
     }
     Ok(bytes)
 }
@@ -1294,7 +1294,7 @@ fn read_pkcs8_der(path: &str, input_format: Option<&str>) -> Result<Vec<u8>> {
         "pem" => {
             let text = std::str::from_utf8(&bytes)
                 .map_err(|_| Error::InvalidEncoding("pkcs8 PEM must be UTF-8"))?;
-            private_key_pem_to_der_pkcs8(text)
+            noxtls_private_key_pem_to_der_pkcs8(text)
         }
         "der" => Ok(bytes),
         _ => Err(Error::StateError("unsupported pkcs8 inform")),
@@ -1327,7 +1327,7 @@ fn emit_pkcs8_output(
 ) -> Result<()> {
     match output_format {
         "pem" => {
-            let pem = private_key_der_to_pem_pkcs8(pkcs8_der)?;
+            let pem = noxtls_private_key_der_to_pem_pkcs8(pkcs8_der)?;
             if let Some(path) = output_path {
                 fs::write(path, pem)
                     .map_err(|_| Error::StateError("failed to write pkcs8 PEM output"))?;
@@ -1480,15 +1480,15 @@ fn extract_private_scalar_hex_payload(
 /// This function does not panic unless otherwise noted in the body.
 ///
 fn parse_p256_scalar_from_sec1(sec1_der: &[u8]) -> Result<[u8; 32]> {
-    let (sequence, tail) = parse_der_node(sec1_der)?;
+    let (sequence, tail) = noxtls_parse_der_node(sec1_der)?;
     if sequence.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("invalid sec1 private key sequence"));
     }
-    let (version, rest) = parse_der_node(sequence.body)?;
+    let (version, rest) = noxtls_parse_der_node(sequence.body)?;
     if version.tag != 0x02 || version.body != [0x01] {
         return Err(Error::ParseFailure("invalid sec1 private key version"));
     }
-    let (private_key, _remaining) = parse_der_node(rest)?;
+    let (private_key, _remaining) = noxtls_parse_der_node(rest)?;
     if private_key.tag != 0x04 || private_key.body.len() != 32 {
         return Err(Error::ParseFailure("invalid sec1 p256 private scalar"));
     }
@@ -1519,7 +1519,7 @@ fn parse_rfc8410_private_key_bytes(input: &[u8], expected_len: usize) -> Result<
     if input.len() == expected_len {
         return Ok(input.to_vec());
     }
-    let (inner, tail) = parse_der_node(input)?;
+    let (inner, tail) = noxtls_parse_der_node(input)?;
     if inner.tag != 0x04 || !tail.is_empty() || inner.body.len() != expected_len {
         return Err(Error::ParseFailure("invalid RFC8410 private key payload"));
     }
@@ -1877,7 +1877,7 @@ fn collect_best_effort_entropy() -> Vec<u8> {
 /// This function does not panic unless otherwise noted in the body.
 ///
 fn parse_fixed_hex<const N: usize>(value: &str, error_message: &'static str) -> Result<[u8; N]> {
-    let decoded = decode_hex(value)?;
+    let decoded = noxtls_decode_hex(value)?;
     if decoded.len() != N {
         return Err(Error::InvalidLength(error_message));
     }

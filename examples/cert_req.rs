@@ -19,7 +19,7 @@
 
 use noxtls_core::Result;
 use noxtls_crypto::P256PrivateKey;
-use noxtls_x509::{der_to_pem, write_csr_p256_sha256};
+use noxtls_x509::{noxtls_der_to_pem, noxtls_write_csr_p256_sha256};
 
 /// Generates a deterministic P-256 CSR and prints PEM output to stdout.
 ///
@@ -41,8 +41,8 @@ use noxtls_x509::{der_to_pem, write_csr_p256_sha256};
 fn main() -> Result<()> {
     let private = P256PrivateKey::from_bytes([0x77; 32])?;
     let public = private.public_key()?;
-    let csr_der = write_csr_p256_sha256("csr.noxtls.local", &public, &private)?;
-    let csr_pem = der_to_pem(&csr_der, "CERTIFICATE REQUEST")?;
+    let csr_der = noxtls_write_csr_p256_sha256("csr.noxtls.local", &public, &private)?;
+    let csr_pem = noxtls_der_to_pem(&csr_der, "CERTIFICATE REQUEST")?;
 
     println!("csr_der_len={}B", csr_der.len());
     println!("{csr_pem}");

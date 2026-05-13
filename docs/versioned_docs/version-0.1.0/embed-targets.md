@@ -26,7 +26,7 @@ When `std` is disabled, the following are unavailable (use in-memory / slice API
 | Crate | API |
 | ----- | --- |
 | `noxtls-core` | `LibraryConfig::from_mbedtls_style_file` — use `from_mbedtls_style_str` with bytes you loaded. |
-| `noxtls-x509` | `pem_file_to_der`, `pem_file_to_der_blocks`, `der_to_pem_file`, `der_to_file`. |
+| `noxtls-x509` | `noxtls_pem_file_to_der`, `noxtls_pem_file_to_der_blocks`, `noxtls_der_to_pem_file`, `noxtls_der_to_file`. |
 | `noxtls` | `TicketStore::save_to_file`, `TicketStore::load_from_file`. |
 
 ## TLS transport (`noxtls`)
@@ -54,4 +54,4 @@ cargo check -p noxtls --features adapter-tokio
 
 ## Handshake helpers
 
-`transport::drive::read_exact_blocking` reads a fixed number of bytes through a `BlockingStream` for framing layers built on top of the protocol state machine.
+`transport::drive::noxtls_read_exact_blocking` reads a fixed number of bytes through a `BlockingStream` for framing layers built on top of the protocol state machine.

@@ -40,7 +40,7 @@ use super::TransportError;
 /// # Panics
 ///
 /// This function does not panic.
-pub fn read_exact_blocking<S: BlockingStream>(
+pub fn noxtls_read_exact_blocking<S: BlockingStream>(
     stream: &mut S,
     len: usize,
     out: &mut crate::internal_alloc::Vec<u8>,

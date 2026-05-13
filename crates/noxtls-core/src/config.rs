@@ -66,7 +66,7 @@ pub struct LibraryConfig {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn compiled_strict_constant_time() -> bool {
+pub fn noxtls_compiled_strict_constant_time() -> bool {
     cfg!(feature = "policy-strict-constant-time")
 }
 
@@ -84,7 +84,7 @@ pub fn compiled_strict_constant_time() -> bool {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn compiled_allow_legacy_algorithms() -> bool {
+pub fn noxtls_compiled_allow_legacy_algorithms() -> bool {
     cfg!(feature = "policy-allow-legacy-algorithms")
 }
 
@@ -102,7 +102,7 @@ pub fn compiled_allow_legacy_algorithms() -> bool {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn compiled_allow_sha1_signatures() -> bool {
+pub fn noxtls_compiled_allow_sha1_signatures() -> bool {
     cfg!(feature = "policy-allow-sha1-signatures")
 }
 
@@ -122,15 +122,15 @@ impl SecurityPolicy {
     /// This function does not panic.
     #[must_use]
     pub fn compiled() -> Self {
-        let constant_time = if compiled_strict_constant_time() {
+        let constant_time = if noxtls_compiled_strict_constant_time() {
             ConstantTimePolicy::Strict
         } else {
             ConstantTimePolicy::BestEffort
         };
         Self {
             constant_time,
-            allow_legacy_algorithms: compiled_allow_legacy_algorithms(),
-            allow_sha1_signatures: compiled_allow_sha1_signatures(),
+            allow_legacy_algorithms: noxtls_compiled_allow_legacy_algorithms(),
+            allow_sha1_signatures: noxtls_compiled_allow_sha1_signatures(),
         }
     }
 

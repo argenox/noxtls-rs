@@ -18,7 +18,7 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    mlkem_decapsulate, mlkem_generate_keypair_auto, p256_ecdh_shared_secret, sha256,
+    noxtls_mlkem_decapsulate, noxtls_mlkem_generate_keypair_auto, noxtls_p256_ecdh_shared_secret, noxtls_sha256,
     HmacDrbgSha256, MlKemPrivateKey, MlKemPublicKey, P256PrivateKey, P256PublicKey,
     X25519PrivateKey, X25519PublicKey,
 };
@@ -48,11 +48,11 @@ const TLS13_SIGALG_MLDSA65: u16 = 0x0905;
 ///
 /// This function does not panic.
 #[must_use]
-pub fn derive_deterministic_x25519_private(seed: &[u8], label: &[u8]) -> X25519PrivateKey {
+pub fn noxtls_derive_deterministic_x25519_private(seed: &[u8], label: &[u8]) -> X25519PrivateKey {
     let mut material = Vec::with_capacity(seed.len() + label.len());
     material.extend_from_slice(seed);
     material.extend_from_slice(label);
-    X25519PrivateKey::from_bytes(sha256(&material))
+    X25519PrivateKey::from_bytes(noxtls_sha256(&material))
 }
 
 /// Derives a valid P-256 private key from `seed` and `label` by hashing with an incrementing counter.
@@ -79,7 +79,7 @@ fn derive_deterministic_p256_private_bytes(seed: &[u8], label: &[u8]) -> Result<
         material.extend_from_slice(seed);
         material.extend_from_slice(label);
         material.extend_from_slice(&counter.to_be_bytes());
-        let candidate: [u8; 32] = sha256(&material);
+        let candidate: [u8; 32] = noxtls_sha256(&material);
         if let Ok(key) = P256PrivateKey::from_bytes(candidate) {
             return Ok(key);
         }
@@ -107,7 +107,7 @@ fn derive_deterministic_p256_private_bytes(seed: &[u8], label: &[u8]) -> Result<
 /// # Panics
 ///
 /// This function does not panic.
-pub fn derive_deterministic_p256_private(seed: &[u8], label: &[u8]) -> Result<P256PrivateKey> {
+pub fn noxtls_derive_deterministic_p256_private(seed: &[u8], label: &[u8]) -> Result<P256PrivateKey> {
     derive_deterministic_p256_private_bytes(seed, label)
 }
 
@@ -129,18 +129,18 @@ pub fn derive_deterministic_p256_private(seed: &[u8], label: &[u8]) -> Result<P2
 /// # Panics
 ///
 /// This function does not panic.
-pub fn derive_deterministic_mlkem768_keypair(
+pub fn noxtls_derive_deterministic_mlkem768_keypair(
     seed: &[u8],
     label: &[u8],
 ) -> Result<(MlKemPrivateKey, MlKemPublicKey)> {
     let mut material = Vec::with_capacity(seed.len() + label.len());
     material.extend_from_slice(seed);
     material.extend_from_slice(label);
-    let entropy = sha256(&material);
+    let entropy = noxtls_sha256(&material);
     let mut drbg =
         HmacDrbgSha256::new(&entropy, b"mlkem768 deterministic nonce", b"tls13 mlkem")
             .map_err(|_| Error::CryptoFailure("failed to initialize deterministic mlkem drbg"))?;
-    mlkem_generate_keypair_auto(&mut drbg)
+    noxtls_mlkem_generate_keypair_auto(&mut drbg)
 }
 
 /// Returns `true` when the given TLS 1.3 `key_share` named group is supported by this build.
@@ -157,7 +157,7 @@ pub fn derive_deterministic_mlkem768_keypair(
 ///
 /// This function does not panic.
 #[must_use]
-pub fn tls13_key_share_group_supported(group: u16) -> bool {
+pub fn noxtls_tls13_key_share_group_supported(group: u16) -> bool {
     group == TLS13_KEY_SHARE_GROUP_X25519
         || group == TLS13_KEY_SHARE_GROUP_SECP256R1
         || group == TLS13_KEY_SHARE_GROUP_MLKEM768
@@ -178,7 +178,7 @@ pub fn tls13_key_share_group_supported(group: u16) -> bool {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn tls13_signature_algorithm_supported(signature_algorithm: u16) -> bool {
+pub fn noxtls_tls13_signature_algorithm_supported(signature_algorithm: u16) -> bool {
     signature_algorithm == TLS13_SIGALG_ECDSA_SECP256R1_SHA256
         || signature_algorithm == TLS13_SIGALG_RSA_PSS_RSAE_SHA256
         || signature_algorithm == TLS13_SIGALG_RSA_PSS_RSAE_SHA384
@@ -202,7 +202,7 @@ pub fn tls13_signature_algorithm_supported(signature_algorithm: u16) -> bool {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn tls13_client_hello_offers_supported_key_exchange(
+pub fn noxtls_tls13_client_hello_offers_supported_key_exchange(
     supported_versions: &[u16],
     key_share_groups: &[u16],
     signature_algorithms: &[u16],
@@ -211,11 +211,11 @@ pub fn tls13_client_hello_offers_supported_key_exchange(
     let has_supported_key_share = key_share_groups
         .iter()
         .copied()
-        .any(tls13_key_share_group_supported);
+        .any(noxtls_tls13_key_share_group_supported);
     let has_supported_signature_algorithm = signature_algorithms
         .iter()
         .copied()
-        .any(tls13_signature_algorithm_supported);
+        .any(noxtls_tls13_signature_algorithm_supported);
     has_tls13 && has_supported_key_share && has_supported_signature_algorithm
 }
 
@@ -237,7 +237,7 @@ pub fn tls13_client_hello_offers_supported_key_exchange(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn derive_tls13_x25519_shared_secret(
+pub fn noxtls_derive_tls13_x25519_shared_secret(
     local_private: X25519PrivateKey,
     peer_key_exchange: &[u8],
 ) -> Result<[u8; 32]> {
@@ -271,12 +271,12 @@ pub fn derive_tls13_x25519_shared_secret(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn derive_tls13_p256_shared_secret(
+pub fn noxtls_derive_tls13_p256_shared_secret(
     local_private: &P256PrivateKey,
     peer_uncompressed: &[u8],
 ) -> Result<[u8; 32]> {
     let peer = P256PublicKey::from_uncompressed(peer_uncompressed)?;
-    p256_ecdh_shared_secret(local_private, &peer)
+    noxtls_p256_ecdh_shared_secret(local_private, &peer)
 }
 
 /// Derives an ML-KEM-768 shared secret from the local private key and peer ciphertext bytes.
@@ -297,9 +297,9 @@ pub fn derive_tls13_p256_shared_secret(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn derive_tls13_mlkem768_shared_secret(
+pub fn noxtls_derive_tls13_mlkem768_shared_secret(
     local_private: &MlKemPrivateKey,
     peer_key_exchange: &[u8],
 ) -> Result<[u8; 32]> {
-    mlkem_decapsulate(local_private, peer_key_exchange)
+    noxtls_mlkem_decapsulate(local_private, peer_key_exchange)
 }

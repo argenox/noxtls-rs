@@ -20,7 +20,7 @@
 use std::fs;
 
 use noxtls_core::{Error, Result};
-use noxtls_x509::{parse_der_node, pem_to_der};
+use noxtls_x509::{noxtls_parse_der_node, noxtls_pem_to_der};
 
 /// Loads and dumps basic envelope details for a CSR file.
 ///
@@ -42,7 +42,7 @@ use noxtls_x509::{parse_der_node, pem_to_der};
 fn main() -> Result<()> {
     let csr_path = read_csr_path()?;
     let csr_der = read_csr_der(&csr_path)?;
-    let (node, tail) = parse_der_node(&csr_der)?;
+    let (node, tail) = noxtls_parse_der_node(&csr_der)?;
 
     println!("csr_len={}B", csr_der.len());
     println!("top_tag=0x{:02x}", node.tag);
@@ -83,7 +83,7 @@ fn read_csr_path() -> Result<String> {
 ///
 /// # Returns
 ///
-/// On success, DER-encoded CSR octets suitable for `parse_der_node`.
+/// On success, DER-encoded CSR octets suitable for `noxtls_parse_der_node`.
 ///
 /// # Errors
 ///
@@ -97,10 +97,10 @@ fn read_csr_der(csr_path: &str) -> Result<Vec<u8>> {
     if csr_bytes.starts_with(b"-----BEGIN ") {
         let csr_pem = std::str::from_utf8(&csr_bytes)
             .map_err(|_| Error::InvalidEncoding("CSR PEM must be UTF-8"))?;
-        if let Ok(der) = pem_to_der(csr_pem, "CERTIFICATE REQUEST") {
+        if let Ok(der) = noxtls_pem_to_der(csr_pem, "CERTIFICATE REQUEST") {
             return Ok(der);
         }
-        return pem_to_der(csr_pem, "NEW CERTIFICATE REQUEST");
+        return noxtls_pem_to_der(csr_pem, "NEW CERTIFICATE REQUEST");
     }
     Ok(csr_bytes)
 }

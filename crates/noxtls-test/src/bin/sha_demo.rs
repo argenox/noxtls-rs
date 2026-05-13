@@ -17,7 +17,7 @@
 
 //! Prints a SHA-256 digest of a short static payload for quick crypto sanity checks.
 
-use noxtls_crypto::sha256;
+use noxtls_crypto::noxtls_sha256;
 
 /// Computes `SHA256(b"noxtls")` and prints the digest as hex to stdout.
 ///
@@ -33,6 +33,6 @@ use noxtls_crypto::sha256;
 ///
 /// This function does not panic.
 fn main() {
-    let digest = sha256(b"noxtls");
+    let digest = noxtls_sha256(b"noxtls");
     println!("{:02x?}", digest);
 }

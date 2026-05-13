@@ -20,7 +20,7 @@
 use std::fs;
 
 use noxtls_core::{Error, Result};
-use noxtls_x509::{certificate_pem_to_der, parse_certificate};
+use noxtls_x509::{noxtls_certificate_pem_to_der, noxtls_parse_certificate};
 
 /// Parses a certificate from a DER/PEM file and prints key certificate fields.
 ///
@@ -42,7 +42,7 @@ use noxtls_x509::{certificate_pem_to_der, parse_certificate};
 fn main() -> Result<()> {
     let cert_path = read_certificate_path()?;
     let cert_der = read_certificate_der(&cert_path)?;
-    let cert = parse_certificate(&cert_der)?;
+    let cert = noxtls_parse_certificate(&cert_der)?;
 
     println!("version=v{}", cert.version);
     println!("serial_len={}B", cert.serial.len());
@@ -72,7 +72,7 @@ fn main() -> Result<()> {
 /// This function does not panic.
 fn read_certificate_path() -> Result<String> {
     std::env::args().nth(1).ok_or_else(|| {
-        eprintln!("usage: cargo run -p noxtls --example parse_certificate -- <cert.der|cert.pem>");
+        eprintln!("usage: cargo run -p noxtls --example noxtls_parse_certificate -- <cert.der|cert.pem>");
         Error::StateError("missing certificate path argument")
     })
 }
@@ -85,7 +85,7 @@ fn read_certificate_path() -> Result<String> {
 ///
 /// # Returns
 ///
-/// On success, DER-encoded certificate octets suitable for the `parse_certificate` parser.
+/// On success, DER-encoded certificate octets suitable for the `noxtls_parse_certificate` parser.
 ///
 /// # Errors
 ///
@@ -100,7 +100,7 @@ fn read_certificate_der(cert_path: &str) -> Result<Vec<u8>> {
     if cert_bytes.starts_with(b"-----BEGIN CERTIFICATE-----") {
         let cert_pem = std::str::from_utf8(&cert_bytes)
             .map_err(|_| Error::InvalidEncoding("certificate PEM must be UTF-8"))?;
-        return certificate_pem_to_der(cert_pem);
+        return noxtls_certificate_pem_to_der(cert_pem);
     }
     Ok(cert_bytes)
 }

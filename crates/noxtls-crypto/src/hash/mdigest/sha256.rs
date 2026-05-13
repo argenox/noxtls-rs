@@ -225,7 +225,7 @@ impl Digest for Sha256 {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn sha256(data: &[u8]) -> [u8; 32] {
+pub fn noxtls_sha256(data: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(data);
     let digest = hasher.finalize();

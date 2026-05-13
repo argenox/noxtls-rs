@@ -17,7 +17,7 @@
 
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
-use noxtls_crypto::{aes_gcm_decrypt, aes_gcm_encrypt, AesCipher};
+use noxtls_crypto::{noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, AesCipher};
 
 use super::state::RecordContentType;
 
@@ -521,7 +521,7 @@ impl DtlsFlightRetransmitTracker {
 ///
 /// This function does not panic.
 ///
-pub fn encode_dtls_record_header(header: DtlsRecordHeader) -> Result<[u8; DTLS_RECORD_HEADER_LEN]> {
+pub fn noxtls_encode_dtls_record_header(header: DtlsRecordHeader) -> Result<[u8; DTLS_RECORD_HEADER_LEN]> {
     if header.sequence > DTLS_MAX_SEQUENCE {
         return Err(Error::InvalidLength(
             "dtls sequence number exceeds 48-bit range",
@@ -558,7 +558,7 @@ pub fn encode_dtls_record_header(header: DtlsRecordHeader) -> Result<[u8; DTLS_R
 ///
 /// This function does not panic.
 ///
-pub fn parse_dtls_record_header(input: &[u8]) -> Result<(DtlsRecordHeader, &[u8])> {
+pub fn noxtls_parse_dtls_record_header(input: &[u8]) -> Result<(DtlsRecordHeader, &[u8])> {
     if input.len() < DTLS_RECORD_HEADER_LEN {
         return Err(Error::ParseFailure("dtls record header truncated"));
     }
@@ -604,7 +604,7 @@ pub fn parse_dtls_record_header(input: &[u8]) -> Result<(DtlsRecordHeader, &[u8]
 ///
 /// This function does not panic.
 ///
-pub fn encode_dtls_record_packet(
+pub fn noxtls_encode_dtls_record_packet(
     content_type: RecordContentType,
     version: [u8; 2],
     epoch: u16,
@@ -624,7 +624,7 @@ pub fn encode_dtls_record_packet(
         length: payload.len() as u16,
     };
     let mut out = Vec::with_capacity(DTLS_RECORD_HEADER_LEN + payload.len());
-    out.extend_from_slice(&encode_dtls_record_header(header)?);
+    out.extend_from_slice(&noxtls_encode_dtls_record_header(header)?);
     out.extend_from_slice(payload);
     Ok(out)
 }
@@ -646,8 +646,8 @@ pub fn encode_dtls_record_packet(
 ///
 /// This function does not panic.
 ///
-pub fn parse_dtls_record_packet(input: &[u8]) -> Result<(DtlsRecordHeader, Vec<u8>)> {
-    let (header, body) = parse_dtls_record_header(input)?;
+pub fn noxtls_parse_dtls_record_packet(input: &[u8]) -> Result<(DtlsRecordHeader, Vec<u8>)> {
+    let (header, body) = noxtls_parse_dtls_record_header(input)?;
     if body.len() != usize::from(header.length) {
         return Err(Error::ParseFailure(
             "dtls payload length does not match header",
@@ -674,7 +674,7 @@ pub fn parse_dtls_record_packet(input: &[u8]) -> Result<(DtlsRecordHeader, Vec<u
 ///
 /// This function does not panic.
 ///
-pub fn encode_dtls12_handshake_fragments(
+pub fn noxtls_encode_dtls12_handshake_fragments(
     handshake_type: u8,
     message_seq: u16,
     body: &[u8],
@@ -732,7 +732,7 @@ pub fn encode_dtls12_handshake_fragments(
 ///
 /// This function does not panic.
 ///
-pub fn parse_dtls12_handshake_fragment(input: &[u8]) -> Result<DtlsHandshakeFragment> {
+pub fn noxtls_parse_dtls12_handshake_fragment(input: &[u8]) -> Result<DtlsHandshakeFragment> {
     if input.len() < DTLS12_HANDSHAKE_FRAGMENT_HEADER_LEN {
         return Err(Error::ParseFailure(
             "dtls12 handshake fragment header truncated",
@@ -789,7 +789,7 @@ pub fn parse_dtls12_handshake_fragment(input: &[u8]) -> Result<DtlsHandshakeFrag
 ///
 /// This function does not panic.
 ///
-pub fn reassemble_dtls12_handshake_fragments(
+pub fn noxtls_reassemble_dtls12_handshake_fragments(
     fragments: &[Vec<u8>],
     max_message_len: usize,
 ) -> Result<(u8, u16, Vec<u8>)> {
@@ -798,7 +798,7 @@ pub fn reassemble_dtls12_handshake_fragments(
             "dtls12 reassembly requires at least one fragment",
         ));
     }
-    let first = parse_dtls12_handshake_fragment(&fragments[0])?;
+    let first = noxtls_parse_dtls12_handshake_fragment(&fragments[0])?;
     let total_len = first.message_len as usize;
     if total_len > max_message_len {
         return Err(Error::InvalidLength(
@@ -808,7 +808,7 @@ pub fn reassemble_dtls12_handshake_fragments(
     let mut out = vec![0_u8; total_len];
     let mut filled = vec![false; total_len];
     for encoded in fragments {
-        let fragment = parse_dtls12_handshake_fragment(encoded)?;
+        let fragment = noxtls_parse_dtls12_handshake_fragment(encoded)?;
         if fragment.handshake_type != first.handshake_type
             || fragment.message_seq != first.message_seq
             || fragment.message_len != first.message_len
@@ -914,7 +914,7 @@ fn encode_dtls12_handshake_fragment(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn dtls13_aes128gcm_record_size(plaintext_len: usize) -> Result<usize> {
+pub fn noxtls_dtls13_aes128gcm_record_size(plaintext_len: usize) -> Result<usize> {
     let payload_len =
         plaintext_len
             .checked_add(DTLS13_AEAD_TAG_LEN)
@@ -952,7 +952,7 @@ pub fn dtls13_aes128gcm_record_size(plaintext_len: usize) -> Result<usize> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn seal_dtls13_aes128gcm_record(
+pub fn noxtls_seal_dtls13_aes128gcm_record(
     epoch: u16,
     sequence: u64,
     key: &[u8; 16],
@@ -966,7 +966,7 @@ pub fn seal_dtls13_aes128gcm_record(
     }
     let nonce = build_dtls13_nonce(*static_iv, epoch, sequence);
     let cipher = AesCipher::new(key)?;
-    let payload_len = dtls13_aes128gcm_record_size(plaintext.len())? - DTLS_RECORD_HEADER_LEN;
+    let payload_len = noxtls_dtls13_aes128gcm_record_size(plaintext.len())? - DTLS_RECORD_HEADER_LEN;
     let header = DtlsRecordHeader {
         content_type: RecordContentType::ApplicationData,
         version: [0xFE, 0xFD],
@@ -974,9 +974,9 @@ pub fn seal_dtls13_aes128gcm_record(
         sequence,
         length: payload_len as u16,
     };
-    let header_bytes = encode_dtls_record_header(header)?;
-    let (ciphertext, tag) = aes_gcm_encrypt(&cipher, &nonce, &header_bytes, plaintext)?;
-    let mut packet = Vec::with_capacity(dtls13_aes128gcm_record_size(plaintext.len())?);
+    let header_bytes = noxtls_encode_dtls_record_header(header)?;
+    let (ciphertext, tag) = noxtls_aes_gcm_encrypt(&cipher, &nonce, &header_bytes, plaintext)?;
+    let mut packet = Vec::with_capacity(noxtls_dtls13_aes128gcm_record_size(plaintext.len())?);
     packet.extend_from_slice(&header_bytes);
     packet.extend_from_slice(&ciphertext);
     packet.extend_from_slice(&tag);
@@ -1003,13 +1003,13 @@ pub fn seal_dtls13_aes128gcm_record(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn open_dtls13_aes128gcm_record(
+pub fn noxtls_open_dtls13_aes128gcm_record(
     packet: &[u8],
     key: &[u8; 16],
     static_iv: &[u8; 12],
     replay_tracker: &mut DtlsEpochReplayTracker,
 ) -> Result<(DtlsRecordHeader, Vec<u8>)> {
-    let (header, body) = parse_dtls_record_packet(packet)?;
+    let (header, body) = noxtls_parse_dtls_record_packet(packet)?;
     if header.content_type != RecordContentType::ApplicationData {
         return Err(Error::ParseFailure(
             "dtls protected record must use application_data content type",
@@ -1035,7 +1035,7 @@ pub fn open_dtls13_aes128gcm_record(
     let (ciphertext, tag_bytes) = body.split_at(body.len() - DTLS13_AEAD_TAG_LEN);
     let mut tag = [0_u8; DTLS13_AEAD_TAG_LEN];
     tag.copy_from_slice(tag_bytes);
-    let plaintext = aes_gcm_decrypt(
+    let plaintext = noxtls_aes_gcm_decrypt(
         &cipher,
         &nonce,
         &packet[..DTLS_RECORD_HEADER_LEN],

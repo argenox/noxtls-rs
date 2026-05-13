@@ -19,7 +19,7 @@
 
 use noxtls_core::Result;
 use noxtls_crypto::P256PrivateKey;
-use noxtls_x509::{certificate_der_to_pem, write_self_signed_certificate_p256_sha256};
+use noxtls_x509::{noxtls_certificate_der_to_pem, noxtls_write_self_signed_certificate_p256_sha256};
 
 /// Writes a self-signed certificate in DER and PEM form using fixed demo inputs.
 ///
@@ -41,7 +41,7 @@ use noxtls_x509::{certificate_der_to_pem, write_self_signed_certificate_p256_sha
 fn main() -> Result<()> {
     let private = P256PrivateKey::from_bytes([0x88; 32])?;
     let public = private.public_key()?;
-    let cert_der = write_self_signed_certificate_p256_sha256(
+    let cert_der = noxtls_write_self_signed_certificate_p256_sha256(
         &[0x30],
         "certwrite.noxtls.local",
         "240101000000Z",
@@ -49,7 +49,7 @@ fn main() -> Result<()> {
         &public,
         &private,
     )?;
-    let cert_pem = certificate_der_to_pem(&cert_der)?;
+    let cert_pem = noxtls_certificate_der_to_pem(&cert_der)?;
 
     println!("cert_der_len={}B", cert_der.len());
     println!("{cert_pem}");

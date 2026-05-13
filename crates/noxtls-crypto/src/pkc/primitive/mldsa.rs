@@ -21,8 +21,8 @@
 
 #[cfg(not(feature = "std"))]
 use crate::internal_alloc::Vec;
-use crate::shake256;
-use crate::{drbg::HmacDrbgSha256, sha3_256};
+use crate::noxtls_shake256;
+use crate::{drbg::HmacDrbgSha256, noxtls_sha3_256};
 use noxtls_core::{Error, Result};
 
 /// Byte length used by ML-DSA-65 encoded public keys.
@@ -275,7 +275,7 @@ impl Drop for MlDsaPrivateKey {
 ///
 /// # Returns
 /// `(private, public)` encoded keypair wrappers.
-pub fn mldsa_generate_keypair_auto(
+pub fn noxtls_mldsa_generate_keypair_auto(
     drbg: &mut HmacDrbgSha256,
 ) -> Result<(MlDsaPrivateKey, MlDsaPublicKey)> {
     let seed = drbg.generate(32, b"mldsa keygen seed")?;
@@ -294,7 +294,7 @@ pub fn mldsa_generate_keypair_auto(
 ///
 /// # Returns
 /// `Ok(())` when signature verification succeeds.
-pub fn mldsa_verify(public_key: &MlDsaPublicKey, message: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_mldsa_verify(public_key: &MlDsaPublicKey, message: &[u8], signature: &[u8]) -> Result<()> {
     if signature.len() != MLDSA_SIGNATURE_LEN {
         return Err(Error::InvalidLength("mldsa signature must be 3309 bytes"));
     }
@@ -308,7 +308,7 @@ pub fn mldsa_verify(public_key: &MlDsaPublicKey, message: &[u8], signature: &[u8
 ///
 /// # Returns
 /// Parsed `MlDsaPublicKey` when OID and key length are valid.
-pub fn mldsa_public_key_from_subject_public_key_info(der: &[u8]) -> Result<MlDsaPublicKey> {
+pub fn noxtls_mldsa_public_key_from_subject_public_key_info(der: &[u8]) -> Result<MlDsaPublicKey> {
     let (outer_tag, spki_body, rem) = parse_der_node_local(der)?;
     if outer_tag != 0x30 || !rem.is_empty() {
         return Err(Error::ParseFailure("mldsa SPKI must be one sequence"));
@@ -426,9 +426,9 @@ fn keygen_from_seed(seed: &[u8]) -> (Vec<u8>, Vec<u8>) {
     normalize_vec_k(&mut t);
 
     let public_bytes = encode_public_key(&rho, &t);
-    let tr = sha3_256(&public_bytes);
+    let tr = noxtls_sha3_256(&public_bytes);
     let t0 = derive_t0_bytes(&t);
-    let hpk = sha3_256(&public_bytes);
+    let hpk = noxtls_sha3_256(&public_bytes);
     let z_fill = expand_seed_bytes(b"mldsa-sk-zfill", &hpk, 128);
 
     let mut private_bytes = Vec::with_capacity(MLDSA_PRIVATE_KEY_LEN);
@@ -481,20 +481,20 @@ fn sign_internal(
     let mut mu_input = Vec::with_capacity(tr.len() + message.len());
     mu_input.extend_from_slice(&tr);
     mu_input.extend_from_slice(message);
-    let mu = sha3_256(&mu_input);
+    let mu = noxtls_sha3_256(&mu_input);
 
     let a = generate_matrix(&array32_from_slice(rho)?);
     let mut y_seed = Vec::with_capacity(key.len() + mu.len() + message.len());
     y_seed.extend_from_slice(key);
     y_seed.extend_from_slice(&mu);
     y_seed.extend_from_slice(message);
-    let base_y_seed = sha3_256(&y_seed);
+    let base_y_seed = noxtls_sha3_256(&y_seed);
 
     for nonce in 0..MLDSA_SIGN_REJECTION_MAX_ITERS {
         let mut seeded = Vec::with_capacity(base_y_seed.len() + 4);
         seeded.extend_from_slice(&base_y_seed);
         seeded.extend_from_slice(&nonce.to_le_bytes());
-        let y = sample_y_vec_l(&sha3_256(&seeded));
+        let y = sample_y_vec_l(&noxtls_sha3_256(&seeded));
 
         let mut w = mat_vec_mul(&a, &y);
         normalize_vec_k(&mut w);
@@ -568,11 +568,11 @@ fn verify_internal(public_key: &[u8], message: &[u8], signature: &[u8]) -> Resul
     }
     let (w1_bytes, hint_tail) = hint.split_at(MLDSA_SIGNATURE_W1_BYTES);
 
-    let tr = sha3_256(public_key);
+    let tr = noxtls_sha3_256(public_key);
     let mut mu_input = Vec::with_capacity(tr.len() + message.len());
     mu_input.extend_from_slice(&tr);
     mu_input.extend_from_slice(message);
-    let mu = sha3_256(&mu_input);
+    let mu = noxtls_sha3_256(&mu_input);
 
     let c_check = build_challenge(&mu, w1_bytes);
     if c_check.as_slice() != c {
@@ -631,7 +631,7 @@ fn derive_public_from_private(private_bytes: &[u8]) -> Result<Vec<u8>> {
     let mut bind = Vec::with_capacity(pk.len() + key.len());
     bind.extend_from_slice(&pk);
     bind.extend_from_slice(key);
-    let mask = sha3_256(&bind);
+    let mask = noxtls_sha3_256(&bind);
     for (idx, byte) in pk[32..].iter_mut().enumerate() {
         *byte ^= mask[idx % mask.len()];
     }
@@ -1485,7 +1485,7 @@ fn build_challenge(mu: &[u8; 32], w1_bytes: &[u8]) -> [u8; 32] {
     c_input.push(MLDSA_XOF_DOMAIN_CHALLENGE);
     c_input.extend_from_slice(mu);
     c_input.extend_from_slice(w1_bytes);
-    let digest = shake256(&c_input, 32);
+    let digest = noxtls_shake256(&c_input, 32);
     let mut out = [0_u8; 32];
     out.copy_from_slice(&digest);
     out
@@ -1509,7 +1509,7 @@ fn challenge_poly_from_digest(c: &[u8; 32]) -> Poly {
     let mut seed = Vec::with_capacity(1 + c.len());
     seed.push(MLDSA_XOF_DOMAIN_CHALLENGE);
     seed.extend_from_slice(c);
-    let stream = shake256(&seed, 4 * MLDSA_CHALLENGE_NONZERO_TERMS);
+    let stream = noxtls_shake256(&seed, 4 * MLDSA_CHALLENGE_NONZERO_TERMS);
     let mut cursor = 0_usize;
     let mut placed = 0_usize;
     while placed < MLDSA_CHALLENGE_NONZERO_TERMS {
@@ -1713,7 +1713,7 @@ fn derive_hash32(label: &[u8], seed: &[u8]) -> [u8; 32] {
     input.push(MLDSA_XOF_DOMAIN_HASH32);
     input.extend_from_slice(label);
     input.extend_from_slice(seed);
-    let digest = shake256(&input, 32);
+    let digest = noxtls_shake256(&input, 32);
     let mut out = [0_u8; 32];
     out.copy_from_slice(&digest);
     out
@@ -1739,5 +1739,5 @@ fn expand_seed_bytes(label: &[u8], seed: &[u8], out_len: usize) -> Vec<u8> {
     input.push(MLDSA_XOF_DOMAIN_EXPAND);
     input.extend_from_slice(label);
     input.extend_from_slice(seed);
-    shake256(&input, out_len)
+    noxtls_shake256(&input, out_len)
 }

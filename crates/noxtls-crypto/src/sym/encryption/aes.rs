@@ -95,7 +95,7 @@ impl AesCipher {
 /// # Returns
 /// ECB ciphertext bytes with same length as `input`.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn aes_ecb_encrypt(cipher: &AesCipher, input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aes_ecb_encrypt(cipher: &AesCipher, input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aes ecb input must be block-aligned"));
     }
@@ -118,7 +118,7 @@ pub fn aes_ecb_encrypt(cipher: &AesCipher, input: &[u8]) -> Result<Vec<u8>> {
 /// # Returns
 /// ECB plaintext bytes with same length as `input`.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn aes_ecb_decrypt(cipher: &AesCipher, input: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aes_ecb_decrypt(cipher: &AesCipher, input: &[u8]) -> Result<Vec<u8>> {
     if !input.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aes ecb input must be block-aligned"));
     }
@@ -141,7 +141,7 @@ pub fn aes_ecb_decrypt(cipher: &AesCipher, input: &[u8]) -> Result<Vec<u8>> {
 ///
 /// # Returns
 /// CBC ciphertext bytes with same length as `plaintext`.
-pub fn aes_cbc_encrypt(cipher: &AesCipher, iv: &[u8; 16], plaintext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aes_cbc_encrypt(cipher: &AesCipher, iv: &[u8; 16], plaintext: &[u8]) -> Result<Vec<u8>> {
     if !plaintext.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aes cbc input must be block-aligned"));
     }
@@ -169,7 +169,7 @@ pub fn aes_cbc_encrypt(cipher: &AesCipher, iv: &[u8; 16], plaintext: &[u8]) -> R
 ///
 /// # Returns
 /// CBC plaintext bytes with same length as `ciphertext`.
-pub fn aes_cbc_decrypt(cipher: &AesCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aes_cbc_decrypt(cipher: &AesCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Result<Vec<u8>> {
     if !ciphertext.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aes cbc input must be block-aligned"));
     }
@@ -198,7 +198,7 @@ pub fn aes_cbc_decrypt(cipher: &AesCipher, iv: &[u8; 16], ciphertext: &[u8]) -> 
 ///
 /// # Returns
 /// Transformed bytes (encryption/decryption are identical in CTR).
-pub fn aes_ctr_apply(cipher: &AesCipher, nonce_counter: &[u8; 16], input: &[u8]) -> Vec<u8> {
+pub fn noxtls_aes_ctr_apply(cipher: &AesCipher, nonce_counter: &[u8; 16], input: &[u8]) -> Vec<u8> {
     let mut out = vec![0_u8; input.len()];
     let mut counter = *nonce_counter;
     let mut offset = 0;
@@ -224,8 +224,8 @@ pub fn aes_ctr_apply(cipher: &AesCipher, nonce_counter: &[u8; 16], input: &[u8])
 ///
 /// # Returns
 /// Transformed bytes for CFB mode.
-pub fn aes_cfb_apply(cipher: &AesCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
-    aes_cfb_encrypt(cipher, iv, input)
+pub fn noxtls_aes_cfb_apply(cipher: &AesCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
+    noxtls_aes_cfb_encrypt(cipher, iv, input)
 }
 
 /// Encrypts bytes with AES-CFB-128 using a 16-byte IV/register.
@@ -237,7 +237,7 @@ pub fn aes_cfb_apply(cipher: &AesCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8>
 ///
 /// # Returns
 /// Ciphertext bytes with same length as `plaintext`.
-pub fn aes_cfb_encrypt(cipher: &AesCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_aes_cfb_encrypt(cipher: &AesCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
     aes_cfb_process(cipher, iv, plaintext, true)
 }
 
@@ -250,7 +250,7 @@ pub fn aes_cfb_encrypt(cipher: &AesCipher, iv: &[u8; 16], plaintext: &[u8]) -> V
 ///
 /// # Returns
 /// Plaintext bytes with same length as `ciphertext`.
-pub fn aes_cfb_decrypt(cipher: &AesCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_aes_cfb_decrypt(cipher: &AesCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
     aes_cfb_process(cipher, iv, ciphertext, false)
 }
 
@@ -300,7 +300,7 @@ fn aes_cfb_process(cipher: &AesCipher, iv: &[u8; 16], input: &[u8], encrypt: boo
 ///
 /// # Returns
 /// Transformed bytes for OFB mode.
-pub fn aes_ofb_apply(cipher: &AesCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
+pub fn noxtls_aes_ofb_apply(cipher: &AesCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8> {
     let mut out = vec![0_u8; input.len()];
     let mut stream = *iv;
     let mut offset = 0;
@@ -325,7 +325,7 @@ pub fn aes_ofb_apply(cipher: &AesCipher, iv: &[u8; 16], input: &[u8]) -> Vec<u8>
 ///
 /// # Returns
 /// `(ciphertext, tag)` pair with 16-byte authentication tag.
-pub fn aes_gcm_encrypt(
+pub fn noxtls_aes_gcm_encrypt(
     cipher: &AesCipher,
     nonce: &[u8],
     aad: &[u8],
@@ -358,7 +358,7 @@ pub fn aes_gcm_encrypt(
 ///
 /// # Returns
 /// Decrypted plaintext bytes when tag verification succeeds.
-pub fn aes_gcm_decrypt(
+pub fn noxtls_aes_gcm_decrypt(
     cipher: &AesCipher,
     nonce: &[u8],
     aad: &[u8],
@@ -393,7 +393,7 @@ pub fn aes_gcm_decrypt(
 ///
 /// # Returns
 /// `(ciphertext, tag)` pair with 16-byte authentication tag.
-pub fn aes_ccm_encrypt(
+pub fn noxtls_aes_ccm_encrypt(
     cipher: &AesCipher,
     nonce: &[u8],
     aad: &[u8],
@@ -485,7 +485,7 @@ pub fn aes_ccm_encrypt(
 ///
 /// # Returns
 /// Decrypted plaintext bytes when tag verification succeeds.
-pub fn aes_ccm_decrypt(
+pub fn noxtls_aes_ccm_decrypt(
     cipher: &AesCipher,
     nonce: &[u8],
     aad: &[u8],
@@ -602,7 +602,7 @@ fn constant_time_tag_eq(expected: &[u8; 16], received: &[u8; 16]) -> bool {
 ///
 /// # Returns
 /// XTS ciphertext bytes with same length as `plaintext`.
-pub fn aes_xts_encrypt(
+pub fn noxtls_aes_xts_encrypt(
     cipher_a: &AesCipher,
     cipher_b: &AesCipher,
     tweak: &[u8; 16],
@@ -621,7 +621,7 @@ pub fn aes_xts_encrypt(
 ///
 /// # Returns
 /// XTS plaintext bytes with same length as `ciphertext`.
-pub fn aes_xts_decrypt(
+pub fn noxtls_aes_xts_decrypt(
     cipher_a: &AesCipher,
     cipher_b: &AesCipher,
     tweak: &[u8; 16],

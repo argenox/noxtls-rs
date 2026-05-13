@@ -15,12 +15,12 @@
 // See `noxtls/LICENSE` and `noxtls/LICENSE.md` in this repository for full details.
 // CONTACT: info@argenox.com
 
-//! Build a simple anchor + leaf chain and run `validate_certificate_chain`.
+//! Build a simple anchor + leaf chain and run `noxtls_validate_certificate_chain`.
 
 use noxtls_core::Result;
 use noxtls_crypto::P256PrivateKey;
 use noxtls_x509::{
-    parse_certificate, validate_certificate_chain, write_self_signed_certificate_p256_sha256,
+    noxtls_parse_certificate, noxtls_validate_certificate_chain, noxtls_write_self_signed_certificate_p256_sha256,
 };
 
 /// Validates a generated leaf certificate against a generated trust anchor.
@@ -44,9 +44,9 @@ fn main() -> Result<()> {
     let trust_anchor_der = make_self_signed("anchor.noxtls.local", [0x44; 32], &[0x10])?;
     let leaf_der = make_self_signed("leaf.noxtls.local", [0x55; 32], &[0x11])?;
 
-    let trust_anchor = parse_certificate(&trust_anchor_der)?;
-    let leaf = parse_certificate(&leaf_der)?;
-    let report = validate_certificate_chain(&leaf, &[], &[trust_anchor], "20260101000000Z");
+    let trust_anchor = noxtls_parse_certificate(&trust_anchor_der)?;
+    let leaf = noxtls_parse_certificate(&leaf_der)?;
+    let report = noxtls_validate_certificate_chain(&leaf, &[], &[trust_anchor], "20260101000000Z");
 
     match report {
         Ok(result) => {
@@ -80,7 +80,7 @@ fn main() -> Result<()> {
 fn make_self_signed(common_name: &str, key_seed: [u8; 32], serial: &[u8]) -> Result<Vec<u8>> {
     let private = P256PrivateKey::from_bytes(key_seed)?;
     let public = private.public_key()?;
-    write_self_signed_certificate_p256_sha256(
+    noxtls_write_self_signed_certificate_p256_sha256(
         serial,
         common_name,
         "240101000000Z",

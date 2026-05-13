@@ -105,7 +105,7 @@ impl X25519PrivateKey {
     #[must_use]
     pub fn public_key(&self) -> X25519PublicKey {
         X25519PublicKey {
-            bytes: x25519_basepoint(&self.scalar),
+            bytes: noxtls_x25519_basepoint(&self.scalar),
         }
     }
 
@@ -119,7 +119,7 @@ impl X25519PrivateKey {
     /// 32-byte shared secret result from X25519 scalar multiplication.
     #[must_use]
     pub fn diffie_hellman(&self, peer: X25519PublicKey) -> [u8; 32] {
-        x25519(&self.scalar, &peer.bytes)
+        noxtls_x25519(&self.scalar, &peer.bytes)
     }
 
     /// Performs checked ECDH and rejects invalid/weak peer keys and zero shared outputs.
@@ -138,7 +138,7 @@ impl X25519PrivateKey {
         peer.validate()?;
         let shared = self.diffie_hellman(peer);
         if is_all_zero(&shared) {
-            return Err(Error::CryptoFailure("x25519 shared secret is all-zero"));
+            return Err(Error::CryptoFailure("noxtls_x25519 shared secret is all-zero"));
         }
         Ok(shared)
     }
@@ -190,12 +190,12 @@ impl X25519PublicKey {
         let masked = self.masked_u_coordinate();
         if is_all_zero(&masked) {
             return Err(Error::CryptoFailure(
-                "x25519 peer public key is low-order (masked zero)",
+                "noxtls_x25519 peer public key is low-order (masked zero)",
             ));
         }
         if is_montgomery_u_one(&masked) {
             return Err(Error::CryptoFailure(
-                "x25519 peer public key is low-order (u=1)",
+                "noxtls_x25519 peer public key is low-order (u=1)",
             ));
         }
         Ok(())
@@ -231,7 +231,7 @@ impl X25519PublicKey {
 /// # Returns
 /// 32-byte X25519 scalar multiplication output.
 #[must_use]
-pub fn x25519(scalar: &[u8; 32], u: &[u8; 32]) -> [u8; 32] {
+pub fn noxtls_x25519(scalar: &[u8; 32], u: &[u8; 32]) -> [u8; 32] {
     let k = clamp_scalar(*scalar);
     let mut u_masked = *u;
     u_masked[31] &= 0x7f;
@@ -279,10 +279,10 @@ pub fn x25519(scalar: &[u8; 32], u: &[u8; 32]) -> [u8; 32] {
 /// # Returns
 /// 32-byte public key u-coordinate for the Curve25519 basepoint.
 #[must_use]
-pub fn x25519_basepoint(scalar: &[u8; 32]) -> [u8; 32] {
+pub fn noxtls_x25519_basepoint(scalar: &[u8; 32]) -> [u8; 32] {
     let mut basepoint = [0_u8; 32];
     basepoint[0] = 9;
-    x25519(scalar, &basepoint)
+    noxtls_x25519(scalar, &basepoint)
 }
 
 /// Computes X25519 shared secret and validates non-zero output.
@@ -297,7 +297,7 @@ pub fn x25519_basepoint(scalar: &[u8; 32]) -> [u8; 32] {
 /// # Errors
 ///
 /// Forwards errors from [`X25519PrivateKey::diffie_hellman_checked`].
-pub fn x25519_shared_secret(
+pub fn noxtls_x25519_shared_secret(
     private_key: X25519PrivateKey,
     peer_public_key: X25519PublicKey,
 ) -> Result<[u8; 32]> {
@@ -315,12 +315,12 @@ pub fn x25519_shared_secret(
 /// # Errors
 ///
 /// Returns DRBG errors from [`HmacDrbgSha256::generate`], or [`Error::InvalidLength`] if the DRBG output is not exactly 32 bytes.
-pub fn x25519_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<X25519PrivateKey> {
+pub fn noxtls_x25519_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<X25519PrivateKey> {
     let scalar = drbg.generate(32, b"x25519_private_scalar")?;
     let bytes: [u8; 32] = scalar
         .as_slice()
         .try_into()
-        .map_err(|_| Error::InvalidLength("x25519 private scalar length mismatch"))?;
+        .map_err(|_| Error::InvalidLength("noxtls_x25519 private scalar length mismatch"))?;
     Ok(X25519PrivateKey::from_bytes(bytes))
 }
 

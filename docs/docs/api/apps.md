@@ -1,22 +1,38 @@
 ---
-title: noxtls-test
+title: Apps and demos
 ---
 
-# `noxtls-test`
+# Apps and demos (`noxtls-test`)
 
-Internal demo and test binaries for the noxtls Rust workspace.
+This page maps application/demo entry points that are currently available in the Rust workspace.
 
 ## Crate metadata
 
-- Workspace path: `noxtls/crates/noxtls-test`
+- Workspace path: `crates/noxtls-test`
 - Package name: `noxtls-test`
 - Publish status: internal/private
 
-## API references
+## Binaries
+
+- `tls_test` - TLS 1.3 modeled session and record-layer flow demo
+- `sha_demo` - SHA-256 sanity check utility
+- `perf_baseline` - micro-benchmark for SHA-256 and ChaCha20 throughput
+
+## Run locally
+
+From repository root:
+
+```powershell
+cargo run -p noxtls-test --bin tls_test
+cargo run -p noxtls-test --bin sha_demo
+cargo run -p noxtls-test --bin perf_baseline
+```
+
+## Source and references
 
 - docs.rs: not published (internal crate)
-- Source: [`noxtls/crates/noxtls-test`](https://github.com/Argenox/noxtls-oem-rust/tree/main/noxtls/crates/noxtls-test)
+- Source: [`crates/noxtls-test`](https://github.com/Argenox/noxtls-oem-rust/tree/main/crates/noxtls-test)
 
 ## Notes
 
-This page is generated from workspace Cargo metadata. Re-run `npm run api:sync` after crate metadata changes.
+`noxtls-test` is intentionally internal and may change faster than public crate APIs. Use this page as an examples index, and use topic pages under `api/` for stable API guidance.

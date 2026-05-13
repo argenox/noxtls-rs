@@ -18,8 +18,8 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    rsaes_oaep_sha256_decrypt, rsaes_pkcs1_v15_decrypt, rsassa_pss_sha256_sign, rsassa_sha256_sign,
-    x25519_shared_secret, RsaPrivateKey, X25519PrivateKey, X25519PublicKey,
+    noxtls_rsaes_oaep_sha256_decrypt, noxtls_rsaes_pkcs1_v15_decrypt, noxtls_rsassa_pss_sha256_sign, noxtls_rsassa_sha256_sign,
+    noxtls_x25519_shared_secret, RsaPrivateKey, X25519PrivateKey, X25519PublicKey,
 };
 
 /// Opaque external key handle used by providers to locate key material.
@@ -359,12 +359,12 @@ impl ExternalKeyProvider for SoftwareKeyProvider {
     fn sign(&self, request: &KeySignRequest<'_>) -> Result<Vec<u8>> {
         let key = self.rsa_signing_key(request.handle)?;
         match request.algorithm {
-            KeySignAlgorithm::RsaPkcs1Sha256 => rsassa_sha256_sign(key, request.message),
+            KeySignAlgorithm::RsaPkcs1Sha256 => noxtls_rsassa_sha256_sign(key, request.message),
             KeySignAlgorithm::RsaPssSha256 => {
                 let salt = request.salt.ok_or(Error::InvalidLength(
                     "rsa-pss-sha256 signing requires a salt",
                 ))?;
-                rsassa_pss_sha256_sign(key, request.message, salt)
+                noxtls_rsassa_pss_sha256_sign(key, request.message, salt)
             }
         }
     }
@@ -385,10 +385,10 @@ impl ExternalKeyProvider for SoftwareKeyProvider {
     fn decrypt(&self, request: &KeyDecryptRequest<'_>) -> Result<Vec<u8>> {
         let key = self.rsa_decryption_key(request.handle)?;
         let plaintext = match request.algorithm {
-            KeyDecryptAlgorithm::RsaPkcs1v15 => rsaes_pkcs1_v15_decrypt(key, request.ciphertext),
+            KeyDecryptAlgorithm::RsaPkcs1v15 => noxtls_rsaes_pkcs1_v15_decrypt(key, request.ciphertext),
             KeyDecryptAlgorithm::RsaOaepSha256 => {
                 let label = request.label.unwrap_or(&[]);
-                rsaes_oaep_sha256_decrypt(key, request.ciphertext, label)
+                noxtls_rsaes_oaep_sha256_decrypt(key, request.ciphertext, label)
             }
         };
         plaintext.map_err(|_| Error::CryptoFailure("key provider decryption failed"))
@@ -416,7 +416,7 @@ impl ExternalKeyProvider for SoftwareKeyProvider {
                     .try_into()
                     .map_err(|_| Error::InvalidLength("x25519 peer public key must be 32 bytes"))?;
                 let peer_public = X25519PublicKey::from_bytes(peer_bytes);
-                let shared = x25519_shared_secret(private_key, peer_public)?;
+                let shared = noxtls_x25519_shared_secret(private_key, peer_public)?;
                 Ok(shared.to_vec())
             }
         }

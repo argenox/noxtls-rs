@@ -99,7 +99,7 @@ impl PsaError {
 /// # Returns
 ///
 /// A normalized status class that can be mapped to stable noxtls errors.
-pub fn normalize_psa_status(status: i32) -> PsaResultCode {
+pub fn noxtls_normalize_psa_status(status: i32) -> PsaResultCode {
     match status {
         0 => PsaResultCode::Success,
         -133 => PsaResultCode::NotPermitted,
@@ -125,8 +125,8 @@ pub fn normalize_psa_status(status: i32) -> PsaResultCode {
 /// # Errors
 ///
 /// Returns mapped [`noxtls_core::Error`] for any non-zero status.
-pub fn map_status_to_result(status: i32) -> Result<()> {
-    let normalized = normalize_psa_status(status);
+pub fn noxtls_map_status_to_result(status: i32) -> Result<()> {
+    let normalized = noxtls_normalize_psa_status(status);
     if normalized == PsaResultCode::Success {
         Ok(())
     } else {

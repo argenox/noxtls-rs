@@ -20,7 +20,7 @@
 use std::fs;
 
 use noxtls_core::{Error, Result};
-use noxtls_x509::{parse_der_node, DerNode};
+use noxtls_x509::{noxtls_parse_der_node, DerNode};
 
 /// Loads a CRL DER file from argv and dumps top-level TLV information.
 ///
@@ -43,7 +43,7 @@ fn main() -> Result<()> {
     let crl_path = read_crl_path()?;
     let crl_der =
         fs::read(&crl_path).map_err(|_| Error::StateError("failed to read CRL DER file"))?;
-    let (node, tail) = parse_der_node(&crl_der)?;
+    let (node, tail) = noxtls_parse_der_node(&crl_der)?;
     dump_node_summary(&node, tail.len());
     Ok(())
 }

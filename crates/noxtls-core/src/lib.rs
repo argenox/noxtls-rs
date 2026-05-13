@@ -30,8 +30,8 @@ use core::fmt::{Display, Formatter};
 mod config;
 
 pub use config::{
-    compiled_allow_legacy_algorithms, compiled_allow_sha1_signatures,
-    compiled_strict_constant_time, ConstantTimePolicy, LibraryConfig, SecurityPolicy,
+    noxtls_compiled_allow_legacy_algorithms, noxtls_compiled_allow_sha1_signatures,
+    noxtls_compiled_strict_constant_time, ConstantTimePolicy, LibraryConfig, SecurityPolicy,
 };
 
 #[cfg(all(
@@ -284,7 +284,7 @@ impl Profile {
 /// # Errors
 ///
 /// Returns [`Error::InvalidLength`] when `input` has fewer than two bytes.
-pub fn read_u16_be(input: &[u8]) -> Result<u16> {
+pub fn noxtls_read_u16_be(input: &[u8]) -> Result<u16> {
     if input.len() < 2 {
         return Err(Error::InvalidLength("not enough bytes for u16"));
     }
@@ -304,7 +304,7 @@ pub fn read_u16_be(input: &[u8]) -> Result<u16> {
 /// # Errors
 ///
 /// Returns [`Error::InvalidLength`] when `input` has fewer than three bytes.
-pub fn read_u24_be(input: &[u8]) -> Result<u32> {
+pub fn noxtls_read_u24_be(input: &[u8]) -> Result<u32> {
     if input.len() < 3 {
         return Err(Error::InvalidLength("not enough bytes for u24"));
     }
@@ -324,6 +324,6 @@ pub fn read_u24_be(input: &[u8]) -> Result<u32> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn secure_zero(data: &mut [u8]) {
+pub fn noxtls_secure_zero(data: &mut [u8]) {
     data.fill(0);
 }

@@ -16,7 +16,7 @@
 // CONTACT: info@argenox.com
 
 use crate::drbg::HmacDrbgSha256;
-use crate::hash::{sha1, sha256, sha384, sha512};
+use crate::hash::{noxtls_sha1, noxtls_sha256, noxtls_sha384, noxtls_sha512};
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 
@@ -209,7 +209,7 @@ impl RsaPrivateKey {
     /// PKCS#1 v1.5 RSA signature bytes.
     pub fn sign_pkcs1_v15_sha256(&self, msg: &[u8]) -> Result<Vec<u8>> {
         validate_private_components(&self.n, &self.d)?;
-        let hash = sha256(msg);
+        let hash = noxtls_sha256(msg);
         let em = emsa_pkcs1_v15_encode(
             &hash,
             PKCS1_V15_DIGESTINFO_SHA256_PREFIX,
@@ -229,7 +229,7 @@ impl RsaPrivateKey {
     /// PKCS#1 v1.5 RSA signature bytes.
     pub fn sign_pkcs1_v15_sha1(&self, msg: &[u8]) -> Result<Vec<u8>> {
         validate_private_components(&self.n, &self.d)?;
-        let hash = sha1(msg);
+        let hash = noxtls_sha1(msg);
         let em =
             emsa_pkcs1_v15_encode(&hash, PKCS1_V15_DIGESTINFO_SHA1_PREFIX, self.modulus_len())?;
         let m = BigUint::from_be_bytes(&em);
@@ -246,7 +246,7 @@ impl RsaPrivateKey {
     /// PKCS#1 v1.5 RSA signature bytes.
     pub fn sign_pkcs1_v15_sha384(&self, msg: &[u8]) -> Result<Vec<u8>> {
         validate_private_components(&self.n, &self.d)?;
-        let hash = sha384(msg);
+        let hash = noxtls_sha384(msg);
         let em = emsa_pkcs1_v15_encode(
             &hash,
             PKCS1_V15_DIGESTINFO_SHA384_PREFIX,
@@ -266,7 +266,7 @@ impl RsaPrivateKey {
     /// PKCS#1 v1.5 RSA signature bytes.
     pub fn sign_pkcs1_v15_sha512(&self, msg: &[u8]) -> Result<Vec<u8>> {
         validate_private_components(&self.n, &self.d)?;
-        let hash = sha512(msg);
+        let hash = noxtls_sha512(msg);
         let em = emsa_pkcs1_v15_encode(
             &hash,
             PKCS1_V15_DIGESTINFO_SHA512_PREFIX,
@@ -289,7 +289,7 @@ impl RsaPrivateKey {
         validate_private_components(&self.n, &self.d)?;
         let em_bits = self.n.bit_len().saturating_sub(1);
         let em_len = em_bits.div_ceil(8);
-        let m_hash = sha256(msg);
+        let m_hash = noxtls_sha256(msg);
         let em = emsa_pss_encode_sha256(&m_hash, salt, em_bits, em_len)?;
         let s = BigUint::mod_exp(&BigUint::from_be_bytes(&em), &self.d, &self.n);
         s.to_be_bytes_padded(self.modulus_len())
@@ -307,7 +307,7 @@ impl RsaPrivateKey {
         validate_private_components(&self.n, &self.d)?;
         let em_bits = self.n.bit_len().saturating_sub(1);
         let em_len = em_bits.div_ceil(8);
-        let m_hash = sha384(msg);
+        let m_hash = noxtls_sha384(msg);
         let em = emsa_pss_encode_sha384(&m_hash, salt, em_bits, em_len)?;
         let s = BigUint::mod_exp(&BigUint::from_be_bytes(&em), &self.d, &self.n);
         s.to_be_bytes_padded(self.modulus_len())
@@ -534,7 +534,7 @@ impl RsaPublicKey {
         let recovered = BigUint::mod_exp(&BigUint::from_be_bytes(signature), &self.e, &self.n)
             .to_be_bytes_padded(self.modulus_len())?;
         let expected = emsa_pkcs1_v15_encode(
-            &sha256(msg),
+            &noxtls_sha256(msg),
             PKCS1_V15_DIGESTINFO_SHA256_PREFIX,
             self.modulus_len(),
         )?;
@@ -561,7 +561,7 @@ impl RsaPublicKey {
         let recovered = BigUint::mod_exp(&BigUint::from_be_bytes(signature), &self.e, &self.n)
             .to_be_bytes_padded(self.modulus_len())?;
         let expected = emsa_pkcs1_v15_encode(
-            &sha1(msg),
+            &noxtls_sha1(msg),
             PKCS1_V15_DIGESTINFO_SHA1_PREFIX,
             self.modulus_len(),
         )?;
@@ -588,7 +588,7 @@ impl RsaPublicKey {
         let recovered = BigUint::mod_exp(&BigUint::from_be_bytes(signature), &self.e, &self.n)
             .to_be_bytes_padded(self.modulus_len())?;
         let expected = emsa_pkcs1_v15_encode(
-            &sha384(msg),
+            &noxtls_sha384(msg),
             PKCS1_V15_DIGESTINFO_SHA384_PREFIX,
             self.modulus_len(),
         )?;
@@ -615,7 +615,7 @@ impl RsaPublicKey {
         let recovered = BigUint::mod_exp(&BigUint::from_be_bytes(signature), &self.e, &self.n)
             .to_be_bytes_padded(self.modulus_len())?;
         let expected = emsa_pkcs1_v15_encode(
-            &sha512(msg),
+            &noxtls_sha512(msg),
             PKCS1_V15_DIGESTINFO_SHA512_PREFIX,
             self.modulus_len(),
         )?;
@@ -645,7 +645,7 @@ impl RsaPublicKey {
         let recovered = BigUint::mod_exp(&BigUint::from_be_bytes(signature), &self.e, &self.n)
             .to_be_bytes_padded(self.modulus_len())?;
         let em = &recovered[recovered.len() - em_len..];
-        emsa_pss_verify_sha256(&sha256(msg), em, em_bits, salt_len)
+        emsa_pss_verify_sha256(&noxtls_sha256(msg), em, em_bits, salt_len)
     }
 
     /// Verifies RSASSA-PSS signature for SHA-384 hashed message.
@@ -667,7 +667,7 @@ impl RsaPublicKey {
         let recovered = BigUint::mod_exp(&BigUint::from_be_bytes(signature), &self.e, &self.n)
             .to_be_bytes_padded(self.modulus_len())?;
         let em = &recovered[recovered.len() - em_len..];
-        emsa_pss_verify_sha384(&sha384(msg), em, em_bits, salt_len)
+        emsa_pss_verify_sha384(&noxtls_sha384(msg), em, em_bits, salt_len)
     }
 
     /// Encrypts plaintext using RSAES-PKCS1-v1_5 with DRBG-sourced non-zero padding.
@@ -753,7 +753,7 @@ impl RsaPublicKey {
 /// # Returns
 /// Generated `(private_key, public_key)` pair including CRT parameters.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn rsa_generate_keypair_with_exponent_auto(
+pub fn noxtls_rsa_generate_keypair_with_exponent_auto(
     modulus_bits: usize,
     public_exponent: u32,
     drbg: &mut HmacDrbgSha256,
@@ -865,7 +865,7 @@ fn rsa_generate_keypair_backend_auto(
 /// # Returns
 /// Generated `(private_key, public_key)` pair including CRT parameters.
 #[cfg(feature = "hazardous-legacy-crypto")]
-pub fn rsa_generate_keypair_auto(
+pub fn noxtls_rsa_generate_keypair_auto(
     modulus_bits: usize,
     drbg: &mut HmacDrbgSha256,
 ) -> Result<(RsaPrivateKey, RsaPublicKey)> {
@@ -882,7 +882,7 @@ pub fn rsa_generate_keypair_auto(
 ///
 /// # Returns
 /// Generated `(private_key, public_key)` pair when key size satisfies policy and backend support.
-pub fn rsa_generate_keypair_with_policy_auto(
+pub fn noxtls_rsa_generate_keypair_with_policy_auto(
     modulus_bits: usize,
     public_exponent: u32,
     policy: RsaKeySizePolicy,
@@ -910,12 +910,12 @@ pub fn rsa_generate_keypair_with_policy_auto(
 ///
 /// # Returns
 /// Generated `(private_key, public_key)` pair when key size satisfies secure policy.
-pub fn rsa_generate_keypair_secure_auto(
+pub fn noxtls_rsa_generate_keypair_secure_auto(
     modulus_bits: usize,
     policy: RsaKeySizePolicy,
     drbg: &mut HmacDrbgSha256,
 ) -> Result<(RsaPrivateKey, RsaPublicKey)> {
-    rsa_generate_keypair_with_policy_auto(modulus_bits, 65_537, policy, drbg)
+    noxtls_rsa_generate_keypair_with_policy_auto(modulus_bits, 65_537, policy, drbg)
 }
 
 /// Hashes and signs message using RSASSA-PKCS1-v1_5 with SHA-256.
@@ -926,7 +926,7 @@ pub fn rsa_generate_keypair_secure_auto(
 ///
 /// # Returns
 /// PKCS#1 v1.5 RSA signature bytes.
-pub fn rsassa_sha256_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsassa_sha256_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> {
     private.sign_pkcs1_v15_sha256(msg)
 }
 
@@ -939,7 +939,7 @@ pub fn rsassa_sha256_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn rsassa_sha256_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_rsassa_sha256_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
     public.verify_pkcs1_v15_sha256(msg, signature)
 }
 
@@ -951,7 +951,7 @@ pub fn rsassa_sha256_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8])
 ///
 /// # Returns
 /// PKCS#1 v1.5 RSA signature bytes.
-pub fn rsassa_sha1_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsassa_sha1_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> {
     private.sign_pkcs1_v15_sha1(msg)
 }
 
@@ -964,7 +964,7 @@ pub fn rsassa_sha1_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> 
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn rsassa_sha1_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_rsassa_sha1_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
     public.verify_pkcs1_v15_sha1(msg, signature)
 }
 
@@ -976,7 +976,7 @@ pub fn rsassa_sha1_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -
 ///
 /// # Returns
 /// PKCS#1 v1.5 RSA signature bytes.
-pub fn rsassa_sha384_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsassa_sha384_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> {
     private.sign_pkcs1_v15_sha384(msg)
 }
 
@@ -989,7 +989,7 @@ pub fn rsassa_sha384_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn rsassa_sha384_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_rsassa_sha384_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
     public.verify_pkcs1_v15_sha384(msg, signature)
 }
 
@@ -1001,7 +1001,7 @@ pub fn rsassa_sha384_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8])
 ///
 /// # Returns
 /// PKCS#1 v1.5 RSA signature bytes.
-pub fn rsassa_sha512_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsassa_sha512_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>> {
     private.sign_pkcs1_v15_sha512(msg)
 }
 
@@ -1014,7 +1014,7 @@ pub fn rsassa_sha512_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Vec<u8>
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn rsassa_sha512_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_rsassa_sha512_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
     public.verify_pkcs1_v15_sha512(msg, signature)
 }
 
@@ -1027,7 +1027,7 @@ pub fn rsassa_sha512_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8])
 ///
 /// # Returns
 /// RSASSA-PSS signature bytes.
-pub fn rsassa_pss_sha256_sign(private: &RsaPrivateKey, msg: &[u8], salt: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsassa_pss_sha256_sign(private: &RsaPrivateKey, msg: &[u8], salt: &[u8]) -> Result<Vec<u8>> {
     private.sign_pss_sha256(msg, salt)
 }
 
@@ -1041,7 +1041,7 @@ pub fn rsassa_pss_sha256_sign(private: &RsaPrivateKey, msg: &[u8], salt: &[u8]) 
 ///
 /// # Returns
 /// RSASSA-PSS signature bytes.
-pub fn rsassa_pss_sha256_sign_auto(
+pub fn noxtls_rsassa_pss_sha256_sign_auto(
     private: &RsaPrivateKey,
     msg: &[u8],
     drbg: &mut HmacDrbgSha256,
@@ -1061,7 +1061,7 @@ pub fn rsassa_pss_sha256_sign_auto(
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn rsassa_pss_sha256_verify(
+pub fn noxtls_rsassa_pss_sha256_verify(
     public: &RsaPublicKey,
     msg: &[u8],
     signature: &[u8],
@@ -1079,7 +1079,7 @@ pub fn rsassa_pss_sha256_verify(
 ///
 /// # Returns
 /// RSASSA-PSS signature bytes.
-pub fn rsassa_pss_sha384_sign(private: &RsaPrivateKey, msg: &[u8], salt: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsassa_pss_sha384_sign(private: &RsaPrivateKey, msg: &[u8], salt: &[u8]) -> Result<Vec<u8>> {
     private.sign_pss_sha384(msg, salt)
 }
 
@@ -1093,7 +1093,7 @@ pub fn rsassa_pss_sha384_sign(private: &RsaPrivateKey, msg: &[u8], salt: &[u8]) 
 ///
 /// # Returns
 /// RSASSA-PSS signature bytes.
-pub fn rsassa_pss_sha384_sign_auto(
+pub fn noxtls_rsassa_pss_sha384_sign_auto(
     private: &RsaPrivateKey,
     msg: &[u8],
     drbg: &mut HmacDrbgSha256,
@@ -1113,7 +1113,7 @@ pub fn rsassa_pss_sha384_sign_auto(
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn rsassa_pss_sha384_verify(
+pub fn noxtls_rsassa_pss_sha384_verify(
     public: &RsaPublicKey,
     msg: &[u8],
     signature: &[u8],
@@ -1131,7 +1131,7 @@ pub fn rsassa_pss_sha384_verify(
 ///
 /// # Returns
 /// Ciphertext bytes padded to modulus length.
-pub fn rsaes_pkcs1_v15_encrypt_auto(
+pub fn noxtls_rsaes_pkcs1_v15_encrypt_auto(
     public: &RsaPublicKey,
     plaintext: &[u8],
     drbg: &mut HmacDrbgSha256,
@@ -1147,7 +1147,7 @@ pub fn rsaes_pkcs1_v15_encrypt_auto(
 ///
 /// # Returns
 /// Decrypted plaintext bytes.
-pub fn rsaes_pkcs1_v15_decrypt(private: &RsaPrivateKey, ciphertext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsaes_pkcs1_v15_decrypt(private: &RsaPrivateKey, ciphertext: &[u8]) -> Result<Vec<u8>> {
     private.decrypt_pkcs1_v15(ciphertext)
 }
 
@@ -1164,7 +1164,7 @@ pub fn rsaes_pkcs1_v15_decrypt(private: &RsaPrivateKey, ciphertext: &[u8]) -> Re
 /// This API mirrors the C compatibility surface. Current Rust key material stores
 /// `(n, d)` only, so it delegates to standard private exponent decryption while
 /// preserving external API shape for parity tracking.
-pub fn rsaes_pkcs1_v15_decrypt_crt_only(
+pub fn noxtls_rsaes_pkcs1_v15_decrypt_crt_only(
     private: &RsaPrivateKey,
     ciphertext: &[u8],
 ) -> Result<Vec<u8>> {
@@ -1181,7 +1181,7 @@ pub fn rsaes_pkcs1_v15_decrypt_crt_only(
 ///
 /// # Returns
 /// Ciphertext bytes padded to modulus length.
-pub fn rsaes_oaep_sha256_encrypt_auto(
+pub fn noxtls_rsaes_oaep_sha256_encrypt_auto(
     public: &RsaPublicKey,
     plaintext: &[u8],
     label: &[u8],
@@ -1199,7 +1199,7 @@ pub fn rsaes_oaep_sha256_encrypt_auto(
 ///
 /// # Returns
 /// Decrypted plaintext bytes.
-pub fn rsaes_oaep_sha256_decrypt(
+pub fn noxtls_rsaes_oaep_sha256_decrypt(
     private: &RsaPrivateKey,
     ciphertext: &[u8],
     label: &[u8],
@@ -1216,7 +1216,7 @@ pub fn rsaes_oaep_sha256_decrypt(
 ///
 /// # Returns
 /// Decrypted plaintext bytes.
-pub fn rsaes_oaep_sha256_decrypt_crt_only(
+pub fn noxtls_rsaes_oaep_sha256_decrypt_crt_only(
     private: &RsaPrivateKey,
     ciphertext: &[u8],
     label: &[u8],
@@ -1309,7 +1309,7 @@ fn emsa_pss_encode_sha256(
     let mut m_prime = vec![0_u8; 8];
     m_prime.extend_from_slice(m_hash);
     m_prime.extend_from_slice(salt);
-    let h = sha256(&m_prime);
+    let h = noxtls_sha256(&m_prime);
 
     let ps_len = em_len - salt.len() - HASH_LEN - 2;
     let mut db = vec![0_u8; ps_len];
@@ -1396,7 +1396,7 @@ fn emsa_pss_verify_sha256(
     let mut m_prime = vec![0_u8; 8];
     m_prime.extend_from_slice(m_hash);
     m_prime.extend_from_slice(salt);
-    let expected_h = sha256(&m_prime);
+    let expected_h = noxtls_sha256(&m_prime);
     if ct_bytes_eq(expected_h.as_slice(), h) {
         Ok(())
     } else {
@@ -1438,7 +1438,7 @@ fn emsa_pss_encode_sha384(
     let mut m_prime = vec![0_u8; 8];
     m_prime.extend_from_slice(m_hash);
     m_prime.extend_from_slice(salt);
-    let h = sha384(&m_prime);
+    let h = noxtls_sha384(&m_prime);
 
     let ps_len = em_len - salt.len() - HASH_LEN - 2;
     let mut db = vec![0_u8; ps_len];
@@ -1525,7 +1525,7 @@ fn emsa_pss_verify_sha384(
     let mut m_prime = vec![0_u8; 8];
     m_prime.extend_from_slice(m_hash);
     m_prime.extend_from_slice(salt);
-    let expected_h = sha384(&m_prime);
+    let expected_h = noxtls_sha384(&m_prime);
     if ct_bytes_eq(expected_h.as_slice(), h) {
         Ok(())
     } else {
@@ -1561,7 +1561,7 @@ fn mgf1_sha256(seed: &[u8], out_len: usize) -> Result<Vec<u8>> {
         let mut block_input = Vec::with_capacity(seed.len() + 4);
         block_input.extend_from_slice(seed);
         block_input.extend_from_slice(&counter.to_be_bytes());
-        out.extend_from_slice(&sha256(&block_input));
+        out.extend_from_slice(&noxtls_sha256(&block_input));
         counter = counter.wrapping_add(1);
     }
     out.truncate(out_len);
@@ -1596,7 +1596,7 @@ fn mgf1_sha384(seed: &[u8], out_len: usize) -> Result<Vec<u8>> {
         let mut block_input = Vec::with_capacity(seed.len() + 4);
         block_input.extend_from_slice(seed);
         block_input.extend_from_slice(&counter.to_be_bytes());
-        out.extend_from_slice(&sha384(&block_input));
+        out.extend_from_slice(&noxtls_sha384(&block_input));
         counter = counter.wrapping_add(1);
     }
     out.truncate(out_len);
@@ -1677,7 +1677,7 @@ fn emea_oaep_encode_sha256(
             "rsa plaintext too long for oaep sha256",
         ));
     }
-    let l_hash = sha256(label);
+    let l_hash = noxtls_sha256(label);
     let ps_len = k - plaintext.len() - (2 * HASH_LEN + 2);
     let mut db = Vec::with_capacity(k - HASH_LEN - 1);
     db.extend_from_slice(&l_hash);
@@ -1738,7 +1738,7 @@ fn decode_oaep_sha256_plaintext(encoded: &[u8], label: &[u8]) -> Result<Vec<u8>>
     for (byte, mask) in db.iter_mut().zip(db_mask.iter()) {
         *byte ^= *mask;
     }
-    let expected_l_hash = sha256(label);
+    let expected_l_hash = noxtls_sha256(label);
     invalid |= u8::from(!ct_bytes_eq(&db[..HASH_LEN], expected_l_hash.as_slice()));
     let rest = &db[HASH_LEN..];
     let mut marker_idx = 0_usize;

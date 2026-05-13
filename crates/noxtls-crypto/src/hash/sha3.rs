@@ -185,7 +185,7 @@ fn keccak_sponge(rate_bytes: usize, output_len: usize, data: &[u8], domain: u8) 
 ///
 /// This function does not panic.
 #[must_use]
-pub fn sha3_256(data: &[u8]) -> [u8; 32] {
+pub fn noxtls_sha3_256(data: &[u8]) -> [u8; 32] {
     let digest = keccak_sponge(136, 32, data, 0x06);
     let mut out = [0_u8; 32];
     out.copy_from_slice(&digest);
@@ -204,7 +204,7 @@ pub fn sha3_256(data: &[u8]) -> [u8; 32] {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn sha3_384(data: &[u8]) -> [u8; 48] {
+pub fn noxtls_sha3_384(data: &[u8]) -> [u8; 48] {
     let digest = keccak_sponge(104, 48, data, 0x06);
     let mut out = [0_u8; 48];
     out.copy_from_slice(&digest);
@@ -223,7 +223,7 @@ pub fn sha3_384(data: &[u8]) -> [u8; 48] {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn sha3_512(data: &[u8]) -> [u8; 64] {
+pub fn noxtls_sha3_512(data: &[u8]) -> [u8; 64] {
     let digest = keccak_sponge(72, 64, data, 0x06);
     let mut out = [0_u8; 64];
     out.copy_from_slice(&digest);
@@ -243,7 +243,7 @@ pub fn sha3_512(data: &[u8]) -> [u8; 64] {
 ///
 /// This function does not panic.
 #[must_use]
-pub fn shake256(data: &[u8], output_len: usize) -> Vec<u8> {
+pub fn noxtls_shake256(data: &[u8], output_len: usize) -> Vec<u8> {
     // SHAKE functions use domain-separation suffix 0x1F (FIPS 202).
     keccak_sponge(136, output_len, data, 0x1F)
 }

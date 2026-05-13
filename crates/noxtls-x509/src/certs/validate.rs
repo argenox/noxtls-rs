@@ -22,12 +22,12 @@ use crate::internal_alloc::ToOwned;
 use crate::internal_alloc::{String, Vec};
 
 use noxtls_crypto::{
-    ed25519_verify, mldsa_verify, p256_ecdsa_verify_sha256, rsassa_pss_sha256_verify,
-    rsassa_pss_sha384_verify, rsassa_sha256_verify, rsassa_sha384_verify, rsassa_sha512_verify,
+    noxtls_ed25519_verify, noxtls_mldsa_verify, noxtls_p256_ecdsa_verify_sha256, noxtls_rsassa_pss_sha256_verify,
+    noxtls_rsassa_pss_sha384_verify, noxtls_rsassa_sha256_verify, noxtls_rsassa_sha384_verify, noxtls_rsassa_sha512_verify,
     Ed25519PublicKey, MlDsaPublicKey, P256PublicKey, RsaPublicKey, OID_ID_MLDSA65,
 };
 
-use super::{parse_der_node, Certificate};
+use super::{noxtls_parse_der_node, Certificate};
 
 /// Describes why certificate path validation failed.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -143,13 +143,13 @@ pub struct ValidationOptions {
 ///
 /// # Returns
 /// `ValidationReport` when path building and checks succeed.
-pub fn validate_certificate_chain<'a>(
+pub fn noxtls_validate_certificate_chain<'a>(
     leaf: &Certificate<'a>,
     intermediates: &[Certificate<'a>],
     trust_anchors: &[Certificate<'a>],
     now: &str,
 ) -> core::result::Result<ValidationReport, ValidationError> {
-    validate_certificate_chain_with_options(
+    noxtls_validate_certificate_chain_with_options(
         leaf,
         intermediates,
         trust_anchors,
@@ -169,7 +169,7 @@ pub fn validate_certificate_chain<'a>(
 ///
 /// # Returns
 /// `ValidationReport` when validation succeeds under `options`.
-pub fn validate_certificate_chain_with_options<'a>(
+pub fn noxtls_validate_certificate_chain_with_options<'a>(
     leaf: &Certificate<'a>,
     intermediates: &[Certificate<'a>],
     trust_anchors: &[Certificate<'a>],
@@ -189,7 +189,7 @@ pub fn validate_certificate_chain_with_options<'a>(
 ///
 /// # Returns
 /// `ValidationReport` when constraint checks succeed.
-pub fn validate_certificate_chain_constraints_only<'a>(
+pub fn noxtls_validate_certificate_chain_constraints_only<'a>(
     leaf: &Certificate<'a>,
     intermediates: &[Certificate<'a>],
     trust_anchors: &[Certificate<'a>],
@@ -215,13 +215,13 @@ pub fn validate_certificate_chain_constraints_only<'a>(
 ///
 /// # Returns
 /// `ValidationReport` when strict chain validation succeeds.
-pub fn validate_certificate_chain_strict<'a>(
+pub fn noxtls_validate_certificate_chain_strict<'a>(
     leaf: &Certificate<'a>,
     intermediates: &[Certificate<'a>],
     trust_anchors: &[Certificate<'a>],
     now: &str,
 ) -> core::result::Result<ValidationReport, ValidationError> {
-    validate_certificate_chain(leaf, intermediates, trust_anchors, now)
+    noxtls_validate_certificate_chain(leaf, intermediates, trust_anchors, now)
 }
 
 /// Shared X.509 chain validation implementation with optional signature enforcement.
@@ -409,7 +409,7 @@ fn validate_chain_step<'a>(
         validate_issuer_constraints(issuer, ca_hops_below_issuer)?;
         validate_name_constraints(issuer, current)?;
         if enforce_signatures {
-            verify_certificate_signature(current, issuer)?;
+            noxtls_verify_certificate_signature(current, issuer)?;
         }
         let policies = finalize_effective_policies(
             &state.effective_policy_oids,
@@ -461,7 +461,7 @@ fn validate_chain_step<'a>(
             validate_issuer_constraints(issuer, ca_hops_below_issuer)?;
             validate_name_constraints(issuer, current)?;
             if enforce_signatures {
-                verify_certificate_signature(current, issuer)?;
+                noxtls_verify_certificate_signature(current, issuer)?;
             }
             decrement_skip_certs_counter(&mut next_state.inhibit_any_policy_skip_certs, current);
             decrement_skip_certs_counter(&mut next_state.explicit_policy_skip_certs, current);
@@ -499,7 +499,7 @@ fn validate_chain_step<'a>(
 ///
 /// # Returns
 /// `Ok(())` when signature verification succeeds.
-pub fn verify_certificate_signature(
+pub fn noxtls_verify_certificate_signature(
     certificate: &Certificate<'_>,
     issuer: &Certificate<'_>,
 ) -> core::result::Result<(), ValidationError> {
@@ -520,7 +520,7 @@ pub fn verify_certificate_signature(
         let public_key = RsaPublicKey::from_be_bytes(&n, &e)
             .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
         if certificate.certificate_signature_algorithm_oid == OID_SHA256_WITH_RSA {
-            return rsassa_sha256_verify(
+            return noxtls_rsassa_sha256_verify(
                 &public_key,
                 certificate.raw_tbs_der,
                 &certificate.signature_value,
@@ -528,7 +528,7 @@ pub fn verify_certificate_signature(
             .map_err(|_| ValidationError::SignatureVerificationFailed);
         }
         if certificate.certificate_signature_algorithm_oid == OID_SHA384_WITH_RSA {
-            return rsassa_sha384_verify(
+            return noxtls_rsassa_sha384_verify(
                 &public_key,
                 certificate.raw_tbs_der,
                 &certificate.signature_value,
@@ -536,7 +536,7 @@ pub fn verify_certificate_signature(
             .map_err(|_| ValidationError::SignatureVerificationFailed);
         }
         if certificate.certificate_signature_algorithm_oid == OID_SHA512_WITH_RSA {
-            return rsassa_sha512_verify(
+            return noxtls_rsassa_sha512_verify(
                 &public_key,
                 certificate.raw_tbs_der,
                 &certificate.signature_value,
@@ -546,7 +546,7 @@ pub fn verify_certificate_signature(
         if certificate.certificate_signature_algorithm_oid == OID_RSASSA_PSS {
             // Until RSASSA-PSS parameters are parsed from AlgorithmIdentifier, accept SHA-256
             // and SHA-384 common profiles by trying the expected default salt lengths.
-            if rsassa_pss_sha256_verify(
+            if noxtls_rsassa_pss_sha256_verify(
                 &public_key,
                 certificate.raw_tbs_der,
                 &certificate.signature_value,
@@ -556,7 +556,7 @@ pub fn verify_certificate_signature(
             {
                 return Ok(());
             }
-            return rsassa_pss_sha384_verify(
+            return noxtls_rsassa_pss_sha384_verify(
                 &public_key,
                 certificate.raw_tbs_der,
                 &certificate.signature_value,
@@ -573,8 +573,8 @@ pub fn verify_certificate_signature(
         }
         let public_key = P256PublicKey::from_uncompressed(&issuer.subject_public_key)
             .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
-        let (r, s) = parse_ecdsa_signature_der(&certificate.signature_value)?;
-        return p256_ecdsa_verify_sha256(&public_key, certificate.raw_tbs_der, &r, &s)
+        let (r, s) = noxtls_parse_ecdsa_signature_der(&certificate.signature_value)?;
+        return noxtls_p256_ecdsa_verify_sha256(&public_key, certificate.raw_tbs_der, &r, &s)
             .map_err(|_| ValidationError::SignatureVerificationFailed);
     }
 
@@ -592,7 +592,7 @@ pub fn verify_certificate_signature(
             .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
         let public_key = Ed25519PublicKey::from_bytes(&key_bytes)
             .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
-        return ed25519_verify(
+        return noxtls_ed25519_verify(
             &public_key,
             certificate.raw_tbs_der,
             certificate.signature_value.as_slice(),
@@ -606,7 +606,7 @@ pub fn verify_certificate_signature(
         }
         let public_key = MlDsaPublicKey::from_bytes(&issuer.subject_public_key)
             .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
-        return mldsa_verify(
+        return noxtls_mldsa_verify(
             &public_key,
             certificate.raw_tbs_der,
             certificate.signature_value.as_slice(),
@@ -745,14 +745,14 @@ fn parse_rsa_public_key_der(
     public_key_der: &[u8],
 ) -> core::result::Result<(Vec<u8>, Vec<u8>), ValidationError> {
     let (rsa_seq, rem) =
-        parse_der_node(public_key_der).map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
+        noxtls_parse_der_node(public_key_der).map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
     if rsa_seq.tag != 0x30 || !rem.is_empty() {
         return Err(ValidationError::PublicKeyDecodeFailed);
     }
     let (modulus_node, rest) =
-        parse_der_node(rsa_seq.body).map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
+        noxtls_parse_der_node(rsa_seq.body).map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
     let (exponent_node, tail) =
-        parse_der_node(rest).map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
+        noxtls_parse_der_node(rest).map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
     if modulus_node.tag != 0x02 || exponent_node.tag != 0x02 || !tail.is_empty() {
         return Err(ValidationError::PublicKeyDecodeFailed);
     }
@@ -776,18 +776,18 @@ fn parse_rsa_public_key_der(
 /// # Panics
 ///
 /// This function does not panic.
-fn parse_ecdsa_signature_der(
+fn noxtls_parse_ecdsa_signature_der(
     signature_der: &[u8],
 ) -> core::result::Result<([u8; 32], [u8; 32]), ValidationError> {
     let (seq, rem) =
-        parse_der_node(signature_der).map_err(|_| ValidationError::SignatureVerificationFailed)?;
+        noxtls_parse_der_node(signature_der).map_err(|_| ValidationError::SignatureVerificationFailed)?;
     if seq.tag != 0x30 || !rem.is_empty() {
         return Err(ValidationError::SignatureVerificationFailed);
     }
     let (r_node, rest) =
-        parse_der_node(seq.body).map_err(|_| ValidationError::SignatureVerificationFailed)?;
+        noxtls_parse_der_node(seq.body).map_err(|_| ValidationError::SignatureVerificationFailed)?;
     let (s_node, tail) =
-        parse_der_node(rest).map_err(|_| ValidationError::SignatureVerificationFailed)?;
+        noxtls_parse_der_node(rest).map_err(|_| ValidationError::SignatureVerificationFailed)?;
     if r_node.tag != 0x02 || s_node.tag != 0x02 || !tail.is_empty() {
         return Err(ValidationError::SignatureVerificationFailed);
     }

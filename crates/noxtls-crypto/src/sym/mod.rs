@@ -23,21 +23,21 @@
 mod encryption;
 
 pub use encryption::{
-    aes_cbc_decrypt, aes_cbc_encrypt, aes_ccm_decrypt, aes_ccm_encrypt, aes_cfb_apply,
-    aes_cfb_decrypt, aes_cfb_encrypt, aes_ctr_apply, aes_gcm_decrypt, aes_gcm_encrypt,
-    aes_ofb_apply, aes_xts_decrypt, aes_xts_encrypt, aria_cbc_decrypt, aria_cbc_encrypt,
-    aria_cfb_apply, aria_cfb_decrypt, aria_cfb_encrypt, aria_ctr_apply, aria_ctr_decrypt,
-    aria_ctr_encrypt, aria_ofb_apply, aria_ofb_decrypt, aria_ofb_encrypt, camellia_cbc_decrypt,
-    camellia_cbc_encrypt, camellia_cfb_apply, camellia_cfb_decrypt, camellia_cfb_encrypt,
-    camellia_ctr_apply, camellia_ctr_decrypt, camellia_ctr_encrypt, camellia_ofb_apply,
-    camellia_ofb_decrypt, camellia_ofb_encrypt, chacha20_poly1305_decrypt,
-    chacha20_poly1305_encrypt, poly1305_key_gen, poly1305_mac, poly1305_tags_equal, AesCipher,
+    noxtls_aes_cbc_decrypt, noxtls_aes_cbc_encrypt, noxtls_aes_ccm_decrypt, noxtls_aes_ccm_encrypt, noxtls_aes_cfb_apply,
+    noxtls_aes_cfb_decrypt, noxtls_aes_cfb_encrypt, noxtls_aes_ctr_apply, noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt,
+    noxtls_aes_ofb_apply, noxtls_aes_xts_decrypt, noxtls_aes_xts_encrypt, noxtls_aria_cbc_decrypt, noxtls_aria_cbc_encrypt,
+    noxtls_aria_cfb_apply, noxtls_aria_cfb_decrypt, noxtls_aria_cfb_encrypt, noxtls_aria_ctr_apply, noxtls_aria_ctr_decrypt,
+    noxtls_aria_ctr_encrypt, noxtls_aria_ofb_apply, noxtls_aria_ofb_decrypt, noxtls_aria_ofb_encrypt, noxtls_camellia_cbc_decrypt,
+    noxtls_camellia_cbc_encrypt, noxtls_camellia_cfb_apply, noxtls_camellia_cfb_decrypt, noxtls_camellia_cfb_encrypt,
+    noxtls_camellia_ctr_apply, noxtls_camellia_ctr_decrypt, noxtls_camellia_ctr_encrypt, noxtls_camellia_ofb_apply,
+    noxtls_camellia_ofb_decrypt, noxtls_camellia_ofb_encrypt, noxtls_chacha20_poly1305_decrypt,
+    noxtls_chacha20_poly1305_encrypt, noxtls_poly1305_key_gen, noxtls_poly1305_mac, noxtls_poly1305_tags_equal, AesCipher,
     AriaCipher, CamelliaCipher, ChaCha20,
 };
 #[cfg(feature = "hazardous-legacy-crypto")]
 pub use encryption::{
-    aes_ecb_decrypt, aes_ecb_encrypt, aria_ecb_decrypt, aria_ecb_encrypt, camellia_ecb_decrypt,
-    camellia_ecb_encrypt, des_cbc_decrypt, des_cbc_encrypt, des_cfb_apply, des_cfb_decrypt,
-    des_cfb_encrypt, des_ctr_apply, des_ctr_decrypt, des_ctr_encrypt, des_ecb_decrypt,
-    des_ecb_encrypt, des_ofb_apply, des_ofb_decrypt, des_ofb_encrypt, DesCipher, Rc4,
+    noxtls_aes_ecb_decrypt, noxtls_aes_ecb_encrypt, noxtls_aria_ecb_decrypt, noxtls_aria_ecb_encrypt, noxtls_camellia_ecb_decrypt,
+    noxtls_camellia_ecb_encrypt, noxtls_des_cbc_decrypt, noxtls_des_cbc_encrypt, noxtls_des_cfb_apply, noxtls_des_cfb_decrypt,
+    noxtls_des_cfb_encrypt, noxtls_des_ctr_apply, noxtls_des_ctr_decrypt, noxtls_des_ctr_encrypt, noxtls_des_ecb_decrypt,
+    noxtls_des_ecb_encrypt, noxtls_des_ofb_apply, noxtls_des_ofb_decrypt, noxtls_des_ofb_encrypt, DesCipher, Rc4,
 };

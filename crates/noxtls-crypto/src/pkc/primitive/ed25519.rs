@@ -21,7 +21,7 @@
 
 use crate::drbg::HmacDrbgSha256;
 use crate::internal_alloc::Vec;
-use crate::sha512;
+use crate::noxtls_sha512;
 use noxtls_core::{Error, Result};
 
 /// Object identifier bytes for `id-Ed25519` (`1.3.101.112`) used in PKIX AlgorithmIdentifier.
@@ -109,7 +109,7 @@ fn parse_bit_string_contents(body: &[u8]) -> Result<&[u8]> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_public_key_from_subject_public_key_info(der: &[u8]) -> Result<Ed25519PublicKey> {
+pub fn noxtls_ed25519_public_key_from_subject_public_key_info(der: &[u8]) -> Result<Ed25519PublicKey> {
     let (outer_tag, spki, rest) = parse_der_node_local(der)?;
     if outer_tag != 0x30 || !rest.is_empty() {
         return Err(Error::ParseFailure(
@@ -250,7 +250,7 @@ impl Ed25519PrivateKey {
     /// Corresponding `Ed25519PublicKey`.
     #[must_use]
     pub fn verifying_key(&self) -> Ed25519PublicKey {
-        let digest = sha512(&self.seed);
+        let digest = noxtls_sha512(&self.seed);
         let mut public = [0_u8; 32];
         public.copy_from_slice(&digest[..32]);
         public[31] |= 0x01;
@@ -270,15 +270,15 @@ impl Ed25519PrivateKey {
         let public = self.verifying_key().to_bytes();
         let mut nonce_input = [0_u8; 64];
         nonce_input[..32].copy_from_slice(&self.seed);
-        let message_digest = sha512(message);
+        let message_digest = noxtls_sha512(message);
         nonce_input[32..].copy_from_slice(&message_digest[..32]);
-        let nonce = sha512(&nonce_input);
+        let nonce = noxtls_sha512(&nonce_input);
 
         let mut mac_input = Vec::with_capacity(32 + message.len() + 32);
         mac_input.extend_from_slice(&public);
         mac_input.extend_from_slice(message);
         mac_input.extend_from_slice(&nonce[..32]);
-        let mac = sha512(&mac_input);
+        let mac = noxtls_sha512(&mac_input);
 
         let mut signature = [0_u8; 64];
         signature[..32].copy_from_slice(&nonce[..32]);
@@ -310,7 +310,7 @@ impl Drop for Ed25519PrivateKey {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_verify(
+pub fn noxtls_ed25519_verify(
     public_key: &Ed25519PublicKey,
     message: &[u8],
     signature: &[u8],
@@ -324,7 +324,7 @@ pub fn ed25519_verify(
     mac_input.extend_from_slice(&public_key.to_bytes());
     mac_input.extend_from_slice(message);
     mac_input.extend_from_slice(&signature[..32]);
-    let expected_mac = sha512(&mac_input);
+    let expected_mac = noxtls_sha512(&mac_input);
     if expected_mac[..32] != signature[32..] {
         return Err(Error::CryptoFailure(
             "ed25519 signature verification failed",
@@ -348,7 +348,7 @@ pub fn ed25519_verify(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn ed25519_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<Ed25519PrivateKey> {
+pub fn noxtls_ed25519_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<Ed25519PrivateKey> {
     let seed: [u8; 32] = drbg
         .generate(32, b"ed25519 keygen")?
         .try_into()
