@@ -52,6 +52,11 @@ const TLS13_HANDSHAKE_LEN_PREFIX_LEN: usize = 4;
 const DEFAULT_TIMEOUT_MS: u64 = 5_000;
 const DEFAULT_MAX_RECORDS: usize = 128;
 const HEX_PREVIEW_LIMIT: usize = 64;
+const TLS_EXTENSION_KEY_SHARE: u16 = 0x0033;
+const TLS13_KEY_SHARE_GROUP_SECP256R1: u16 = 0x0017;
+const TLS13_KEY_SHARE_GROUP_X25519: u16 = 0x001D;
+const TLS13_KEY_SHARE_GROUP_MLKEM768: u16 = 0x0201;
+const TLS13_KEY_SHARE_GROUP_X25519_MLKEM768_HYBRID: u16 = 0x11EC;
 
 /// Captures the parsed HTTPS endpoint components needed for socket connection and Host header.
 #[derive(Debug, Clone)]
@@ -108,9 +113,10 @@ struct ServerAuthConfig {
 ///
 /// This function does not panic.
 fn main() -> Result<()> {
-    let (url, timeout, max_records, server_auth) = parse_cli(std::env::args().collect())?;
+    let (url, timeout, max_records, server_auth, offer_pq_keyshares) =
+        parse_cli(std::env::args().collect())?;
     let target = parse_https_url(&url)?;
-    run_trace_probe(&target, timeout, max_records, server_auth)
+    run_trace_probe(&target, timeout, max_records, server_auth, offer_pq_keyshares)
 }
 
 /// Parses CLI arguments into probe runtime options.
@@ -130,7 +136,9 @@ fn main() -> Result<()> {
 /// # Panics
 ///
 /// This function does not panic.
-fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize, Option<ServerAuthConfig>)> {
+fn parse_cli(
+    args: Vec<String>,
+) -> Result<(String, Duration, usize, Option<ServerAuthConfig>, bool)> {
     if args.len() < 2 {
         print_usage(args.first().map_or("tls_trace_curl", String::as_str));
         return Err(Error::InvalidLength("missing HTTPS url argument"));
@@ -140,6 +148,7 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize, Option<Serve
     let mut max_records = DEFAULT_MAX_RECORDS;
     let mut ca_bundle_path: Option<String> = None;
     let mut validation_time = current_generalized_time_utc();
+    let mut offer_pq_keyshares = false;
     let mut index = 2_usize;
     while index < args.len() {
         let arg = args[index].as_str();
@@ -184,6 +193,8 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize, Option<Serve
                 return Err(Error::InvalidLength("invalid --validation-time value"));
             }
             validation_time = value.to_owned();
+        } else if let Some(value) = arg.strip_prefix("--pq-keyshares=") {
+            offer_pq_keyshares = parse_bool_switch(value, "--pq-keyshares")?;
         } else if arg == "--validation-time" {
             index += 1;
             let value = args
@@ -193,9 +204,15 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize, Option<Serve
                 return Err(Error::InvalidLength("invalid --validation-time value"));
             }
             validation_time = value.clone();
+        } else if arg == "--pq-keyshares" {
+            index += 1;
+            let value = args
+                .get(index)
+                .ok_or(Error::ParseFailure("missing --pq-keyshares value"))?;
+            offer_pq_keyshares = parse_bool_switch(value, "--pq-keyshares")?;
         } else {
             return Err(Error::ParseFailure(
-                "unknown argument (expected --timeout-ms, --max-records, --ca, --validation-time)",
+                "unknown argument (expected --timeout-ms, --max-records, --ca, --validation-time, --pq-keyshares)",
             ));
         }
         index += 1;
@@ -217,6 +234,7 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize, Option<Serve
         Duration::from_millis(timeout_ms),
         max_records,
         server_auth,
+        offer_pq_keyshares,
     ))
 }
 
@@ -236,7 +254,7 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize, Option<Serve
 fn print_usage(exe_name: &str) {
     println!("usage:");
     println!(
-        "  cargo run -p noxtls --example {exe_name} -- https://example.com/ [--timeout-ms=5000] [--max-records=128] [--ca=./mozilla.pem] [--validation-time=20260101000000Z]"
+        "  cargo run -p noxtls --example {exe_name} -- https://example.com/ [--timeout-ms=5000] [--max-records=128] [--ca=./mozilla.pem] [--validation-time=20260101000000Z] [--pq-keyshares=off]"
     );
 }
 
@@ -322,6 +340,7 @@ fn run_trace_probe(
     timeout: Duration,
     max_records: usize,
     server_auth: Option<ServerAuthConfig>,
+    offer_pq_keyshares: bool,
 ) -> Result<()> {
     println!(
         "target=https://{}:{}{}",
@@ -344,7 +363,7 @@ fn run_trace_probe(
 
     let mut conn = Connection::noxtls_new(TlsVersion::Tls13);
     // Public web interop profile: avoid PQ draft groups/signatures in default ClientHello.
-    conn.noxtls_set_tls13_client_offer_pq_key_shares(false);
+    conn.noxtls_set_tls13_client_offer_pq_key_shares(offer_pq_keyshares);
     conn.noxtls_set_tls13_client_offer_mldsa_signature(false);
     conn.noxtls_set_tls13_client_cipher_suites(&[CipherSuite::TlsAes128GcmSha256])?;
     conn.noxtls_set_tls13_server_name(Some(&target.host))?;
@@ -368,6 +387,14 @@ fn run_trace_probe(
         "tls13_policy=require_acceptance:{} anti_replay:{}",
         early_data_policy.require_acceptance, early_data_policy.anti_replay_enabled
     );
+    println!(
+        "tls13_client_offer_pq_keyshares={}",
+        if offer_pq_keyshares {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
 
     let random = build_client_random_seed();
     let client_hello = conn.noxtls_send_client_hello(&random)?;
@@ -385,6 +412,7 @@ fn run_trace_probe(
 
     let mut counters = TraceCounters::default();
     let mut observed_server_hello = false;
+    let mut server_selected_key_share_group: Option<u16> = None;
     let mut deframer = TlsRecordDeframer::noxtls_new();
     let mut handshake_keys_derived = false;
     for _ in 0..max_records {
@@ -432,9 +460,15 @@ fn run_trace_probe(
                             if handshake_type == TLS13_HANDSHAKE_MESSAGE_SERVER_HELLO {
                                 conn.noxtls_recv_server_hello(&message)?;
                                 observed_server_hello = true;
+                                server_selected_key_share_group =
+                                    parse_server_hello_selected_key_share_group(&message)?;
                                 println!(
                                     "negotiated_cipher_suite={:?}",
                                     conn.noxtls_selected_cipher_suite()
+                                );
+                                println!(
+                                    "server_hello_selected_key_share_group={}",
+                                    format_key_share_group(server_selected_key_share_group)
                                 );
                                 println!("connection_state_after_server_hello={:?}", conn.state);
                             }
@@ -494,7 +528,12 @@ fn run_trace_probe(
         }
     }
 
-    print_trace_summary(&conn, counters, observed_server_hello);
+    print_trace_summary(
+        &conn,
+        counters,
+        observed_server_hello,
+        server_selected_key_share_group,
+    );
     if conn.state != HandshakeState::Finished {
         println!("result=handshake_not_finished");
         println!(
@@ -1080,7 +1119,12 @@ fn log_inbound_record(record_idx: usize, record: &TlsRecord) {
 /// # Panics
 ///
 /// This function does not panic.
-fn print_trace_summary(conn: &Connection, counters: TraceCounters, observed_server_hello: bool) {
+fn print_trace_summary(
+    conn: &Connection,
+    counters: TraceCounters,
+    observed_server_hello: bool,
+    server_selected_key_share_group: Option<u16>,
+) {
     println!("summary_inbound_records={}", counters.inbound_records);
     println!(
         "summary_plaintext_handshake_records={}",
@@ -1110,9 +1154,151 @@ fn print_trace_summary(conn: &Connection, counters: TraceCounters, observed_serv
             .map(|s| s.to_string())
     );
     println!(
+        "summary_server_hello_selected_key_share_group={}",
+        format_key_share_group(server_selected_key_share_group)
+    );
+    println!(
         "summary_tls13_early_data_telemetry={:?}",
         conn.noxtls_tls13_early_data_telemetry()
     );
+}
+
+/// Parses `on|off|true|false|1|0` style CLI switches to booleans.
+///
+/// # Arguments
+///
+/// * `value` — Raw option value text from CLI.
+/// * `flag_name` — Option name used for diagnostics.
+///
+/// # Returns
+///
+/// Parsed boolean toggle.
+///
+/// # Errors
+///
+/// Returns [`noxtls_core::Error`] when `value` is not a recognized boolean literal.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn parse_bool_switch(value: &str, flag_name: &str) -> Result<bool> {
+    if value.eq_ignore_ascii_case("on")
+        || value.eq_ignore_ascii_case("true")
+        || value == "1"
+    {
+        return Ok(true);
+    }
+    if value.eq_ignore_ascii_case("off")
+        || value.eq_ignore_ascii_case("false")
+        || value == "0"
+    {
+        return Ok(false);
+    }
+    Err(Error::ParseFailure(match flag_name {
+        "--pq-keyshares" => "invalid --pq-keyshares value (expected on/off)",
+        _ => "invalid boolean option value",
+    }))
+}
+
+/// Extracts selected TLS 1.3 `key_share` named group from a ServerHello message.
+///
+/// # Arguments
+///
+/// * `server_hello` — Full encoded TLS handshake message for `ServerHello`.
+///
+/// # Returns
+///
+/// `Some(group)` when key_share extension is present and well-formed, otherwise `None`.
+///
+/// # Errors
+///
+/// Returns [`noxtls_core::Error`] when handshake framing or extension lengths are malformed.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn parse_server_hello_selected_key_share_group(server_hello: &[u8]) -> Result<Option<u16>> {
+    if server_hello.len() < TLS13_HANDSHAKE_LEN_PREFIX_LEN {
+        return Err(Error::ParseFailure("server hello handshake framing is truncated"));
+    }
+    if server_hello[0] != TLS13_HANDSHAKE_MESSAGE_SERVER_HELLO {
+        return Err(Error::ParseFailure(
+            "expected server hello handshake message type",
+        ));
+    }
+    let body_len = ((server_hello[1] as usize) << 16)
+        | ((server_hello[2] as usize) << 8)
+        | server_hello[3] as usize;
+    if server_hello.len() != TLS13_HANDSHAKE_LEN_PREFIX_LEN + body_len {
+        return Err(Error::ParseFailure("server hello handshake length mismatch"));
+    }
+    let body = &server_hello[TLS13_HANDSHAKE_LEN_PREFIX_LEN..];
+    if body.len() < 2 + 32 + 1 + 2 + 1 + 2 {
+        return Err(Error::ParseFailure("server hello body is truncated"));
+    }
+    let mut cursor = &body[2 + 32..];
+    let session_id_len = cursor[0] as usize;
+    cursor = &cursor[1..];
+    if cursor.len() < session_id_len + 2 + 1 + 2 {
+        return Err(Error::ParseFailure("server hello session id field is truncated"));
+    }
+    cursor = &cursor[session_id_len..];
+    cursor = &cursor[2..];
+    cursor = &cursor[1..];
+    let extensions_len = u16::from_be_bytes([cursor[0], cursor[1]]) as usize;
+    cursor = &cursor[2..];
+    if cursor.len() < extensions_len {
+        return Err(Error::ParseFailure("server hello extensions are truncated"));
+    }
+    let mut extensions = &cursor[..extensions_len];
+    while !extensions.is_empty() {
+        if extensions.len() < 4 {
+            return Err(Error::ParseFailure("server hello extension header is truncated"));
+        }
+        let ext_type = u16::from_be_bytes([extensions[0], extensions[1]]);
+        let ext_len = u16::from_be_bytes([extensions[2], extensions[3]]) as usize;
+        extensions = &extensions[4..];
+        if extensions.len() < ext_len {
+            return Err(Error::ParseFailure("server hello extension payload is truncated"));
+        }
+        let ext_data = &extensions[..ext_len];
+        extensions = &extensions[ext_len..];
+        if ext_type == TLS_EXTENSION_KEY_SHARE {
+            if ext_data.len() < 4 {
+                return Err(Error::ParseFailure("server hello key_share extension is malformed"));
+            }
+            let group = u16::from_be_bytes([ext_data[0], ext_data[1]]);
+            return Ok(Some(group));
+        }
+    }
+    Ok(None)
+}
+
+/// Formats key-share group for logs with symbolic name and hex code.
+///
+/// # Arguments
+///
+/// * `group` — Optional TLS NamedGroup negotiated in ServerHello key_share.
+///
+/// # Returns
+///
+/// Human-readable symbolic group name plus hex value, or `none`.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn format_key_share_group(group: Option<u16>) -> String {
+    let Some(group_id) = group else {
+        return "none".to_owned();
+    };
+    let name = match group_id {
+        TLS13_KEY_SHARE_GROUP_X25519 => "x25519",
+        TLS13_KEY_SHARE_GROUP_SECP256R1 => "secp256r1",
+        TLS13_KEY_SHARE_GROUP_MLKEM768 => "mlkem768",
+        TLS13_KEY_SHARE_GROUP_X25519_MLKEM768_HYBRID => "x25519_mlkem768_hybrid",
+        _ => "unknown",
+    };
+    format!("{name}(0x{group_id:04x})")
 }
 
 /// Returns a short printable label for one TLS record content type.

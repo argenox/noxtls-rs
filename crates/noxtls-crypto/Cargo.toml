@@ -15,6 +15,7 @@ rust-version = "1.75"
 
 [dependencies]
 noxtls-core = { version = "0.2.1", path = "../noxtls-core", default-features = false }
+ml-kem = { version = "0.2.3", default-features = false, features = ["deterministic"] }
 
 [features]
 default = ["std", "alloc"]
