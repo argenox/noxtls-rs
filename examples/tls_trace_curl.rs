@@ -23,6 +23,7 @@
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::TcpStream;
+use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use noxtls::{
@@ -30,6 +31,7 @@ use noxtls::{
     TlsRecordDeframer, TlsVersion, TLS_RECORD_HEADER_LEN,
 };
 use noxtls_core::{Error, Result};
+use noxtls_pem::noxtls_pem_file_to_der_blocks;
 
 const TLS_RECORD_TYPE_CHANGE_CIPHER_SPEC: u8 = 20;
 const TLS_RECORD_TYPE_ALERT: u8 = 21;
@@ -79,6 +81,13 @@ struct TraceCounters {
     decoded_handshake_messages: usize,
 }
 
+/// Captures optional TLS server-auth controls supplied through CLI flags.
+#[derive(Debug, Clone)]
+struct ServerAuthConfig {
+    ca_bundle_path: String,
+    validation_time: String,
+}
+
 /// Executes the TLS trace probe using URL and optional runtime flags from CLI.
 ///
 /// # Arguments
@@ -99,9 +108,9 @@ struct TraceCounters {
 ///
 /// This function does not panic.
 fn main() -> Result<()> {
-    let (url, timeout, max_records) = parse_cli(std::env::args().collect())?;
+    let (url, timeout, max_records, server_auth) = parse_cli(std::env::args().collect())?;
     let target = parse_https_url(&url)?;
-    run_trace_probe(&target, timeout, max_records)
+    run_trace_probe(&target, timeout, max_records, server_auth)
 }
 
 /// Parses CLI arguments into probe runtime options.
@@ -121,7 +130,7 @@ fn main() -> Result<()> {
 /// # Panics
 ///
 /// This function does not panic.
-fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize)> {
+fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize, Option<ServerAuthConfig>)> {
     if args.len() < 2 {
         print_usage(args.first().map_or("tls_trace_curl", String::as_str));
         return Err(Error::InvalidLength("missing HTTPS url argument"));
@@ -129,8 +138,20 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize)> {
 
     let mut timeout_ms = DEFAULT_TIMEOUT_MS;
     let mut max_records = DEFAULT_MAX_RECORDS;
-    for arg in args.iter().skip(2) {
+    let mut ca_bundle_path: Option<String> = None;
+    let mut validation_time = current_generalized_time_utc();
+    let mut index = 2_usize;
+    while index < args.len() {
+        let arg = args[index].as_str();
         if let Some(value) = arg.strip_prefix("--timeout-ms=") {
+            timeout_ms = value
+                .parse::<u64>()
+                .map_err(|_| Error::ParseFailure("invalid --timeout-ms value"))?;
+        } else if arg == "--timeout-ms" {
+            index += 1;
+            let value = args
+                .get(index)
+                .ok_or(Error::ParseFailure("missing --timeout-ms value"))?;
             timeout_ms = value
                 .parse::<u64>()
                 .map_err(|_| Error::ParseFailure("invalid --timeout-ms value"))?;
@@ -138,11 +159,46 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize)> {
             max_records = value
                 .parse::<usize>()
                 .map_err(|_| Error::ParseFailure("invalid --max-records value"))?;
+        } else if arg == "--max-records" {
+            index += 1;
+            let value = args
+                .get(index)
+                .ok_or(Error::ParseFailure("missing --max-records value"))?;
+            max_records = value
+                .parse::<usize>()
+                .map_err(|_| Error::ParseFailure("invalid --max-records value"))?;
+        } else if let Some(value) = arg.strip_prefix("--ca=") {
+            if value.is_empty() {
+                return Err(Error::InvalidLength("invalid --ca value"));
+            }
+            ca_bundle_path = Some(value.to_owned());
+        } else if arg == "--ca" {
+            index += 1;
+            let value = args.get(index).ok_or(Error::ParseFailure("missing --ca value"))?;
+            if value.is_empty() {
+                return Err(Error::InvalidLength("invalid --ca value"));
+            }
+            ca_bundle_path = Some(value.clone());
+        } else if let Some(value) = arg.strip_prefix("--validation-time=") {
+            if value.is_empty() {
+                return Err(Error::InvalidLength("invalid --validation-time value"));
+            }
+            validation_time = value.to_owned();
+        } else if arg == "--validation-time" {
+            index += 1;
+            let value = args
+                .get(index)
+                .ok_or(Error::ParseFailure("missing --validation-time value"))?;
+            if value.is_empty() {
+                return Err(Error::InvalidLength("invalid --validation-time value"));
+            }
+            validation_time = value.clone();
         } else {
             return Err(Error::ParseFailure(
-                "unknown argument (expected --timeout-ms or --max-records)",
+                "unknown argument (expected --timeout-ms, --max-records, --ca, --validation-time)",
             ));
         }
+        index += 1;
     }
 
     if max_records == 0 {
@@ -151,10 +207,16 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize)> {
         ));
     }
 
+    let server_auth = ca_bundle_path.map(|path| ServerAuthConfig {
+        ca_bundle_path: path,
+        validation_time,
+    });
+
     Ok((
         args[1].clone(),
         Duration::from_millis(timeout_ms),
         max_records,
+        server_auth,
     ))
 }
 
@@ -174,7 +236,7 @@ fn parse_cli(args: Vec<String>) -> Result<(String, Duration, usize)> {
 fn print_usage(exe_name: &str) {
     println!("usage:");
     println!(
-        "  cargo run -p noxtls --example {exe_name} -- https://example.com/ [--timeout-ms=5000] [--max-records=128]"
+        "  cargo run -p noxtls --example {exe_name} -- https://example.com/ [--timeout-ms=5000] [--max-records=128] [--ca=./mozilla.pem] [--validation-time=20260101000000Z]"
     );
 }
 
@@ -255,7 +317,12 @@ fn parse_https_url(url: &str) -> Result<TargetUrl> {
 /// # Panics
 ///
 /// This function does not panic.
-fn run_trace_probe(target: &TargetUrl, timeout: Duration, max_records: usize) -> Result<()> {
+fn run_trace_probe(
+    target: &TargetUrl,
+    timeout: Duration,
+    max_records: usize,
+    server_auth: Option<ServerAuthConfig>,
+) -> Result<()> {
     println!(
         "target=https://{}:{}{}",
         target.host, target.port, target.path_and_query
@@ -281,6 +348,19 @@ fn run_trace_probe(target: &TargetUrl, timeout: Duration, max_records: usize) ->
     conn.noxtls_set_tls13_client_offer_mldsa_signature(false);
     conn.noxtls_set_tls13_client_cipher_suites(&[CipherSuite::TlsAes128GcmSha256])?;
     conn.noxtls_set_tls13_server_name(Some(&target.host))?;
+    if let Some(auth) = server_auth.as_ref() {
+        let trust_anchors = load_trust_anchors_from_bundle(&auth.ca_bundle_path)?;
+        conn.noxtls_set_tls13_require_certificate_auth(true);
+        conn.noxtls_configure_tls13_server_auth(&trust_anchors, &[], &auth.validation_time)?;
+        conn.noxtls_set_tls13_server_expected_hostname(Some(&target.host))?;
+        println!(
+            "tls13_server_auth=enabled trust_anchors={} validation_time={}",
+            trust_anchors.len(),
+            auth.validation_time
+        );
+    } else {
+        println!("tls13_server_auth=disabled");
+    }
     // Prefer deterministic HTTP/1.1 behavior for this live GET/response probe.
     conn.noxtls_set_tls13_alpn_protocols(&["http/1.1"])?;
     let early_data_policy = conn.noxtls_tls13_early_data_operational_policy();
@@ -678,6 +758,92 @@ fn build_client_random_seed() -> [u8; 32] {
             .rotate_left(1);
     }
     random
+}
+
+/// Loads trust anchors from a PEM certificate bundle for TLS 1.3 server-auth checks.
+///
+/// # Arguments
+///
+/// * `bundle_path` — Filesystem path to PEM bundle containing one or more `CERTIFICATE` blocks.
+///
+/// # Returns
+///
+/// DER-encoded trust anchors in source-order.
+///
+/// # Errors
+///
+/// Returns [`noxtls_core::Error`] when the file cannot be read/parsed, or no anchors are present.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn load_trust_anchors_from_bundle(bundle_path: &str) -> Result<Vec<Vec<u8>>> {
+    let anchors = noxtls_pem_file_to_der_blocks(Path::new(bundle_path), "CERTIFICATE")
+        .map_err(|_| Error::ParseFailure("failed to parse --ca bundle as PEM certificates"))?;
+    if anchors.is_empty() {
+        return Err(Error::InvalidLength(
+            "--ca bundle does not contain any CERTIFICATE blocks",
+        ));
+    }
+    Ok(anchors)
+}
+
+/// Formats current UTC time as ASN.1 GeneralizedTime (`YYYYMMDDHHMMSSZ`).
+///
+/// # Arguments
+///
+/// * _(none)_ — Uses current system clock, falling back to Unix epoch on error.
+///
+/// # Returns
+///
+/// GeneralizedTime string suitable for certificate-chain validation.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn current_generalized_time_utc() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| Duration::from_secs(0));
+    let total_secs = now.as_secs();
+    let days_since_epoch = (total_secs / 86_400) as i64;
+    let seconds_of_day = (total_secs % 86_400) as u32;
+
+    let (year, month, day) = civil_from_days_since_epoch(days_since_epoch);
+    let hour = seconds_of_day / 3_600;
+    let minute = (seconds_of_day % 3_600) / 60;
+    let second = seconds_of_day % 60;
+
+    format!("{year:04}{month:02}{day:02}{hour:02}{minute:02}{second:02}Z")
+}
+
+/// Converts Unix day offset to Gregorian `(year, month, day)` in UTC.
+///
+/// # Arguments
+///
+/// * `days_since_epoch` — Signed day offset from 1970-01-01 UTC.
+///
+/// # Returns
+///
+/// Gregorian date tuple `(year, month, day)`.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn civil_from_days_since_epoch(days_since_epoch: i64) -> (i32, u32, u32) {
+    let z = days_since_epoch + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let mut year = (yoe + era * 400) as i32;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let month = (mp + if mp < 10 { 3 } else { -9 }) as u32;
+    if month <= 2 {
+        year += 1;
+    }
+    (year, month, day)
 }
 
 /// Encodes one plaintext TLS record carrying a ClientHello handshake message.

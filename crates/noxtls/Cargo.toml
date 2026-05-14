@@ -19,6 +19,7 @@ noxtls-crypto = { version = "0.2.1", path = "../noxtls-crypto", default-features
 noxtls-io = { version = "0.2.1", path = "../noxtls-io", default-features = false }
 noxtls-psa = { version = "0.2.1", path = "../noxtls-psa", default-features = false, optional = true }
 noxtls-platform = { version = "0.2.1", path = "../noxtls-platform", default-features = false }
+noxtls-pem = { version = "0.2.1", path = "../noxtls-pem", default-features = false }
 noxtls-x509 = { version = "0.2.1", path = "../noxtls-x509", default-features = false }
 
 [features]
@@ -29,6 +30,7 @@ std = [
     "noxtls-io/std",
     "noxtls-psa?/std",
     "noxtls-platform/std",
+    "noxtls-pem/std",
     "noxtls-x509/std",
 ]
 alloc = [
@@ -37,6 +39,7 @@ alloc = [
     "noxtls-io/alloc",
     "noxtls-psa?/alloc",
     "noxtls-platform/alloc",
+    "noxtls-pem/alloc",
     "noxtls-x509/alloc",
 ]
 adapter-embedded-io = ["noxtls-io/adapter-embedded-io"]

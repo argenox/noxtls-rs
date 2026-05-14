@@ -1026,11 +1026,15 @@ fn parse_certificate_policies(extn_octets: &[u8]) -> Result<Vec<Vec<u8>>> {
         if policy_oid.tag != 0x06 {
             return Err(Error::ParseFailure("certificate policy missing OID"));
         }
+        // Policy qualifiers are optional metadata for policy OIDs. Keep strict OID parsing,
+        // but tolerate qualifier payloads so public WebPKI chains remain parseable.
         if !policy_tail.is_empty() {
-            // Policy qualifiers are intentionally unsupported in current scope.
-            return Err(Error::ParseFailure(
-                "unsupported certificate policy qualifiers",
-            ));
+            let (qualifiers_seq, qualifiers_tail) = noxtls_parse_der_node(policy_tail)?;
+            if qualifiers_seq.tag != 0x30 || !qualifiers_tail.is_empty() {
+                return Err(Error::ParseFailure(
+                    "invalid certificate policy qualifiers encoding",
+                ));
+            }
         }
         if policies.len() >= MAX_CERTIFICATE_POLICY_COUNT {
             return Err(Error::ParseFailure(
@@ -1126,11 +1130,11 @@ fn parse_crl_distribution_points(extn_octets: &[u8]) -> Result<Vec<String>> {
             if field_node.tag != 0xA0 {
                 continue;
             }
-            let (general_names, gn_tail) = noxtls_parse_der_node(field_node.body)?;
+            let Ok((general_names, gn_tail)) = noxtls_parse_der_node(field_node.body) else {
+                continue;
+            };
             if general_names.tag != 0x30 || !gn_tail.is_empty() {
-                return Err(Error::ParseFailure(
-                    "invalid DistributionPointName fullName",
-                ));
+                continue;
             }
             let mut gn_cursor = general_names.body;
             while !gn_cursor.is_empty() {

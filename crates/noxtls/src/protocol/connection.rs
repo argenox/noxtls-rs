@@ -63,7 +63,7 @@ use noxtls_crypto::{
 };
 use noxtls_x509::{
     noxtls_certificate_matches_hostname, noxtls_parse_certificate, noxtls_parse_der_node,
-    noxtls_parse_ecdsa_signature_der, noxtls_validate_certificate_chain,
+    noxtls_parse_ecdsa_signature_der, noxtls_validate_certificate_chain, ValidationError,
 };
 
 /// Holds connection version, handshake state, and transcript bytes.
@@ -8639,8 +8639,7 @@ impl Connection {
                 .ok_or(Error::StateError(
                     "tls13 server validation time is not configured",
                 ))?;
-        let leaf = noxtls_parse_certificate(&certificates[0])
-            .map_err(|_| Error::ParseFailure("failed to parse server leaf certificate"))?;
+        let leaf = noxtls_parse_certificate(&certificates[0])?;
         if let Some(expected_hostname) = self.tls13_server_expected_hostname.as_deref() {
             if !noxtls_certificate_matches_hostname(&leaf, expected_hostname) {
                 return Err(Error::CryptoFailure(
@@ -8651,23 +8650,17 @@ impl Connection {
 
         let mut parsed_intermediates = Vec::new();
         for der in &certificates[1..] {
-            let parsed = noxtls_parse_certificate(der).map_err(|_| {
-                Error::ParseFailure("failed to parse server intermediate certificate")
-            })?;
+            let parsed = noxtls_parse_certificate(der)?;
             parsed_intermediates.push(parsed);
         }
         for der in &self.tls13_server_intermediates_der {
-            let parsed = noxtls_parse_certificate(der).map_err(|_| {
-                Error::ParseFailure("failed to parse configured server intermediate certificate")
-            })?;
+            let parsed = noxtls_parse_certificate(der)?;
             parsed_intermediates.push(parsed);
         }
 
         let mut parsed_anchors = Vec::new();
         for der in &self.tls13_server_trust_anchors_der {
-            let parsed = noxtls_parse_certificate(der).map_err(|_| {
-                Error::ParseFailure("failed to parse configured trust anchor certificate")
-            })?;
+            let parsed = noxtls_parse_certificate(der)?;
             parsed_anchors.push(parsed);
         }
 
@@ -8677,7 +8670,7 @@ impl Connection {
             &parsed_anchors,
             validation_time,
         )
-        .map_err(|_| Error::CryptoFailure("server certificate chain validation failed"))?;
+        .map_err(noxtls_map_certificate_validation_error)?;
         self.tls13_server_leaf_public_key_der = Some(leaf.subject_public_key.clone());
         self.tls13_server_certificate_chain_validated = true;
         Ok(())
@@ -11593,6 +11586,73 @@ fn noxtls_parse_encrypted_extensions_body(body: &[u8]) -> Result<ParsedEncrypted
 ///
 /// This function does not panic.
 ///
+/// Maps X.509 chain-validation errors into stable protocol-layer failure strings.
+///
+/// # Arguments
+///
+/// * `err` — Validation error returned by `noxtls-x509`.
+///
+/// # Returns
+///
+/// `noxtls_core::Error` preserving the underlying failure category.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_map_certificate_validation_error(err: ValidationError) -> Error {
+    let message = match err {
+        ValidationError::InvalidNowTimeFormat => "server certificate validation time is invalid",
+        ValidationError::CertificateNotYetValid => "server certificate is not yet valid",
+        ValidationError::CertificateExpired => "server certificate is expired",
+        ValidationError::IssuerNotFound => "server certificate issuer not found",
+        ValidationError::IssuerNotCa => "server certificate issuer is not a CA",
+        ValidationError::IssuerMissingKeyCertSign => {
+            "server certificate issuer missing keyCertSign usage"
+        }
+        ValidationError::PathLenExceeded => "server certificate path length exceeded",
+        ValidationError::UntrustedRoot => {
+            "server certificate chain does not terminate at trust anchor"
+        }
+        ValidationError::ChainLoopDetected => "server certificate chain loop detected",
+        ValidationError::MaxChainDepthExceeded => "server certificate chain depth exceeded",
+        ValidationError::SignatureAlgorithmMismatch => {
+            "server certificate signature algorithm mismatch"
+        }
+        ValidationError::UnsupportedSignatureAlgorithm => {
+            "server certificate signature algorithm unsupported"
+        }
+        ValidationError::UnsupportedPublicKeyAlgorithm => {
+            "server certificate issuer public key algorithm unsupported"
+        }
+        ValidationError::PublicKeyDecodeFailed => "server certificate issuer public key decode failed",
+        ValidationError::SignatureVerificationFailed => {
+            "server certificate signature verification failed"
+        }
+        ValidationError::MissingRequiredPolicy => {
+            "server certificate missing required policy OID"
+        }
+        ValidationError::MissingRequiredExtendedKeyUsage => {
+            "server certificate missing required extended key usage"
+        }
+        ValidationError::ExplicitPolicyRequired => {
+            "server certificate policy set is empty under explicit policy mode"
+        }
+        ValidationError::PolicyMappingInhibited => {
+            "server certificate policy mappings are inhibited"
+        }
+        ValidationError::NameConstraintsViolation => {
+            "server certificate violates issuer name constraints"
+        }
+        ValidationError::MissingRevocationInfo => {
+            "server certificate missing revocation distribution info"
+        }
+        ValidationError::MissingRevocationLocator => {
+            "server certificate missing revocation locator"
+        }
+    };
+    Error::CryptoFailure(message)
+}
+
 fn noxtls_parse_certificate_body(body: &[u8]) -> Result<ParsedTls13CertificateBody> {
     if body.len() < 4 {
         return Err(Error::ParseFailure("certificate body too short"));

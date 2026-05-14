@@ -17,6 +17,7 @@ rust-version = "1.75"
 noxtls-core = { version = "0.2.1", path = "../noxtls-core", default-features = false }
 noxtls-crypto = { version = "0.2.1", path = "../noxtls-crypto", default-features = false }
 noxtls-pem = { version = "0.2.1", path = "../noxtls-pem", default-features = false }
+p384 = { version = "0.13.1", default-features = false, features = ["ecdsa"] }
 
 [features]
 default = ["std", "alloc"]

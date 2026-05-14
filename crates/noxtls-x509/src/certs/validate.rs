@@ -16,6 +16,7 @@
 // CONTACT: info@argenox.com
 
 use core::fmt::{Display, Formatter};
+use p384::ecdsa::{signature::Verifier as _, Signature as P384EcdsaSignature, VerifyingKey as P384VerifyingKey};
 
 #[cfg(not(feature = "std"))]
 use crate::internal_alloc::ToOwned;
@@ -23,9 +24,10 @@ use crate::internal_alloc::{String, Vec};
 
 use noxtls_crypto::{
     noxtls_ed25519_verify, noxtls_mldsa_verify, noxtls_p256_ecdsa_verify_sha256,
+    noxtls_p256_ecdsa_verify_digest,
     noxtls_rsassa_pss_sha256_verify, noxtls_rsassa_pss_sha384_verify, noxtls_rsassa_sha256_verify,
-    noxtls_rsassa_sha384_verify, noxtls_rsassa_sha512_verify, Ed25519PublicKey, MlDsaPublicKey,
-    P256PublicKey, RsaPublicKey, OID_ID_MLDSA65,
+    noxtls_rsassa_sha384_verify, noxtls_rsassa_sha512_verify, noxtls_sha384, noxtls_sha512,
+    Ed25519PublicKey, MlDsaPublicKey, P256PublicKey, RsaPublicKey, OID_ID_MLDSA65,
 };
 
 use super::{noxtls_parse_der_node, Certificate};
@@ -504,6 +506,8 @@ pub fn noxtls_verify_certificate_signature(
     certificate: &Certificate<'_>,
     issuer: &Certificate<'_>,
 ) -> core::result::Result<(), ValidationError> {
+    const P256_UNCOMPRESSED_PUBLIC_KEY_LEN: usize = 65;
+    const P384_UNCOMPRESSED_PUBLIC_KEY_LEN: usize = 97;
     const OID_RSA_ENCRYPTION: &[u8] = &[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01];
     const OID_EC_PUBLIC_KEY: &[u8] = &[0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01];
     const OID_SHA256_WITH_RSA: &[u8] = &[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b];
@@ -511,6 +515,8 @@ pub fn noxtls_verify_certificate_signature(
     const OID_SHA512_WITH_RSA: &[u8] = &[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0d];
     const OID_RSASSA_PSS: &[u8] = &[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a];
     const OID_ECDSA_WITH_SHA256: &[u8] = &[0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02];
+    const OID_ECDSA_WITH_SHA384: &[u8] = &[0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x03];
+    const OID_ECDSA_WITH_SHA512: &[u8] = &[0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x04];
     const OID_ED25519: &[u8] = &[0x2b, 0x65, 0x70];
 
     if certificate.tbs_signature_algorithm_oid != certificate.certificate_signature_algorithm_oid {
@@ -569,14 +575,43 @@ pub fn noxtls_verify_certificate_signature(
     }
 
     if issuer.subject_public_key_algorithm_oid == OID_EC_PUBLIC_KEY {
-        if certificate.certificate_signature_algorithm_oid != OID_ECDSA_WITH_SHA256 {
+        if issuer.subject_public_key.len() == P256_UNCOMPRESSED_PUBLIC_KEY_LEN {
+            let public_key = P256PublicKey::from_uncompressed(&issuer.subject_public_key)
+                .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
+            let (r, s) = noxtls_parse_ecdsa_signature_der(&certificate.signature_value)?;
+            if certificate.certificate_signature_algorithm_oid == OID_ECDSA_WITH_SHA256 {
+                return noxtls_p256_ecdsa_verify_sha256(&public_key, certificate.raw_tbs_der, &r, &s)
+                    .map_err(|_| ValidationError::SignatureVerificationFailed);
+            }
+            if certificate.certificate_signature_algorithm_oid == OID_ECDSA_WITH_SHA384 {
+                let full_digest = noxtls_sha384(certificate.raw_tbs_der);
+                let digest = noxtls_truncate_digest_to_p256_scalar(&full_digest);
+                return noxtls_p256_ecdsa_verify_digest(&public_key, &digest, &r, &s)
+                    .map_err(|_| ValidationError::SignatureVerificationFailed);
+            }
+            if certificate.certificate_signature_algorithm_oid == OID_ECDSA_WITH_SHA512 {
+                let full_digest = noxtls_sha512(certificate.raw_tbs_der);
+                let digest = noxtls_truncate_digest_to_p256_scalar(&full_digest);
+                return noxtls_p256_ecdsa_verify_digest(&public_key, &digest, &r, &s)
+                    .map_err(|_| ValidationError::SignatureVerificationFailed);
+            }
             return Err(ValidationError::UnsupportedSignatureAlgorithm);
         }
-        let public_key = P256PublicKey::from_uncompressed(&issuer.subject_public_key)
-            .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
-        let (r, s) = noxtls_parse_ecdsa_signature_der(&certificate.signature_value)?;
-        return noxtls_p256_ecdsa_verify_sha256(&public_key, certificate.raw_tbs_der, &r, &s)
-            .map_err(|_| ValidationError::SignatureVerificationFailed);
+
+        if issuer.subject_public_key.len() == P384_UNCOMPRESSED_PUBLIC_KEY_LEN {
+            if certificate.certificate_signature_algorithm_oid != OID_ECDSA_WITH_SHA384 {
+                return Err(ValidationError::UnsupportedSignatureAlgorithm);
+            }
+            let public_key = P384VerifyingKey::from_sec1_bytes(&issuer.subject_public_key)
+                .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
+            let signature = P384EcdsaSignature::from_der(&certificate.signature_value)
+                .map_err(|_| ValidationError::SignatureVerificationFailed)?;
+            return public_key
+                .verify(certificate.raw_tbs_der, &signature)
+                .map_err(|_| ValidationError::SignatureVerificationFailed);
+        }
+
+        return Err(ValidationError::UnsupportedPublicKeyAlgorithm);
     }
 
     if issuer.subject_public_key_algorithm_oid.as_slice() == OID_ED25519 {
@@ -795,6 +830,26 @@ fn noxtls_parse_ecdsa_signature_der(
     let r = ecdsa_integer_to_scalar32(r_node.body)?;
     let s = ecdsa_integer_to_scalar32(s_node.body)?;
     Ok((r, s))
+}
+
+/// Truncates a hash digest to the leftmost 256 bits for P-256 ECDSA verification.
+///
+/// # Arguments
+///
+/// * `digest` — Full hash output bytes (for example SHA-384 or SHA-512 digest).
+///
+/// # Returns
+///
+/// 32-byte digest prefix used as the P-256 ECDSA verification scalar input.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_truncate_digest_to_p256_scalar(digest: &[u8]) -> [u8; 32] {
+    let mut truncated = [0_u8; 32];
+    let copy_len = core::cmp::min(digest.len(), 32);
+    truncated[..copy_len].copy_from_slice(&digest[..copy_len]);
+    truncated
 }
 
 /// Converts one DER INTEGER to a 32-byte unsigned scalar for P-256 signature verification.
