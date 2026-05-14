@@ -28,6 +28,7 @@ const TLS13_KEY_SHARE_GROUP_X25519: u16 = 0x001D;
 const TLS13_KEY_SHARE_GROUP_MLKEM768: u16 = 0x0201;
 const TLS13_KEY_SHARE_GROUP_X25519_MLKEM768_HYBRID: u16 = 0x11EC;
 const TLS13_SIGALG_ECDSA_SECP256R1_SHA256: u16 = 0x0403;
+const TLS13_SIGALG_ECDSA_SECP384R1_SHA384: u16 = 0x0503;
 const TLS13_SIGALG_RSA_PSS_RSAE_SHA256: u16 = 0x0804;
 const TLS13_SIGALG_RSA_PSS_RSAE_SHA384: u16 = 0x0805;
 const TLS13_SIGALG_ED25519: u16 = 0x0807;
@@ -183,6 +184,7 @@ pub fn noxtls_tls13_key_share_group_supported(group: u16) -> bool {
 #[must_use]
 pub fn noxtls_tls13_signature_algorithm_supported(signature_algorithm: u16) -> bool {
     signature_algorithm == TLS13_SIGALG_ECDSA_SECP256R1_SHA256
+        || signature_algorithm == TLS13_SIGALG_ECDSA_SECP384R1_SHA384
         || signature_algorithm == TLS13_SIGALG_RSA_PSS_RSAE_SHA256
         || signature_algorithm == TLS13_SIGALG_RSA_PSS_RSAE_SHA384
         || signature_algorithm == TLS13_SIGALG_ED25519

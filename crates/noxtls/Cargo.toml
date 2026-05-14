@@ -21,6 +21,7 @@ noxtls-psa = { version = "0.2.1", path = "../noxtls-psa", default-features = fal
 noxtls-platform = { version = "0.2.1", path = "../noxtls-platform", default-features = false }
 noxtls-pem = { version = "0.2.1", path = "../noxtls-pem", default-features = false }
 noxtls-x509 = { version = "0.2.1", path = "../noxtls-x509", default-features = false }
+p384 = { version = "0.13.1", default-features = false, features = ["ecdsa"] }
 
 [features]
 default = ["std", "alloc"]

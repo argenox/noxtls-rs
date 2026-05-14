@@ -65,6 +65,9 @@ use noxtls_x509::{
     noxtls_certificate_matches_hostname, noxtls_parse_certificate, noxtls_parse_der_node,
     noxtls_parse_ecdsa_signature_der, noxtls_validate_certificate_chain, ValidationError,
 };
+use p384::ecdsa::{
+    signature::Verifier as _, Signature as P384EcdsaSignature, VerifyingKey as P384VerifyingKey,
+};
 
 /// Holds connection version, handshake state, and transcript bytes.
 #[derive(Debug, Clone)]
@@ -280,6 +283,7 @@ const TLS13_KEY_SHARE_GROUP_MLKEM768: u16 = 0x0201;
 const TLS13_KEY_SHARE_GROUP_X25519_MLKEM768_HYBRID: u16 = 0x11EC;
 const TLS13_PSK_KEY_EXCHANGE_MODE_PSK_DHE_KE: u8 = 0x01;
 const TLS13_SIGALG_ECDSA_SECP256R1_SHA256: u16 = 0x0403;
+const TLS13_SIGALG_ECDSA_SECP384R1_SHA384: u16 = 0x0503;
 const TLS13_SIGALG_RSA_PSS_RSAE_SHA256: u16 = 0x0804;
 const TLS13_SIGALG_RSA_PSS_RSAE_SHA384: u16 = 0x0805;
 const TLS13_SIGALG_ED25519: u16 = 0x0807;
@@ -2234,6 +2238,7 @@ impl Connection {
         let mut sigalgs = Vec::new();
         let requested_sigalgs = [
             TLS13_SIGALG_ECDSA_SECP256R1_SHA256,
+            TLS13_SIGALG_ECDSA_SECP384R1_SHA384,
             TLS13_SIGALG_RSA_PSS_RSAE_SHA256,
             TLS13_SIGALG_RSA_PSS_RSAE_SHA384,
             TLS13_SIGALG_ED25519,
@@ -8718,6 +8723,17 @@ impl Connection {
                     },
                 )
             }
+            TLS13_SIGALG_ECDSA_SECP384R1_SHA384 => {
+                let public_key = P384VerifyingKey::from_sec1_bytes(leaf_spki)
+                    .map_err(|_| Error::ParseFailure("failed to parse p384 server public key"))?;
+                let ecdsa_signature = P384EcdsaSignature::from_der(signature)
+                    .map_err(|_| Error::ParseFailure("failed to parse p384 ecdsa signature"))?;
+                public_key
+                    .verify(&signed_message, &ecdsa_signature)
+                    .map_err(|_| {
+                        Error::CryptoFailure("tls13 certificate verify signature validation failed")
+                    })
+            }
             TLS13_SIGALG_RSA_PSS_RSAE_SHA256 => {
                 let public_key = noxtls_parse_rsa_public_key_der(leaf_spki)?;
                 noxtls_rsassa_pss_sha256_verify(&public_key, &signed_message, signature, 32)
@@ -10671,6 +10687,7 @@ fn noxtls_build_client_hello_extensions(
             let mut sigalgs = Vec::new();
             let mut supported_sigalgs = vec![
                 TLS13_SIGALG_ECDSA_SECP256R1_SHA256,
+                TLS13_SIGALG_ECDSA_SECP384R1_SHA384,
                 TLS13_SIGALG_RSA_PSS_RSAE_SHA256,
                 TLS13_SIGALG_RSA_PSS_RSAE_SHA384,
                 TLS13_SIGALG_ED25519,
@@ -11895,6 +11912,7 @@ fn noxtls_tls12_signature_scheme_is_modern(signature_scheme: u16) -> bool {
     matches!(
         signature_scheme,
         TLS13_SIGALG_ECDSA_SECP256R1_SHA256
+            | TLS13_SIGALG_ECDSA_SECP384R1_SHA384
             | TLS13_SIGALG_RSA_PSS_RSAE_SHA256
             | TLS13_SIGALG_RSA_PSS_RSAE_SHA384
             | TLS13_SIGALG_ED25519
@@ -12053,6 +12071,7 @@ fn noxtls_tls13_supported_certificate_verify_signature_scheme(signature_scheme: 
     matches!(
         signature_scheme,
         TLS13_SIGALG_ECDSA_SECP256R1_SHA256
+            | TLS13_SIGALG_ECDSA_SECP384R1_SHA384
             | TLS13_SIGALG_RSA_PSS_RSAE_SHA256
             | TLS13_SIGALG_RSA_PSS_RSAE_SHA384
             | TLS13_SIGALG_ED25519
