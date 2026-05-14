@@ -12,7 +12,7 @@ This section documents how **applications and firmware** interact with NoxTLS Ru
 | Concern | Primary types / modules | Doc depth |
 | ------- | ----------------------- | --------- |
 | Modeled connection | `noxtls::Connection`, `HandshakeState`, `TlsVersion` | Rustdoc + examples in repo |
-| Record layer helpers | `ProtectedRecord`, seal/open helpers exported from `noxtls` | Topic: [TLS topic](../api/tls) |
+| Record layer helpers | `ProtectedRecord`, `TlsRecordDeframer`, seal/open helpers exported from `noxtls` | Topic: [TLS topic](../api/tls) |
 | DTLS | `DtlsOperationalPolicy`, replay trackers, flight helpers | Topic: [TLS topic](../api/tls) |
 | Certificates | Parsed chains, hostname checks | [X.509 topic](../api/x509) |
 

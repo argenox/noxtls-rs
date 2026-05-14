@@ -44,12 +44,14 @@ pub use noxtls_platform as platform;
 pub use protocol::{
     noxtls_derive_deterministic_p256_private, noxtls_derive_deterministic_x25519_private,
     noxtls_derive_tls13_p256_shared_secret, noxtls_derive_tls13_x25519_shared_secret,
-    noxtls_dtls13_aes128gcm_record_size, noxtls_encode_dtls_record_header, noxtls_encode_dtls_record_packet,
-    noxtls_hkdf_extract_for_hash, noxtls_hkdf_extract_with_salt_for_hash, noxtls_open_dtls13_aes128gcm_record,
-    noxtls_parse_dtls12_handshake_fragment, noxtls_parse_dtls_record_header, noxtls_parse_dtls_record_packet,
-    noxtls_reassemble_dtls12_handshake_fragments, noxtls_seal_dtls13_aes128gcm_record,
-    noxtls_tls13_client_hello_offers_supported_key_exchange, noxtls_tls13_expand_label_for_hash,
-    noxtls_tls13_key_share_group_supported, noxtls_tls13_signature_algorithm_supported, AlertDescription,
+    noxtls_dtls13_aes128gcm_record_size, noxtls_encode_dtls_record_header,
+    noxtls_encode_dtls_record_packet, noxtls_hkdf_extract_for_hash,
+    noxtls_hkdf_extract_with_salt_for_hash, noxtls_open_dtls13_aes128gcm_record,
+    noxtls_parse_dtls12_handshake_fragment, noxtls_parse_dtls_record_header,
+    noxtls_parse_dtls_record_packet, noxtls_reassemble_dtls12_handshake_fragments,
+    noxtls_seal_dtls13_aes128gcm_record, noxtls_tls13_client_hello_offers_supported_key_exchange,
+    noxtls_tls13_expand_label_for_hash, noxtls_tls13_key_share_group_supported,
+    noxtls_tls13_signature_algorithm_supported, split_tls13_handshake_payload, AlertDescription,
     AlertLevel, CipherSuite, ClientHelloExtensions, ClientHelloInfo, Connection,
     DtlsEpochReplayTracker, DtlsFlightRecord, DtlsFlightRetransmitTracker, DtlsOperationalPolicy,
     DtlsOperationalProfile, DtlsRecordHeader, DtlsReplayWindow, ExternalKeyHandle,
@@ -59,8 +61,9 @@ pub use protocol::{
     Tls13EarlyDataOperationalPolicy, Tls13EarlyDataOperationalProfile, Tls13EarlyDataReplayState,
     Tls13EarlyDataTelemetry, Tls13OcspStapleVerification, Tls13OcspStapleVerifier,
     Tls13QuicInitialSecrets, Tls13QuicNextTrafficSecrets, Tls13QuicPacketProtectionKeys,
-    Tls13QuicTrafficSecretSnapshot, TlsVersion, TLS13_QUIC_EXPORTER_LABEL_CLIENT_1RTT,
-    TLS13_QUIC_EXPORTER_LABEL_SERVER_1RTT,
+    Tls13QuicTrafficSecretSnapshot, TlsRecordDeframer, TlsVersion,
+    TLS13_QUIC_EXPORTER_LABEL_CLIENT_1RTT, TLS13_QUIC_EXPORTER_LABEL_SERVER_1RTT,
+    TLS_MAX_RECORD_PAYLOAD_LEN, TLS_RECORD_HEADER_LEN,
 };
 
 #[cfg(feature = "provider-psa")]

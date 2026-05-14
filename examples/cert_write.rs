@@ -19,7 +19,9 @@
 
 use noxtls_core::Result;
 use noxtls_crypto::P256PrivateKey;
-use noxtls_x509::{noxtls_certificate_der_to_pem, noxtls_write_self_signed_certificate_p256_sha256};
+use noxtls_x509::{
+    noxtls_certificate_der_to_pem, noxtls_write_self_signed_certificate_p256_sha256,
+};
 
 /// Writes a self-signed certificate in DER and PEM form using fixed demo inputs.
 ///

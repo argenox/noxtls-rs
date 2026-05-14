@@ -11,6 +11,7 @@ Available examples:
 - `dtls_client`: sends one UDP datagram and reads one response.
 - `dtls_server`: receives one UDP datagram and sends one response.
 - `tls_client`: demonstrates a simple TLS 1.3 client flow with noxtls APIs.
+- `tls_trace_curl`: curl-like HTTPS probe with verbose packet/handshake diagnostics; uses `noxtls::TlsRecordDeframer` for partial reads over TCP (see also `Connection::process_tls13_server_encrypted_handshake_flight` for modeled TLS 1.3 encrypted server flights).
 - `tls_server`: serves one fixed HTTP response over TCP.
 - `cert_app`: validates a generated certificate chain and hostname.
 - `cert_req`: generates a P-256 CSR and prints PEM output.

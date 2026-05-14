@@ -48,7 +48,7 @@ pub struct PsaError {
 }
 
 impl PsaError {
-    /// Constructs a new normalized PSA error object.
+    /// Constructs a noxtls_new normalized PSA error object.
     ///
     /// # Arguments
     ///
@@ -57,8 +57,8 @@ impl PsaError {
     ///
     /// # Returns
     ///
-    /// A new [`PsaError`] value with caller-provided fields.
-    pub fn new(code: PsaResultCode, detail_status: Option<i32>) -> Self {
+    /// A noxtls_new [`PsaError`] value with caller-provided fields.
+    pub fn noxtls_new(code: PsaResultCode, detail_status: Option<i32>) -> Self {
         Self {
             code,
             detail_status,
@@ -130,6 +130,6 @@ pub fn noxtls_map_status_to_result(status: i32) -> Result<()> {
     if normalized == PsaResultCode::Success {
         Ok(())
     } else {
-        Err(PsaError::new(normalized, Some(status)).to_noxtls_error())
+        Err(PsaError::noxtls_new(normalized, Some(status)).to_noxtls_error())
     }
 }

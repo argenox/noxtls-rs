@@ -48,7 +48,7 @@ fn main() {
     let mut stream = vec![0_u8; data.len()];
     let start = Instant::now();
     for _ in 0..256 {
-        let mut cipher = ChaCha20::new(&key, &nonce, 1);
+        let mut cipher = ChaCha20::noxtls_new(&key, &nonce, 1);
         cipher
             .apply_keystream(&data, &mut stream)
             .expect("chacha20 must complete");

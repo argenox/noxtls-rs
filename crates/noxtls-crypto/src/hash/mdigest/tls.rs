@@ -27,7 +27,7 @@ pub struct TlsTranscriptSha256 {
 }
 
 impl TlsTranscriptSha256 {
-    /// Creates a new transcript hasher with an empty transcript state.
+    /// Creates a noxtls_new transcript hasher with an empty transcript state.
     ///
     /// # Returns
     /// Fresh SHA-256 transcript accumulator.
@@ -36,7 +36,7 @@ impl TlsTranscriptSha256 {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn new() -> Self {
+    pub fn noxtls_new() -> Self {
         Self::default()
     }
 
@@ -53,8 +53,8 @@ impl TlsTranscriptSha256 {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn update(&mut self, message: &[u8]) {
-        self.hasher.update(message);
+    pub fn noxtls_update(&mut self, message: &[u8]) {
+        self.hasher.noxtls_update(message);
     }
 
     /// Returns a snapshot hash of the transcript without consuming state.
@@ -70,7 +70,7 @@ impl TlsTranscriptSha256 {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn snapshot_hash(&self) -> [u8; 32] {
+    pub fn noxtls_snapshot_hash(&self) -> [u8; 32] {
         let digest = self.hasher.clone().finalize();
         let mut out = [0_u8; 32];
         out.copy_from_slice(&digest);
@@ -85,7 +85,7 @@ pub struct TlsTranscriptSha384 {
 }
 
 impl TlsTranscriptSha384 {
-    /// Creates a new SHA-384 transcript hasher with an empty transcript state.
+    /// Creates a noxtls_new SHA-384 transcript hasher with an empty transcript state.
     ///
     /// # Returns
     /// Fresh SHA-384 transcript accumulator.
@@ -94,7 +94,7 @@ impl TlsTranscriptSha384 {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn new() -> Self {
+    pub fn noxtls_new() -> Self {
         Self::default()
     }
 
@@ -111,7 +111,7 @@ impl TlsTranscriptSha384 {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn update(&mut self, message: &[u8]) {
+    pub fn noxtls_update(&mut self, message: &[u8]) {
         self.transcript.extend_from_slice(message);
     }
 
@@ -128,7 +128,7 @@ impl TlsTranscriptSha384 {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn snapshot_hash(&self) -> [u8; 48] {
+    pub fn noxtls_snapshot_hash(&self) -> [u8; 48] {
         noxtls_sha384(&self.transcript)
     }
 }
@@ -151,7 +151,12 @@ impl TlsTranscriptSha384 {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn noxtls_tls12_prf_sha256(secret: &[u8], label: &[u8], seed: &[u8], len: usize) -> Result<Vec<u8>> {
+pub fn noxtls_tls12_prf_sha256(
+    secret: &[u8],
+    label: &[u8],
+    seed: &[u8],
+    len: usize,
+) -> Result<Vec<u8>> {
     if secret.is_empty() {
         return Err(Error::InvalidLength("tls12 prf secret must not be empty"));
     }
@@ -193,7 +198,12 @@ pub fn noxtls_tls12_prf_sha256(secret: &[u8], label: &[u8], seed: &[u8], len: us
 /// # Panics
 ///
 /// This function does not panic.
-pub fn noxtls_tls12_prf_sha384(secret: &[u8], label: &[u8], seed: &[u8], len: usize) -> Result<Vec<u8>> {
+pub fn noxtls_tls12_prf_sha384(
+    secret: &[u8],
+    label: &[u8],
+    seed: &[u8],
+    len: usize,
+) -> Result<Vec<u8>> {
     if secret.is_empty() {
         return Err(Error::InvalidLength("tls12 prf secret must not be empty"));
     }

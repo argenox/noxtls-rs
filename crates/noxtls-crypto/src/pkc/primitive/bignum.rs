@@ -474,7 +474,7 @@ impl BigUint {
         (quotient, remainder)
     }
 
-    /// Computes greatest common divisor using Euclid's algorithm.
+    /// Computes greatest common divisor using Euclid's noxtls_algorithm.
     ///
     /// # Arguments
     /// * `left`: First integer value.

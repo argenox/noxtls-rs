@@ -74,13 +74,13 @@ impl TicketStore {
     ///
     /// # Returns
     ///
-    /// A new or updated `Self` value as constructed in the function body.
+    /// A noxtls_new or updated `Self` value as constructed in the function body.
     ///
     /// # Panics
     ///
     /// This function does not panic.
     ///
-    pub fn new() -> Self {
+    pub fn noxtls_new() -> Self {
         Self::with_max_entries(256)
     }
 
@@ -94,7 +94,7 @@ impl TicketStore {
     ///
     /// # Returns
     ///
-    /// A new or updated `Self` value as constructed in the function body.
+    /// A noxtls_new or updated `Self` value as constructed in the function body.
     ///
     /// # Panics
     ///
@@ -460,7 +460,7 @@ impl TicketStore {
     pub fn to_encrypted_bytes(&self, encryption_key: &[u8], nonce: &[u8; 12]) -> Result<Vec<u8>> {
         let plaintext = self.to_bytes()?;
         let key = derive_ticket_store_aead_key(encryption_key)?;
-        let cipher = AesCipher::new(&key)?;
+        let cipher = AesCipher::noxtls_new(&key)?;
         let aad = ticket_store_encryption_aad(*nonce, plaintext.len())?;
         let (ciphertext, tag) = noxtls_aes_gcm_encrypt(&cipher, nonce, &aad, &plaintext)?;
         let ciphertext_len = u32::try_from(ciphertext.len()).map_err(|_| {
@@ -532,7 +532,7 @@ impl TicketStore {
             ));
         }
         let key = derive_ticket_store_aead_key(encryption_key)?;
-        let cipher = AesCipher::new(&key)?;
+        let cipher = AesCipher::noxtls_new(&key)?;
         let aad = ticket_store_encryption_aad(nonce, ciphertext_len)?;
         let plaintext = noxtls_aes_gcm_decrypt(&cipher, &nonce, &aad, ciphertext, &tag)
             .map_err(|_| Error::ParseFailure("ticket store at-rest authentication failed"))?;
@@ -648,13 +648,13 @@ impl Default for TicketStore {
     ///
     /// # Returns
     ///
-    /// A new [`TicketStore`] equivalent to [`TicketStore::new`].
+    /// A noxtls_new [`TicketStore`] equivalent to [`TicketStore::noxtls_new`].
     ///
     /// # Panics
     ///
     /// This function does not panic.
     fn default() -> Self {
-        Self::new()
+        Self::noxtls_new()
     }
 }
 

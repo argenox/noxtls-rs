@@ -40,8 +40,8 @@ use noxtls_core::Result;
 fn main() -> Result<()> {
     let mut conn = establish_tls13_session()?;
     let request = b"GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
-    let protected = conn.seal_record(request, b"http-request")?;
-    let opened = conn.open_own_record(&protected, b"http-request")?;
+    let protected = conn.noxtls_seal_record(request, b"http-request")?;
+    let opened = conn.noxtls_open_own_record(&protected, b"http-request")?;
 
     println!("request_plaintext={}B", request.len());
     println!("record_ciphertext={}B", protected.ciphertext.len());
@@ -67,16 +67,16 @@ fn main() -> Result<()> {
 ///
 /// This function does not panic.
 fn establish_tls13_session() -> Result<Connection> {
-    let mut conn = Connection::new(TlsVersion::Tls13);
-    let client_hello = conn.send_client_hello(&[0x11; 32])?;
-    let server_hello = Connection::build_server_hello(
+    let mut conn = Connection::noxtls_new(TlsVersion::Tls13);
+    let client_hello = conn.noxtls_send_client_hello(&[0x11; 32])?;
+    let server_hello = Connection::noxtls_build_server_hello(
         TlsVersion::Tls13,
         CipherSuite::TlsAes256GcmSha384,
         &[0x22; 32],
     )?;
-    conn.recv_server_hello(&server_hello)?;
-    let verify = conn.compute_finished_verify_data()?;
-    conn.finish(&verify)?;
+    conn.noxtls_recv_server_hello(&server_hello)?;
+    let verify = conn.noxtls_compute_finished_verify_data()?;
+    conn.noxtls_finish(&verify)?;
     println!("client_hello_bytes={}", client_hello.len());
     Ok(conn)
 }

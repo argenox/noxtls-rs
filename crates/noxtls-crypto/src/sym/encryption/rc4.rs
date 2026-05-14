@@ -33,7 +33,7 @@ impl Rc4 {
     ///
     /// # Returns
     /// Initialized `Rc4` state after key scheduling.
-    pub fn new(key: &[u8]) -> Result<Self> {
+    pub fn noxtls_new(key: &[u8]) -> Result<Self> {
         if key.is_empty() {
             return Err(Error::InvalidLength("rc4 key must not be empty"));
         }

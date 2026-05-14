@@ -109,7 +109,9 @@ fn parse_bit_string_contents(body: &[u8]) -> Result<&[u8]> {
 /// # Panics
 ///
 /// This function does not panic.
-pub fn noxtls_ed25519_public_key_from_subject_public_key_info(der: &[u8]) -> Result<Ed25519PublicKey> {
+pub fn noxtls_ed25519_public_key_from_subject_public_key_info(
+    der: &[u8],
+) -> Result<Ed25519PublicKey> {
     let (outer_tag, spki, rest) = parse_der_node_local(der)?;
     if outer_tag != 0x30 || !rest.is_empty() {
         return Err(Error::ParseFailure(
@@ -119,20 +121,20 @@ pub fn noxtls_ed25519_public_key_from_subject_public_key_info(der: &[u8]) -> Res
     let (alg_tag, alg_seq, after_alg) = parse_der_node_local(spki)?;
     if alg_tag != 0x30 {
         return Err(Error::ParseFailure(
-            "ed25519 SPKI missing algorithm SEQUENCE",
+            "ed25519 SPKI missing noxtls_algorithm SEQUENCE",
         ));
     }
     let (oid_tag, oid_body, oid_rest) = parse_der_node_local(alg_seq)?;
     if oid_tag != 0x06 || oid_body != OID_ID_ED25519 {
         return Err(Error::ParseFailure(
-            "ed25519 SPKI algorithm OID is not id-Ed25519",
+            "ed25519 SPKI noxtls_algorithm OID is not id-Ed25519",
         ));
     }
     if !oid_rest.is_empty() {
         let (_pt, _pb, tail) = parse_der_node_local(oid_rest)?;
         if !tail.is_empty() {
             return Err(Error::ParseFailure(
-                "ed25519 algorithm identifier trailing bytes",
+                "ed25519 noxtls_algorithm identifier trailing bytes",
             ));
         }
     }
@@ -348,7 +350,9 @@ pub fn noxtls_ed25519_verify(
 /// # Panics
 ///
 /// This function does not panic.
-pub fn noxtls_ed25519_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<Ed25519PrivateKey> {
+pub fn noxtls_ed25519_generate_private_key_auto(
+    drbg: &mut HmacDrbgSha256,
+) -> Result<Ed25519PrivateKey> {
     let seed: [u8; 32] = drbg
         .generate(32, b"ed25519 keygen")?
         .try_into()

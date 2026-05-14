@@ -26,7 +26,7 @@ use crate::sym::encryption::ChaCha20;
 /// # Returns
 /// First 32 bytes of the ChaCha20 block at counter 0.
 pub fn noxtls_poly1305_key_gen(key: &[u8; 32], nonce: &[u8; 12]) -> [u8; 32] {
-    let cipher = ChaCha20::new(key, nonce, 0);
+    let cipher = ChaCha20::noxtls_new(key, nonce, 0);
     let block = cipher.block_output();
     let mut otk = [0_u8; 32];
     otk.copy_from_slice(&block[..32]);
@@ -42,7 +42,7 @@ pub fn noxtls_poly1305_key_gen(key: &[u8; 32], nonce: &[u8; 12]) -> [u8; 32] {
 /// # Returns
 /// 16-byte authentication tag in little-endian form.
 pub fn noxtls_poly1305_mac(otk: &[u8; 32], msg: &[u8]) -> [u8; 16] {
-    let mut state = Poly1305State::new(otk);
+    let mut state = Poly1305State::noxtls_new(otk);
     let mut offset = 0;
     while offset < msg.len() {
         let remaining = msg.len() - offset;
@@ -70,7 +70,7 @@ pub fn noxtls_poly1305_mac(otk: &[u8; 32], msg: &[u8]) -> [u8; 16] {
 /// # Returns
 /// 16-byte tag, or zero tag if `data` is empty (caller should avoid empty input for AEAD).
 pub fn noxtls_poly1305_mac_padded16(otk: &[u8; 32], data: &[u8]) -> [u8; 16] {
-    let mut state = Poly1305State::new(otk);
+    let mut state = Poly1305State::noxtls_new(otk);
     debug_assert!(data.len() % 16 == 0);
     let mut offset = 0;
     while offset < data.len() {
@@ -118,7 +118,7 @@ impl Poly1305State {
     /// # Panics
     ///
     /// This function does not panic.
-    fn new(key: &[u8; 32]) -> Self {
+    fn noxtls_new(key: &[u8; 32]) -> Self {
         let mut poly = Poly1305State::default();
         poly.r[0] = u32::from_le_bytes(key[0..4].try_into().expect("len")) & 0x3ff_ffff;
         poly.r[1] = (u32::from_le_bytes(key[3..7].try_into().expect("len")) >> 2) & 0x3ff_ff03;

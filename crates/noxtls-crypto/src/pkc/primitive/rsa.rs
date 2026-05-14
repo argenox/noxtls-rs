@@ -939,7 +939,11 @@ pub fn noxtls_rsassa_sha256_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn noxtls_rsassa_sha256_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_rsassa_sha256_verify(
+    public: &RsaPublicKey,
+    msg: &[u8],
+    signature: &[u8],
+) -> Result<()> {
     public.verify_pkcs1_v15_sha256(msg, signature)
 }
 
@@ -964,7 +968,11 @@ pub fn noxtls_rsassa_sha1_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<Ve
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn noxtls_rsassa_sha1_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_rsassa_sha1_verify(
+    public: &RsaPublicKey,
+    msg: &[u8],
+    signature: &[u8],
+) -> Result<()> {
     public.verify_pkcs1_v15_sha1(msg, signature)
 }
 
@@ -989,7 +997,11 @@ pub fn noxtls_rsassa_sha384_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn noxtls_rsassa_sha384_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_rsassa_sha384_verify(
+    public: &RsaPublicKey,
+    msg: &[u8],
+    signature: &[u8],
+) -> Result<()> {
     public.verify_pkcs1_v15_sha384(msg, signature)
 }
 
@@ -1014,7 +1026,11 @@ pub fn noxtls_rsassa_sha512_sign(private: &RsaPrivateKey, msg: &[u8]) -> Result<
 ///
 /// # Returns
 /// `Ok(())` when the signature is valid.
-pub fn noxtls_rsassa_sha512_verify(public: &RsaPublicKey, msg: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_rsassa_sha512_verify(
+    public: &RsaPublicKey,
+    msg: &[u8],
+    signature: &[u8],
+) -> Result<()> {
     public.verify_pkcs1_v15_sha512(msg, signature)
 }
 
@@ -1027,7 +1043,11 @@ pub fn noxtls_rsassa_sha512_verify(public: &RsaPublicKey, msg: &[u8], signature:
 ///
 /// # Returns
 /// RSASSA-PSS signature bytes.
-pub fn noxtls_rsassa_pss_sha256_sign(private: &RsaPrivateKey, msg: &[u8], salt: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsassa_pss_sha256_sign(
+    private: &RsaPrivateKey,
+    msg: &[u8],
+    salt: &[u8],
+) -> Result<Vec<u8>> {
     private.sign_pss_sha256(msg, salt)
 }
 
@@ -1079,7 +1099,11 @@ pub fn noxtls_rsassa_pss_sha256_verify(
 ///
 /// # Returns
 /// RSASSA-PSS signature bytes.
-pub fn noxtls_rsassa_pss_sha384_sign(private: &RsaPrivateKey, msg: &[u8], salt: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsassa_pss_sha384_sign(
+    private: &RsaPrivateKey,
+    msg: &[u8],
+    salt: &[u8],
+) -> Result<Vec<u8>> {
     private.sign_pss_sha384(msg, salt)
 }
 
@@ -1147,7 +1171,10 @@ pub fn noxtls_rsaes_pkcs1_v15_encrypt_auto(
 ///
 /// # Returns
 /// Decrypted plaintext bytes.
-pub fn noxtls_rsaes_pkcs1_v15_decrypt(private: &RsaPrivateKey, ciphertext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_rsaes_pkcs1_v15_decrypt(
+    private: &RsaPrivateKey,
+    ciphertext: &[u8],
+) -> Result<Vec<u8>> {
     private.decrypt_pkcs1_v15(ciphertext)
 }
 

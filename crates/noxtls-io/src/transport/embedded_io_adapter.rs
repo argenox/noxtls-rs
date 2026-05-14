@@ -38,12 +38,12 @@ impl<I> EmbeddedIoTransport<I> {
     ///
     /// # Returns
     ///
-    /// A new [`EmbeddedIoTransport`] ready for blocking TLS I/O.
+    /// A noxtls_new [`EmbeddedIoTransport`] ready for blocking TLS I/O.
     ///
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn new(inner: I) -> Self {
+    pub fn noxtls_new(inner: I) -> Self {
         Self { inner }
     }
 
@@ -55,7 +55,7 @@ impl<I> EmbeddedIoTransport<I> {
     ///
     /// # Returns
     ///
-    /// The original `inner` value passed to [`Self::new`].
+    /// The original `inner` value passed to [`Self::noxtls_new`].
     ///
     /// # Panics
     ///

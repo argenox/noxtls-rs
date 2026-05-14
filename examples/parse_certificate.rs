@@ -72,7 +72,9 @@ fn main() -> Result<()> {
 /// This function does not panic.
 fn read_certificate_path() -> Result<String> {
     std::env::args().nth(1).ok_or_else(|| {
-        eprintln!("usage: cargo run -p noxtls --example noxtls_parse_certificate -- <cert.der|cert.pem>");
+        eprintln!(
+            "usage: cargo run -p noxtls --example noxtls_parse_certificate -- <cert.der|cert.pem>"
+        );
         Error::StateError("missing certificate path argument")
     })
 }

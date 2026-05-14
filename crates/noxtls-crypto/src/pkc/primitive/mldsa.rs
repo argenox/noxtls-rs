@@ -34,7 +34,7 @@ pub const MLDSA_PRIVATE_KEY_LEN: usize = 4_032;
 /// Byte length used by ML-DSA-65 signatures.
 pub const MLDSA_SIGNATURE_LEN: usize = 3_309;
 
-/// OID bytes for `id-ml-dsa-65` used in certificate algorithm dispatch.
+/// OID bytes for `id-ml-dsa-65` used in certificate noxtls_algorithm dispatch.
 pub const OID_ID_MLDSA65: &[u8] = &[
     0x2B, 0x06, 0x01, 0x04, 0x01, 0x02, 0x82, 0x0B, 0x07, 0x06, 0x05,
 ];
@@ -294,7 +294,11 @@ pub fn noxtls_mldsa_generate_keypair_auto(
 ///
 /// # Returns
 /// `Ok(())` when signature verification succeeds.
-pub fn noxtls_mldsa_verify(public_key: &MlDsaPublicKey, message: &[u8], signature: &[u8]) -> Result<()> {
+pub fn noxtls_mldsa_verify(
+    public_key: &MlDsaPublicKey,
+    message: &[u8],
+    signature: &[u8],
+) -> Result<()> {
     if signature.len() != MLDSA_SIGNATURE_LEN {
         return Err(Error::InvalidLength("mldsa signature must be 3309 bytes"));
     }
@@ -315,15 +319,15 @@ pub fn noxtls_mldsa_public_key_from_subject_public_key_info(der: &[u8]) -> Resul
     }
     let (alg_tag, alg_body, after_alg) = parse_der_node_local(spki_body)?;
     if alg_tag != 0x30 {
-        return Err(Error::ParseFailure("mldsa SPKI missing algorithm sequence"));
+        return Err(Error::ParseFailure("mldsa SPKI missing noxtls_algorithm sequence"));
     }
     let (oid_tag, oid_body, alg_rest) = parse_der_node_local(alg_body)?;
     if oid_tag != 0x06 || oid_body != OID_ID_MLDSA65 {
-        return Err(Error::ParseFailure("mldsa SPKI algorithm OID mismatch"));
+        return Err(Error::ParseFailure("mldsa SPKI noxtls_algorithm OID mismatch"));
     }
     if !alg_rest.is_empty() {
         return Err(Error::ParseFailure(
-            "mldsa SPKI algorithm parameters unsupported",
+            "mldsa SPKI noxtls_algorithm parameters unsupported",
         ));
     }
     let (bit_tag, bit_body, tail) = parse_der_node_local(after_alg)?;

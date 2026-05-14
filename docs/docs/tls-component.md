@@ -16,7 +16,7 @@ The **TLS component** in NoxTLS Rust is the `noxtls` crate plus its tightly coup
 
 ```text
 Application (your code)
-    → noxtls::Connection (modeled handshake + records)
+    → noxtls::Connection (modeled handshake + records; `TlsRecordDeframer` for wire deframing)
     → noxtls-io adapters (embedded-io / tokio / custom)
     → noxtls-platform (time; future RNG / storage hooks)
     → noxtls-crypto + noxtls-x509 (algorithms and PKIX)

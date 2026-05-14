@@ -81,7 +81,7 @@ impl AriaCipher {
     ///
     /// # Returns
     /// Initialized `AriaCipher` with round keys.
-    pub fn new(key: &[u8]) -> Result<Self> {
+    pub fn noxtls_new(key: &[u8]) -> Result<Self> {
         let (rounds, ck1, ck2, ck3) = match key.len() {
             16 => (12, &C1, &C2, &C3),
             24 => (14, &C2, &C3, &C1),
@@ -251,7 +251,11 @@ pub fn noxtls_aria_ecb_decrypt(cipher: &AriaCipher, input: &[u8]) -> Result<Vec<
 }
 
 /// Encrypts ARIA-CBC with a 16-byte IV and block-aligned plaintext.
-pub fn noxtls_aria_cbc_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aria_cbc_encrypt(
+    cipher: &AriaCipher,
+    iv: &[u8; 16],
+    plaintext: &[u8],
+) -> Result<Vec<u8>> {
     if !plaintext.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aria cbc input must be block-aligned"));
     }
@@ -271,7 +275,11 @@ pub fn noxtls_aria_cbc_encrypt(cipher: &AriaCipher, iv: &[u8; 16], plaintext: &[
 }
 
 /// Decrypts ARIA-CBC with a 16-byte IV and block-aligned ciphertext.
-pub fn noxtls_aria_cbc_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aria_cbc_decrypt(
+    cipher: &AriaCipher,
+    iv: &[u8; 16],
+    ciphertext: &[u8],
+) -> Result<Vec<u8>> {
     if !ciphertext.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aria cbc input must be block-aligned"));
     }
@@ -293,7 +301,11 @@ pub fn noxtls_aria_cbc_decrypt(cipher: &AriaCipher, iv: &[u8; 16], ciphertext: &
 
 /// Applies ARIA-CTR transformation using a 16-byte initial counter block.
 #[must_use]
-pub fn noxtls_aria_ctr_apply(cipher: &AriaCipher, nonce_counter: &[u8; 16], input: &[u8]) -> Vec<u8> {
+pub fn noxtls_aria_ctr_apply(
+    cipher: &AriaCipher,
+    nonce_counter: &[u8; 16],
+    input: &[u8],
+) -> Vec<u8> {
     noxtls_aria_ctr_encrypt(cipher, nonce_counter, input)
 }
 

@@ -18,8 +18,9 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    noxtls_rsaes_oaep_sha256_decrypt, noxtls_rsaes_pkcs1_v15_decrypt, noxtls_rsassa_pss_sha256_sign, noxtls_rsassa_sha256_sign,
-    noxtls_x25519_shared_secret, RsaPrivateKey, X25519PrivateKey, X25519PublicKey,
+    noxtls_rsaes_oaep_sha256_decrypt, noxtls_rsaes_pkcs1_v15_decrypt,
+    noxtls_rsassa_pss_sha256_sign, noxtls_rsassa_sha256_sign, noxtls_x25519_shared_secret,
+    RsaPrivateKey, X25519PrivateKey, X25519PublicKey,
 };
 
 /// Opaque external key handle used by providers to locate key material.
@@ -52,7 +53,7 @@ pub enum KeyDeriveAlgorithm {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct KeySignRequest<'a> {
     pub handle: &'a ExternalKeyHandle,
-    pub algorithm: KeySignAlgorithm,
+    pub noxtls_algorithm: KeySignAlgorithm,
     pub message: &'a [u8],
     pub salt: Option<&'a [u8]>,
 }
@@ -61,7 +62,7 @@ pub struct KeySignRequest<'a> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct KeyDecryptRequest<'a> {
     pub handle: &'a ExternalKeyHandle,
-    pub algorithm: KeyDecryptAlgorithm,
+    pub noxtls_algorithm: KeyDecryptAlgorithm,
     pub ciphertext: &'a [u8],
     pub label: Option<&'a [u8]>,
 }
@@ -70,7 +71,7 @@ pub struct KeyDecryptRequest<'a> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct KeyDeriveRequest<'a> {
     pub handle: &'a ExternalKeyHandle,
-    pub algorithm: KeyDeriveAlgorithm,
+    pub noxtls_algorithm: KeyDeriveAlgorithm,
     pub peer_public_key: &'a [u8],
 }
 
@@ -80,7 +81,7 @@ pub trait ExternalKeyProvider {
     ///
     /// # Arguments
     ///
-    /// * `request` — Sign request carrying handle, algorithm, message bytes, and optional salt.
+    /// * `request` — Sign request carrying handle, noxtls_algorithm, message bytes, and optional salt.
     ///
     /// # Returns
     ///
@@ -88,14 +89,14 @@ pub trait ExternalKeyProvider {
     ///
     /// # Errors
     ///
-    /// Returns provider or algorithm errors when key lookup, input validation, or signing fails.
+    /// Returns provider or noxtls_algorithm errors when key lookup, input validation, or signing fails.
     fn sign(&self, request: &KeySignRequest<'_>) -> Result<Vec<u8>>;
 
     /// Performs a provider-backed decryption operation.
     ///
     /// # Arguments
     ///
-    /// * `request` — Decrypt request carrying handle, algorithm, ciphertext, and optional OAEP label.
+    /// * `request` — Decrypt request carrying handle, noxtls_algorithm, ciphertext, and optional OAEP label.
     ///
     /// # Returns
     ///
@@ -103,14 +104,14 @@ pub trait ExternalKeyProvider {
     ///
     /// # Errors
     ///
-    /// Returns provider or algorithm errors when key lookup, input validation, or decrypt fails.
+    /// Returns provider or noxtls_algorithm errors when key lookup, input validation, or decrypt fails.
     fn decrypt(&self, request: &KeyDecryptRequest<'_>) -> Result<Vec<u8>>;
 
     /// Performs a provider-backed key-derivation operation.
     ///
     /// # Arguments
     ///
-    /// * `request` — Derive request carrying handle, algorithm, and peer public key bytes.
+    /// * `request` — Derive request carrying handle, noxtls_algorithm, and peer public key bytes.
     ///
     /// # Returns
     ///
@@ -118,7 +119,7 @@ pub trait ExternalKeyProvider {
     ///
     /// # Errors
     ///
-    /// Returns provider or algorithm errors when key lookup, input validation, or derivation fails.
+    /// Returns provider or noxtls_algorithm errors when key lookup, input validation, or derivation fails.
     fn derive_shared_secret(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>>;
 }
 
@@ -144,7 +145,7 @@ impl ExternalKeyHandle {
     /// # Errors
     ///
     /// Returns [`Error::InvalidLength`] when `id` is empty.
-    pub fn new(id: &[u8]) -> Result<Self> {
+    pub fn noxtls_new(id: &[u8]) -> Result<Self> {
         if id.is_empty() {
             return Err(Error::InvalidLength(
                 "external key handle must not be empty",
@@ -183,7 +184,7 @@ impl SoftwareKeyProvider {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn new() -> Self {
+    pub fn noxtls_new() -> Self {
         Self::default()
     }
 
@@ -343,7 +344,7 @@ impl SoftwareKeyProvider {
 }
 
 impl ExternalKeyProvider for SoftwareKeyProvider {
-    /// Performs software-provider signing using the registered key handle and selected algorithm.
+    /// Performs software-provider signing using the registered key handle and selected noxtls_algorithm.
     ///
     /// # Arguments
     ///
@@ -355,10 +356,10 @@ impl ExternalKeyProvider for SoftwareKeyProvider {
     ///
     /// # Errors
     ///
-    /// Returns key lookup failures, unsupported algorithm details, or algorithm-level signing failures.
+    /// Returns key lookup failures, unsupported noxtls_algorithm details, or noxtls_algorithm-level signing failures.
     fn sign(&self, request: &KeySignRequest<'_>) -> Result<Vec<u8>> {
         let key = self.rsa_signing_key(request.handle)?;
-        match request.algorithm {
+        match request.noxtls_algorithm {
             KeySignAlgorithm::RsaPkcs1Sha256 => noxtls_rsassa_sha256_sign(key, request.message),
             KeySignAlgorithm::RsaPssSha256 => {
                 let salt = request.salt.ok_or(Error::InvalidLength(
@@ -369,7 +370,7 @@ impl ExternalKeyProvider for SoftwareKeyProvider {
         }
     }
 
-    /// Performs software-provider decryption using the registered key handle and selected algorithm.
+    /// Performs software-provider decryption using the registered key handle and selected noxtls_algorithm.
     ///
     /// # Arguments
     ///
@@ -381,11 +382,13 @@ impl ExternalKeyProvider for SoftwareKeyProvider {
     ///
     /// # Errors
     ///
-    /// Returns key lookup failures, or a uniform decryption-failure error for any algorithm-level decrypt failure.
+    /// Returns key lookup failures, or a uniform decryption-failure error for any noxtls_algorithm-level decrypt failure.
     fn decrypt(&self, request: &KeyDecryptRequest<'_>) -> Result<Vec<u8>> {
         let key = self.rsa_decryption_key(request.handle)?;
-        let plaintext = match request.algorithm {
-            KeyDecryptAlgorithm::RsaPkcs1v15 => noxtls_rsaes_pkcs1_v15_decrypt(key, request.ciphertext),
+        let plaintext = match request.noxtls_algorithm {
+            KeyDecryptAlgorithm::RsaPkcs1v15 => {
+                noxtls_rsaes_pkcs1_v15_decrypt(key, request.ciphertext)
+            }
             KeyDecryptAlgorithm::RsaOaepSha256 => {
                 let label = request.label.unwrap_or(&[]);
                 noxtls_rsaes_oaep_sha256_decrypt(key, request.ciphertext, label)
@@ -406,9 +409,9 @@ impl ExternalKeyProvider for SoftwareKeyProvider {
     ///
     /// # Errors
     ///
-    /// Returns key lookup failures, peer key parsing failures, or algorithm-level derive failures.
+    /// Returns key lookup failures, peer key parsing failures, or noxtls_algorithm-level derive failures.
     fn derive_shared_secret(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>> {
-        match request.algorithm {
+        match request.noxtls_algorithm {
             KeyDeriveAlgorithm::X25519 => {
                 let private_key = self.x25519_private_key(request.handle)?;
                 let peer_bytes: [u8; 32] = request

@@ -26,18 +26,20 @@ use noxtls_core::{Error, Result};
 #[cfg(feature = "hazardous-legacy-crypto")]
 use noxtls_crypto::noxtls_x448_generate_private_key_auto;
 use noxtls_crypto::{
-    noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, noxtls_decode_hex, noxtls_sha1, noxtls_sha256, noxtls_sha384, noxtls_sha3_256, noxtls_sha3_384,
-    noxtls_sha3_512, noxtls_sha512, noxtls_x25519_generate_private_key_auto, AesCipher, HmacDrbgSha256, P256PrivateKey,
+    noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, noxtls_decode_hex, noxtls_sha1, noxtls_sha256,
+    noxtls_sha384, noxtls_sha3_256, noxtls_sha3_384, noxtls_sha3_512, noxtls_sha512,
+    noxtls_x25519_generate_private_key_auto, AesCipher, HmacDrbgSha256, P256PrivateKey,
     P256PublicKey,
 };
 #[cfg(feature = "hazardous-legacy-crypto")]
 use noxtls_x509::noxtls_x448_public_key_to_pem_spki;
 use noxtls_x509::{
-    noxtls_certificate_der_to_pem, noxtls_certificate_matches_hostname, noxtls_certificate_pem_to_der, noxtls_der_to_pem,
-    noxtls_p256_public_key_to_pem_spki, noxtls_parse_certificate, noxtls_parse_der_node,
-    noxtls_parse_pkcs8_private_key_info_der, noxtls_private_key_der_to_pem_pkcs8, noxtls_private_key_pem_to_der_pkcs8,
-    noxtls_validate_certificate_chain, noxtls_write_csr_p256_sha256, noxtls_write_self_signed_certificate_p256_sha256,
-    noxtls_x25519_public_key_to_pem_spki,
+    noxtls_certificate_der_to_pem, noxtls_certificate_matches_hostname,
+    noxtls_certificate_pem_to_der, noxtls_der_to_pem, noxtls_p256_public_key_to_pem_spki,
+    noxtls_parse_certificate, noxtls_parse_der_node, noxtls_parse_pkcs8_private_key_info_der,
+    noxtls_private_key_der_to_pem_pkcs8, noxtls_private_key_pem_to_der_pkcs8,
+    noxtls_validate_certificate_chain, noxtls_write_csr_p256_sha256,
+    noxtls_write_self_signed_certificate_p256_sha256, noxtls_x25519_public_key_to_pem_spki,
 };
 
 /// Runs an OpenSSL-style noxtls utility for digests, encryption, randomness, keys, and X.509.
@@ -115,16 +117,16 @@ fn print_usage() {
     );
     println!("  noxtls-rs rand --bytes <n> [--hex] [--out <file>] [--seed-hex <hex>]");
     println!(
-        "  noxtls-rs genpkey --algorithm <p256|x25519|x448> --out <private.txt> [--pubout <public.pem>] [--seed-hex <hex>]"
+        "  noxtls-rs genpkey --noxtls_algorithm <p256|x25519|x448> --out <private.txt> [--pubout <public.pem>] [--seed-hex <hex>]"
     );
     println!(
-        "  noxtls-rs pkcs8 --topk8 --algorithm <p256|x25519|x448> --key-hex <hex> [--out <key.pem|key.der>] [--outform <pem|der>]"
+        "  noxtls-rs pkcs8 --topk8 --noxtls_algorithm <p256|x25519|x448> --key-hex <hex> [--out <key.pem|key.der>] [--outform <pem|der>]"
     );
     println!(
-        "  noxtls-rs pkcs8 --in <key.pem|key.der> [--inform <pem|der>] [--algorithm <p256|x25519|x448>] [--out <file>] [--outform <pem|der|hex>]"
+        "  noxtls-rs pkcs8 --in <key.pem|key.der> [--inform <pem|der>] [--noxtls_algorithm <p256|x25519|x448>] [--out <file>] [--outform <pem|der|hex>]"
     );
     println!(
-        "  noxtls-rs req --new --key-hex <p256-32-byte-hex> --subj <common-name> [--out <csr.pem|csr.der>] [--outform <pem|der>]"
+        "  noxtls-rs req --noxtls_new --key-hex <p256-32-byte-hex> --subj <common-name> [--out <csr.pem|csr.der>] [--outform <pem|der>]"
     );
     println!("  noxtls-rs x509 --in <cert.pem|cert.der>");
     println!(
@@ -158,7 +160,7 @@ fn print_usage() {
 /// This function does not panic unless otherwise noted in the body.
 ///
 fn run_dgst(args: &[String]) -> Result<()> {
-    let mut algorithm = "sha256";
+    let mut noxtls_algorithm = "sha256";
     let mut input_file: Option<&str> = None;
     let mut input_text: Option<&str> = None;
     let mut index = 0;
@@ -166,9 +168,9 @@ fn run_dgst(args: &[String]) -> Result<()> {
         match args[index].as_str() {
             "--alg" => {
                 index += 1;
-                algorithm = args
+                noxtls_algorithm = args
                     .get(index)
-                    .ok_or(Error::StateError("missing digest algorithm"))?;
+                    .ok_or(Error::StateError("missing digest noxtls_algorithm"))?;
             }
             "--in" => {
                 index += 1;
@@ -199,8 +201,8 @@ fn run_dgst(args: &[String]) -> Result<()> {
             .as_bytes()
             .to_vec()
     };
-    let digest = digest_bytes(algorithm, &input)?;
-    println!("{algorithm}={}", to_hex(&digest));
+    let digest = digest_bytes(noxtls_algorithm, &input)?;
+    println!("{noxtls_algorithm}={}", to_hex(&digest));
     Ok(())
 }
 
@@ -314,7 +316,7 @@ fn run_enc(args: &[String]) -> Result<()> {
             .as_bytes()
             .to_vec()
     };
-    let cipher = AesCipher::new(&key)?;
+    let cipher = AesCipher::noxtls_new(&key)?;
     let (ciphertext, tag) = noxtls_aes_gcm_encrypt(&cipher, &nonce, aad.as_bytes(), &plaintext)?;
 
     if let Some(path) = output_file {
@@ -433,7 +435,7 @@ fn run_dec(args: &[String]) -> Result<()> {
     } else {
         noxtls_decode_hex(ciphertext_hex.ok_or(Error::StateError("missing ciphertext hex"))?)?
     };
-    let cipher = AesCipher::new(&key)?;
+    let cipher = AesCipher::noxtls_new(&key)?;
     let plaintext = noxtls_aes_gcm_decrypt(&cipher, &nonce, aad.as_bytes(), &ciphertext, &tag)?;
 
     if let Some(path) = output_file {
@@ -539,18 +541,18 @@ fn run_rand(args: &[String]) -> Result<()> {
 /// This function does not panic unless otherwise noted in the body.
 ///
 fn run_genpkey(args: &[String]) -> Result<()> {
-    let mut algorithm: Option<&str> = None;
+    let mut noxtls_algorithm: Option<&str> = None;
     let mut out_path: Option<&str> = None;
     let mut pubout_path: Option<&str> = None;
     let mut seed_hex: Option<&str> = None;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
-            "--algorithm" => {
+            "--noxtls_algorithm" => {
                 index += 1;
-                algorithm = Some(
+                noxtls_algorithm = Some(
                     args.get(index)
-                        .ok_or(Error::StateError("missing key algorithm"))?,
+                        .ok_or(Error::StateError("missing key noxtls_algorithm"))?,
                 );
             }
             "--out" => {
@@ -579,10 +581,10 @@ fn run_genpkey(args: &[String]) -> Result<()> {
         index += 1;
     }
 
-    let algorithm = algorithm.ok_or(Error::StateError("missing key algorithm"))?;
+    let noxtls_algorithm = noxtls_algorithm.ok_or(Error::StateError("missing key noxtls_algorithm"))?;
     let out_path = out_path.ok_or(Error::StateError("missing private key output path"))?;
     let mut drbg = make_cli_drbg(seed_hex)?;
-    let (private_text, public_pem) = match algorithm {
+    let (private_text, public_pem) = match noxtls_algorithm {
         "p256" => {
             let generated = generate_p256_private_key(&mut drbg)?;
             let public = generated.public_key()?;
@@ -625,7 +627,7 @@ fn run_genpkey(args: &[String]) -> Result<()> {
                 ));
             }
         }
-        _ => return Err(Error::StateError("unsupported key algorithm")),
+        _ => return Err(Error::StateError("unsupported key noxtls_algorithm")),
     };
 
     fs::write(out_path, private_text)
@@ -658,7 +660,7 @@ fn run_genpkey(args: &[String]) -> Result<()> {
 ///
 fn run_pkcs8(args: &[String]) -> Result<()> {
     let mut topk8 = false;
-    let mut algorithm: Option<&str> = None;
+    let mut noxtls_algorithm: Option<&str> = None;
     let mut key_hex: Option<&str> = None;
     let mut input_path: Option<&str> = None;
     let mut input_format: Option<&str> = None;
@@ -670,11 +672,11 @@ fn run_pkcs8(args: &[String]) -> Result<()> {
             "--topk8" => {
                 topk8 = true;
             }
-            "--algorithm" => {
+            "--noxtls_algorithm" => {
                 index += 1;
-                algorithm = Some(
+                noxtls_algorithm = Some(
                     args.get(index)
-                        .ok_or(Error::StateError("missing pkcs8 algorithm value"))?,
+                        .ok_or(Error::StateError("missing pkcs8 noxtls_algorithm value"))?,
                 );
             }
             "--key-hex" => {
@@ -717,16 +719,16 @@ fn run_pkcs8(args: &[String]) -> Result<()> {
     }
 
     if topk8 {
-        let algorithm = algorithm.ok_or(Error::StateError("missing pkcs8 algorithm value"))?;
+        let noxtls_algorithm = noxtls_algorithm.ok_or(Error::StateError("missing pkcs8 noxtls_algorithm value"))?;
         let key_hex = key_hex.ok_or(Error::StateError("missing pkcs8 key-hex value"))?;
-        let pkcs8_der = encode_pkcs8_private_key_der(algorithm, key_hex)?;
+        let pkcs8_der = encode_pkcs8_private_key_der(noxtls_algorithm, key_hex)?;
         return emit_pkcs8_output(&pkcs8_der, output_path, output_format);
     }
 
     let input_path = input_path.ok_or(Error::StateError("missing pkcs8 input path"))?;
     let pkcs8_der = read_pkcs8_der(input_path, input_format)?;
     let info = noxtls_parse_pkcs8_private_key_info_der(&pkcs8_der)?;
-    if let Some(expected_algorithm) = algorithm {
+    if let Some(expected_algorithm) = noxtls_algorithm {
         validate_pkcs8_algorithm(expected_algorithm, &info.algorithm_oid)?;
     }
 
@@ -772,7 +774,7 @@ fn run_req(args: &[String]) -> Result<()> {
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
-            "--new" => {}
+            "--noxtls_new" => {}
             "--key-hex" => {
                 index += 1;
                 key_hex = Some(
@@ -1153,10 +1155,10 @@ fn run_decrypt_legacy(args: &[String]) -> Result<()> {
     ])
 }
 
-/// Hashes bytes using the selected digest algorithm.
+/// Hashes bytes using the selected digest noxtls_algorithm.
 /// # Arguments
 ///
-/// * `algorithm` — `algorithm: &str`.
+/// * `noxtls_algorithm` — `noxtls_algorithm: &str`.
 /// * `input` — `input: &[u8]`.
 ///
 /// # Returns
@@ -1171,8 +1173,8 @@ fn run_decrypt_legacy(args: &[String]) -> Result<()> {
 ///
 /// This function does not panic unless otherwise noted in the body.
 ///
-fn digest_bytes(algorithm: &str, input: &[u8]) -> Result<Vec<u8>> {
-    match algorithm {
+fn digest_bytes(noxtls_algorithm: &str, input: &[u8]) -> Result<Vec<u8>> {
+    match noxtls_algorithm {
         "sha1" => Ok(noxtls_sha1(input).to_vec()),
         "sha256" => Ok(noxtls_sha256(input).to_vec()),
         "sha384" => Ok(noxtls_sha384(input).to_vec()),
@@ -1180,7 +1182,7 @@ fn digest_bytes(algorithm: &str, input: &[u8]) -> Result<Vec<u8>> {
         "sha3-256" => Ok(noxtls_sha3_256(input).to_vec()),
         "sha3-384" => Ok(noxtls_sha3_384(input).to_vec()),
         "sha3-512" => Ok(noxtls_sha3_512(input).to_vec()),
-        _ => Err(Error::StateError("unsupported digest algorithm")),
+        _ => Err(Error::StateError("unsupported digest noxtls_algorithm")),
     }
 }
 
@@ -1211,7 +1213,7 @@ fn make_cli_drbg(seed_hex: Option<&str>) -> Result<HmacDrbgSha256> {
         return Err(Error::StateError("seed material must be at least 16 bytes"));
     }
     let digest = noxtls_sha512(&seed);
-    HmacDrbgSha256::new(&digest[0..32], &digest[32..48], &digest[48..64])
+    HmacDrbgSha256::noxtls_new(&digest[0..32], &digest[32..48], &digest[48..64])
 }
 
 /// Loads a certificate file and converts PEM input into DER bytes.
@@ -1349,7 +1351,7 @@ fn emit_pkcs8_output(
     }
 }
 
-/// Checks PKCS#8 algorithm OID against expected CLI algorithm name.
+/// Checks PKCS#8 noxtls_algorithm OID against expected CLI noxtls_algorithm name.
 /// # Arguments
 ///
 /// * `expected_algorithm` — `expected_algorithm: &str`.
@@ -1372,20 +1374,20 @@ fn validate_pkcs8_algorithm(expected_algorithm: &str, oid: &[u8]) -> Result<()> 
         "p256" => OID_EC_PUBLIC_KEY,
         "x25519" => OID_X25519,
         "x448" => OID_X448,
-        _ => return Err(Error::StateError("unsupported pkcs8 algorithm")),
+        _ => return Err(Error::StateError("unsupported pkcs8 noxtls_algorithm")),
     };
     if oid != expected_oid {
         return Err(Error::StateError(
-            "pkcs8 key algorithm does not match expected algorithm",
+            "pkcs8 key noxtls_algorithm does not match expected noxtls_algorithm",
         ));
     }
     Ok(())
 }
 
-/// Encodes CLI key hex bytes into PKCS#8 DER by algorithm.
+/// Encodes CLI key hex bytes into PKCS#8 DER by noxtls_algorithm.
 /// # Arguments
 ///
-/// * `algorithm` — `algorithm: &str`.
+/// * `noxtls_algorithm` — `noxtls_algorithm: &str`.
 /// * `key_hex` — `key_hex: &str`.
 ///
 /// # Returns
@@ -1400,8 +1402,8 @@ fn validate_pkcs8_algorithm(expected_algorithm: &str, oid: &[u8]) -> Result<()> 
 ///
 /// This function does not panic unless otherwise noted in the body.
 ///
-fn encode_pkcs8_private_key_der(algorithm: &str, key_hex: &str) -> Result<Vec<u8>> {
-    match algorithm {
+fn encode_pkcs8_private_key_der(noxtls_algorithm: &str, key_hex: &str) -> Result<Vec<u8>> {
+    match noxtls_algorithm {
         "p256" => {
             let scalar =
                 parse_fixed_hex::<32>(key_hex, "p256 private key must be 32 bytes of hex")?;
@@ -1419,7 +1421,7 @@ fn encode_pkcs8_private_key_der(algorithm: &str, key_hex: &str) -> Result<Vec<u8
                 parse_fixed_hex::<56>(key_hex, "x448 private key must be 56 bytes of hex")?;
             encode_xdh_pkcs8_private_key(&scalar, OID_X448)
         }
-        _ => Err(Error::StateError("unsupported pkcs8 algorithm")),
+        _ => Err(Error::StateError("unsupported pkcs8 noxtls_algorithm")),
     }
 }
 
@@ -1458,7 +1460,7 @@ fn extract_private_scalar_hex_payload(
         return Ok(to_hex(&bytes));
     }
     Err(Error::UnsupportedFeature(
-        "unsupported pkcs8 private key algorithm",
+        "unsupported pkcs8 private key noxtls_algorithm",
     ))
 }
 

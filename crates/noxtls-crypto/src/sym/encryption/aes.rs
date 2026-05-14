@@ -33,7 +33,7 @@ impl AesCipher {
     ///
     /// # Returns
     /// Initialized `AesCipher` with expanded round keys.
-    pub fn new(key: &[u8]) -> Result<Self> {
+    pub fn noxtls_new(key: &[u8]) -> Result<Self> {
         let (nk, rounds) = match key.len() {
             16 => (4, 10),
             24 => (6, 12),
@@ -141,7 +141,11 @@ pub fn noxtls_aes_ecb_decrypt(cipher: &AesCipher, input: &[u8]) -> Result<Vec<u8
 ///
 /// # Returns
 /// CBC ciphertext bytes with same length as `plaintext`.
-pub fn noxtls_aes_cbc_encrypt(cipher: &AesCipher, iv: &[u8; 16], plaintext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aes_cbc_encrypt(
+    cipher: &AesCipher,
+    iv: &[u8; 16],
+    plaintext: &[u8],
+) -> Result<Vec<u8>> {
     if !plaintext.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aes cbc input must be block-aligned"));
     }
@@ -169,7 +173,11 @@ pub fn noxtls_aes_cbc_encrypt(cipher: &AesCipher, iv: &[u8; 16], plaintext: &[u8
 ///
 /// # Returns
 /// CBC plaintext bytes with same length as `ciphertext`.
-pub fn noxtls_aes_cbc_decrypt(cipher: &AesCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Result<Vec<u8>> {
+pub fn noxtls_aes_cbc_decrypt(
+    cipher: &AesCipher,
+    iv: &[u8; 16],
+    ciphertext: &[u8],
+) -> Result<Vec<u8>> {
     if !ciphertext.len().is_multiple_of(16) {
         return Err(Error::InvalidLength("aes cbc input must be block-aligned"));
     }
@@ -1085,7 +1093,7 @@ fn ghash(h: u128, aad: &[u8], ciphertext: &[u8]) -> u128 {
         let x = u128::from_be_bytes(chunk.try_into().expect("16-byte chunk"));
         y = gf128_mul(y ^ x, h);
     }
-    let lengths = ((aad.len() as u128) << 64) | ((ciphertext.len() as u128) * 8);
+    let lengths = (((aad.len() as u128) * 8) << 64) | ((ciphertext.len() as u128) * 8);
     gf128_mul(y ^ lengths, h)
 }
 
@@ -1397,3 +1405,50 @@ const INV_SBOX: [u8; 256] = [
     0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
     0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::{noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, AesCipher};
+    use crate::internal_alloc::Vec;
+
+    fn decode_hex(hex: &str) -> Vec<u8> {
+        let mut out = Vec::with_capacity(hex.len() / 2);
+        let bytes = hex.as_bytes();
+        for pair in bytes.chunks_exact(2) {
+            let hi = (pair[0] as char).to_digit(16).expect("valid hex high nibble") as u8;
+            let lo = (pair[1] as char).to_digit(16).expect("valid hex low nibble") as u8;
+            out.push((hi << 4) | lo);
+        }
+        out
+    }
+
+    #[test]
+    fn noxtls_aes_gcm_matches_nist_vector_with_non_empty_aad() {
+        let key = decode_hex("feffe9928665731c6d6a8f9467308308");
+        let nonce = decode_hex("cafebabefacedbaddecaf888");
+        let aad = decode_hex("feedfacedeadbeeffeedfacedeadbeefabaddad2");
+        let plaintext = decode_hex(
+            "d9313225f88406e5a55909c5aff5269a\
+             86a7a9531534f7da2e4c303d8a318a72\
+             1c3c0c95956809532fcf0e2449a6b525\
+             b16aedf5aa0de657ba637b39",
+        );
+        let expected_ciphertext = decode_hex(
+            "42831ec2217774244b7221b784d0d49c\
+             e3aa212f2c02a4e035c17e2329aca12e\
+             21d514b25466931c7d8f6a5aac84aa05\
+             1ba30b396a0aac973d58e091",
+        );
+        let expected_tag = decode_hex("5bc94fbc3221a5db94fae95ae7121a47");
+
+        let cipher = AesCipher::noxtls_new(&key).expect("valid AES-128 key");
+        let (ciphertext, tag) =
+            noxtls_aes_gcm_encrypt(&cipher, &nonce, &aad, &plaintext).expect("encrypt");
+        assert_eq!(ciphertext, expected_ciphertext);
+        assert_eq!(tag.as_slice(), expected_tag.as_slice());
+
+        let decrypted =
+            noxtls_aes_gcm_decrypt(&cipher, &nonce, &aad, &ciphertext, &tag).expect("decrypt");
+        assert_eq!(decrypted, plaintext);
+    }
+}

@@ -68,7 +68,7 @@ impl CamelliaCipher {
     ///
     /// # Returns
     /// Initialized `CamelliaCipher` with round-key material.
-    pub fn new(key: &[u8]) -> Result<Self> {
+    pub fn noxtls_new(key: &[u8]) -> Result<Self> {
         let key_type = match key.len() {
             16 => CamelliaType::Bits128,
             24 => CamelliaType::Bits192,
@@ -496,13 +496,21 @@ pub fn noxtls_camellia_cfb_apply(cipher: &CamelliaCipher, iv: &[u8; 16], input: 
 
 /// Encrypts bytes with Camellia-CFB-128 using a 16-byte IV/register.
 #[must_use]
-pub fn noxtls_camellia_cfb_encrypt(cipher: &CamelliaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_camellia_cfb_encrypt(
+    cipher: &CamelliaCipher,
+    iv: &[u8; 16],
+    plaintext: &[u8],
+) -> Vec<u8> {
     camellia_cfb_process(cipher, iv, plaintext, true)
 }
 
 /// Decrypts bytes with Camellia-CFB-128 using a 16-byte IV/register.
 #[must_use]
-pub fn noxtls_camellia_cfb_decrypt(cipher: &CamelliaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_camellia_cfb_decrypt(
+    cipher: &CamelliaCipher,
+    iv: &[u8; 16],
+    ciphertext: &[u8],
+) -> Vec<u8> {
     camellia_cfb_process(cipher, iv, ciphertext, false)
 }
 
@@ -558,13 +566,21 @@ pub fn noxtls_camellia_ofb_apply(cipher: &CamelliaCipher, iv: &[u8; 16], input: 
 
 /// Encrypts bytes with Camellia-OFB using a 16-byte IV.
 #[must_use]
-pub fn noxtls_camellia_ofb_encrypt(cipher: &CamelliaCipher, iv: &[u8; 16], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_camellia_ofb_encrypt(
+    cipher: &CamelliaCipher,
+    iv: &[u8; 16],
+    plaintext: &[u8],
+) -> Vec<u8> {
     camellia_ofb_process(cipher, iv, plaintext)
 }
 
 /// Decrypts bytes with Camellia-OFB using a 16-byte IV.
 #[must_use]
-pub fn noxtls_camellia_ofb_decrypt(cipher: &CamelliaCipher, iv: &[u8; 16], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_camellia_ofb_decrypt(
+    cipher: &CamelliaCipher,
+    iv: &[u8; 16],
+    ciphertext: &[u8],
+) -> Vec<u8> {
     camellia_ofb_process(cipher, iv, ciphertext)
 }
 

@@ -32,7 +32,7 @@ impl DesCipher {
     ///
     /// # Returns
     /// Initialized `DesCipher` with derived round subkeys.
-    pub fn new(key: &[u8; 8]) -> Result<Self> {
+    pub fn noxtls_new(key: &[u8; 8]) -> Result<Self> {
         if key.iter().all(|byte| *byte == 0) {
             return Err(Error::InvalidLength("des key must not be all zeros"));
         }
@@ -196,7 +196,11 @@ pub fn noxtls_des_ctr_apply(cipher: &DesCipher, nonce_counter: &[u8; 8], input: 
 ///
 /// # Returns
 /// Ciphertext bytes with same length as `plaintext`.
-pub fn noxtls_des_ctr_encrypt(cipher: &DesCipher, nonce_counter: &[u8; 8], plaintext: &[u8]) -> Vec<u8> {
+pub fn noxtls_des_ctr_encrypt(
+    cipher: &DesCipher,
+    nonce_counter: &[u8; 8],
+    plaintext: &[u8],
+) -> Vec<u8> {
     des_ctr_process(cipher, nonce_counter, plaintext)
 }
 
@@ -209,7 +213,11 @@ pub fn noxtls_des_ctr_encrypt(cipher: &DesCipher, nonce_counter: &[u8; 8], plain
 ///
 /// # Returns
 /// Plaintext bytes with same length as `ciphertext`.
-pub fn noxtls_des_ctr_decrypt(cipher: &DesCipher, nonce_counter: &[u8; 8], ciphertext: &[u8]) -> Vec<u8> {
+pub fn noxtls_des_ctr_decrypt(
+    cipher: &DesCipher,
+    nonce_counter: &[u8; 8],
+    ciphertext: &[u8],
+) -> Vec<u8> {
     des_ctr_process(cipher, nonce_counter, ciphertext)
 }
 

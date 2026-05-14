@@ -105,7 +105,7 @@ fn keccak_f1600(state: &mut [u64; 25]) {
 ///
 /// # Arguments
 ///
-/// * `state` — Keccak state to update.
+/// * `state` — Keccak state to noxtls_update.
 /// * `rate_bytes` — Sponge rate in bytes (must be a multiple of 8 and match `block` length).
 /// * `block` — Exactly `rate_bytes` input octets interpreted as little-endian 64-bit lanes.
 ///

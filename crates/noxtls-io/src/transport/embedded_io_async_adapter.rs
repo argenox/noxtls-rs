@@ -39,12 +39,12 @@ impl<I> EmbeddedIoAsyncTransport<I> {
     ///
     /// # Returns
     ///
-    /// A new [`EmbeddedIoAsyncTransport`] ready for async TLS I/O.
+    /// A noxtls_new [`EmbeddedIoAsyncTransport`] ready for async TLS I/O.
     ///
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn new(inner: I) -> Self {
+    pub fn noxtls_new(inner: I) -> Self {
         Self { inner }
     }
 
@@ -56,7 +56,7 @@ impl<I> EmbeddedIoAsyncTransport<I> {
     ///
     /// # Returns
     ///
-    /// The original `inner` value passed to [`Self::new`].
+    /// The original `inner` value passed to [`Self::noxtls_new`].
     ///
     /// # Panics
     ///

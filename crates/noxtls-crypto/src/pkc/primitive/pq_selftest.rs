@@ -19,8 +19,8 @@ use crate::drbg::HmacDrbgSha256;
 use noxtls_core::{Error, Result};
 
 use super::{
-    noxtls_mldsa_generate_keypair_auto, noxtls_mldsa_verify, noxtls_mlkem_decapsulate, noxtls_mlkem_encapsulate_auto,
-    noxtls_mlkem_generate_keypair_auto,
+    noxtls_mldsa_generate_keypair_auto, noxtls_mldsa_verify, noxtls_mlkem_decapsulate,
+    noxtls_mlkem_encapsulate_auto, noxtls_mlkem_generate_keypair_auto,
 };
 
 /// Runs deterministic ML-KEM and ML-DSA self-tests for startup-time assurance.
@@ -56,7 +56,7 @@ pub fn noxtls_run_pq_self_tests() -> Result<()> {
 ///
 /// This function does not panic.
 fn run_mlkem_self_test() -> Result<()> {
-    let mut drbg = HmacDrbgSha256::new(b"pq-selftest-mlkem-entropy-seed", b"nonce", b"selftest")?;
+    let mut drbg = HmacDrbgSha256::noxtls_new(b"pq-selftest-mlkem-entropy-seed", b"nonce", b"selftest")?;
     let (private, public) = noxtls_mlkem_generate_keypair_auto(&mut drbg)?;
     let (ciphertext, shared_sender) = noxtls_mlkem_encapsulate_auto(&public, &mut drbg)?;
     let shared_receiver = noxtls_mlkem_decapsulate(&private, &ciphertext)?;
@@ -82,7 +82,7 @@ fn run_mlkem_self_test() -> Result<()> {
 ///
 /// This function does not panic.
 fn run_mldsa_self_test() -> Result<()> {
-    let mut drbg = HmacDrbgSha256::new(b"pq-selftest-mldsa-entropy-seed", b"nonce", b"selftest")?;
+    let mut drbg = HmacDrbgSha256::noxtls_new(b"pq-selftest-mldsa-entropy-seed", b"nonce", b"selftest")?;
     let (private, public) = noxtls_mldsa_generate_keypair_auto(&mut drbg)?;
     let message = b"pq-selftest-message";
     let mut signature = private.sign(message);

@@ -62,6 +62,10 @@ name = "tls_client"
 path = "../../examples/tls_client.rs"
 
 [[example]]
+name = "tls_trace_curl"
+path = "../../examples/tls_trace_curl.rs"
+
+[[example]]
 name = "tls_server"
 path = "../../examples/tls_server.rs"
 

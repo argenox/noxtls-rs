@@ -11,6 +11,8 @@ This page documents the primary TLS/DTLS functions exposed by `noxtls`, with par
 - `Connection` — protocol state machine (TLS 1.2/1.3 + DTLS).
 - `TlsVersion`, `HandshakeState`, `CipherSuite` — protocol selection and lifecycle.
 - `ProtectedRecord` — encrypted record output/input for data plane calls.
+- **`TlsRecordDeframer`**, **`TLS_RECORD_HEADER_LEN`**, **`TLS_MAX_RECORD_PAYLOAD_LEN`** — incremental assembly of TLS outer records from transport reads (TCP / reliable streams).
+- **`split_tls13_handshake_payload`** — splits a decrypted TLS 1.3 handshake inner payload into individual handshake messages (used by wire-oriented processors and tests).
 
 ## Connection lifecycle APIs
 

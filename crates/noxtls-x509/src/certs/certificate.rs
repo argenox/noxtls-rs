@@ -114,7 +114,7 @@ pub fn noxtls_parse_certificate(input: &[u8]) -> Result<Certificate<'_>> {
     let (cert_sig_alg, cert_sig_rest) = noxtls_parse_der_node(cert_rest)?;
     if cert_sig_alg.tag != 0x30 {
         return Err(Error::ParseFailure(
-            "missing certificate signature algorithm",
+            "missing certificate signature noxtls_algorithm",
         ));
     }
     let (signature_value_node, cert_tail) = noxtls_parse_der_node(cert_sig_rest)?;
@@ -147,7 +147,7 @@ pub fn noxtls_parse_certificate(input: &[u8]) -> Result<Certificate<'_>> {
 
     let (tbs_sig_alg, rest) = noxtls_parse_der_node(tbs_cursor)?;
     if tbs_sig_alg.tag != 0x30 {
-        return Err(Error::ParseFailure("missing TBS signature algorithm"));
+        return Err(Error::ParseFailure("missing TBS signature noxtls_algorithm"));
     }
     tbs_cursor = rest;
 
@@ -301,20 +301,20 @@ fn first_der_encoded(input: &[u8]) -> Result<&[u8]> {
 fn parse_algorithm_identifier_oid(input: &[u8]) -> Result<Vec<u8>> {
     let (oid_node, rest) = noxtls_parse_der_node(input)?;
     if oid_node.tag != 0x06 {
-        return Err(Error::ParseFailure("algorithm identifier missing OID"));
+        return Err(Error::ParseFailure("noxtls_algorithm identifier missing OID"));
     }
     if !rest.is_empty() {
         let (_params, tail) = noxtls_parse_der_node(rest)?;
         if !tail.is_empty() {
             return Err(Error::ParseFailure(
-                "algorithm identifier has trailing fields",
+                "noxtls_algorithm identifier has trailing fields",
             ));
         }
     }
     Ok(oid_node.body.to_vec())
 }
 
-/// Parses SPKI and returns algorithm OID bytes.
+/// Parses SPKI and returns noxtls_algorithm OID bytes.
 ///
 /// # Arguments
 ///
@@ -335,7 +335,7 @@ fn parse_spki_algorithm_oid(spki_body: &[u8]) -> Result<Vec<u8>> {
     let (alg_node, rest) = noxtls_parse_der_node(spki_body)?;
     if alg_node.tag != 0x30 {
         return Err(Error::ParseFailure(
-            "subjectPublicKeyInfo missing algorithm",
+            "subjectPublicKeyInfo missing noxtls_algorithm",
         ));
     }
     if rest.is_empty() {

@@ -48,7 +48,7 @@ impl BlowfishState {
     /// # Panics
     ///
     /// This function does not panic.
-    fn new() -> Self {
+    fn noxtls_new() -> Self {
         Self {
             p: BLOWFISH_P_INIT,
             s: BLOWFISH_S_INIT,
@@ -260,7 +260,7 @@ impl BlowfishState {
 /// This function does not panic.
 #[must_use]
 fn bcrypt_hash(sha2_pass: &[u8; 64], sha2_salt: &[u8; 64]) -> [u8; BCRYPT_HASHSIZE] {
-    let mut state = BlowfishState::new();
+    let mut state = BlowfishState::noxtls_new();
     state.expand_state(sha2_salt, sha2_pass);
     for _ in 0..BCRYPT_SETUP_ROUNDS {
         state.expand0state(sha2_salt);
@@ -579,7 +579,8 @@ mod tests {
     fn bcrypt_pbkdf_vector_password_salt_round4_len32() {
         let expected =
             hex_to_bytes("5bbf0cc293587f1c3635555c27796598d47e579071bf427e9d8fbe842aba34d9");
-        let derived = noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 4, 32).expect("vector must derive");
+        let derived =
+            noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 4, 32).expect("vector must derive");
         assert_eq!(derived, expected);
     }
 
@@ -587,7 +588,8 @@ mod tests {
     fn bcrypt_pbkdf_vector_password_salt_round8_len32() {
         let expected =
             hex_to_bytes("e17e1533acc14423155493c99b9c3bbe62ea0884207a7802e7ba72eff94d085e");
-        let derived = noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 8, 32).expect("vector must derive");
+        let derived =
+            noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 8, 32).expect("vector must derive");
         assert_eq!(derived, expected);
     }
 
@@ -596,21 +598,22 @@ mod tests {
         let expected = hex_to_bytes(
             "92855cdf05f666dca98681fdb6fa3a500e3a6e10e175d9aa70becd0d4ff95438d9f20375861eb34aa7606680c34f34c0",
         );
-        let derived =
-            noxtls_bcrypt_pbkdf_sha512(b"pass\x00word", b"sa\x00lt", 16, 48).expect("vector must derive");
+        let derived = noxtls_bcrypt_pbkdf_sha512(b"pass\x00word", b"sa\x00lt", 16, 48)
+            .expect("vector must derive");
         assert_eq!(derived, expected);
     }
 
     #[test]
     fn bcrypt_pbkdf_rejects_zero_rounds() {
-        let err = noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 0, 32).expect_err("rounds must fail");
+        let err =
+            noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 0, 32).expect_err("rounds must fail");
         assert!(matches!(err, noxtls_core::Error::InvalidLength(_)));
     }
 
     #[test]
     fn bcrypt_pbkdf_rejects_zero_key_length() {
-        let err =
-            noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 4, 0).expect_err("key length must fail");
+        let err = noxtls_bcrypt_pbkdf_sha512(b"password", b"salt", 4, 0)
+            .expect_err("key length must fail");
         assert!(matches!(err, noxtls_core::Error::InvalidLength(_)));
     }
 }

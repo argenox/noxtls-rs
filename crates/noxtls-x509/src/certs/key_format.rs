@@ -25,8 +25,9 @@ use noxtls_crypto::{
 #[cfg(feature = "std")]
 use noxtls_pem::{noxtls_der_to_pem_file, noxtls_pem_file_to_der};
 use noxtls_pem::{
-    noxtls_ec_private_key_pem_to_der_sec1, noxtls_private_key_der_to_pem_pkcs8, noxtls_private_key_pem_to_der_pkcs8,
-    noxtls_public_key_der_to_pem_spki, noxtls_public_key_pem_to_der_spki, noxtls_rsa_private_key_pem_to_der_pkcs1,
+    noxtls_ec_private_key_pem_to_der_sec1, noxtls_private_key_der_to_pem_pkcs8,
+    noxtls_private_key_pem_to_der_pkcs8, noxtls_public_key_der_to_pem_spki,
+    noxtls_public_key_pem_to_der_spki, noxtls_rsa_private_key_pem_to_der_pkcs1,
     noxtls_rsa_public_key_der_to_pem_pkcs1, noxtls_rsa_public_key_pem_to_der_pkcs1,
 };
 #[cfg(feature = "std")]
@@ -56,7 +57,7 @@ pub struct RsaPublicKeyDerParts {
     pub public_exponent: Vec<u8>,
 }
 
-/// Holds PKCS#8 `PrivateKeyInfo` fields for algorithm dispatch and key extraction.
+/// Holds PKCS#8 `PrivateKeyInfo` fields for noxtls_algorithm dispatch and key extraction.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Pkcs8PrivateKeyInfoDerParts {
     pub algorithm_oid: Vec<u8>,
@@ -64,7 +65,7 @@ pub struct Pkcs8PrivateKeyInfoDerParts {
     pub private_key: Vec<u8>,
 }
 
-/// Holds SPKI fields for algorithm dispatch and key extraction.
+/// Holds SPKI fields for noxtls_algorithm dispatch and key extraction.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SpkiPublicKeyInfoDerParts {
     pub algorithm_oid: Vec<u8>,
@@ -416,7 +417,7 @@ pub fn noxtls_rsa_private_key_from_pkcs8_der(der: &[u8]) -> Result<RsaPrivateKey
     let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_RSA_ENCRYPTION {
         return Err(Error::UnsupportedFeature(
-            "pkcs8 private key algorithm is not RSA",
+            "pkcs8 private key noxtls_algorithm is not RSA",
         ));
     }
     noxtls_rsa_private_key_from_pkcs1_der(&info.private_key)
@@ -433,7 +434,7 @@ pub fn noxtls_p256_private_key_from_pkcs8_der(der: &[u8]) -> Result<P256PrivateK
     let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_EC_PUBLIC_KEY {
         return Err(Error::UnsupportedFeature(
-            "pkcs8 private key algorithm is not EC",
+            "pkcs8 private key noxtls_algorithm is not EC",
         ));
     }
     if info.algorithm_parameters_oid.as_deref() != Some(OID_PRIME256V1) {
@@ -456,12 +457,12 @@ pub fn noxtls_x25519_private_key_from_pkcs8_der(der: &[u8]) -> Result<X25519Priv
     let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_X25519 {
         return Err(Error::UnsupportedFeature(
-            "pkcs8 private key algorithm is not X25519",
+            "pkcs8 private key noxtls_algorithm is not X25519",
         ));
     }
     if info.algorithm_parameters_oid.is_some() {
         return Err(Error::UnsupportedFeature(
-            "x25519 algorithm parameters are not supported",
+            "x25519 noxtls_algorithm parameters are not supported",
         ));
     }
     let scalar = parse_x25519_private_key_bytes(&info.private_key)?;
@@ -479,12 +480,12 @@ pub fn noxtls_x448_private_key_from_pkcs8_der(der: &[u8]) -> Result<X448PrivateK
     let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_X448 {
         return Err(Error::UnsupportedFeature(
-            "pkcs8 private key algorithm is not X448",
+            "pkcs8 private key noxtls_algorithm is not X448",
         ));
     }
     if info.algorithm_parameters_oid.is_some() {
         return Err(Error::UnsupportedFeature(
-            "x448 algorithm parameters are not supported",
+            "x448 noxtls_algorithm parameters are not supported",
         ));
     }
     let scalar = parse_x448_private_key_bytes(&info.private_key)?;
@@ -501,7 +502,7 @@ pub fn noxtls_x448_private_key_from_pkcs8_der(der: &[u8]) -> Result<X448PrivateK
 ///
 /// # Errors
 ///
-/// Returns [`noxtls_core::Error`] when the algorithm OID is not Ed25519, parameters are present,
+/// Returns [`noxtls_core::Error`] when the noxtls_algorithm OID is not Ed25519, parameters are present,
 /// or the nested `CurvePrivateKey` octets are not a valid 32-byte seed encoding.
 ///
 /// # Panics
@@ -511,12 +512,12 @@ pub fn noxtls_ed25519_private_key_from_pkcs8_der(der: &[u8]) -> Result<Ed25519Pr
     let info = noxtls_parse_pkcs8_private_key_info_der(der)?;
     if info.algorithm_oid != OID_ED25519 {
         return Err(Error::UnsupportedFeature(
-            "pkcs8 private key algorithm is not Ed25519",
+            "pkcs8 private key noxtls_algorithm is not Ed25519",
         ));
     }
     if info.algorithm_parameters_oid.is_some() {
         return Err(Error::UnsupportedFeature(
-            "ed25519 algorithm parameters are not supported",
+            "ed25519 noxtls_algorithm parameters are not supported",
         ));
     }
     let seed = parse_ed25519_private_key_seed(&info.private_key)?;
@@ -558,7 +559,7 @@ pub fn noxtls_rsa_public_key_from_spki_der(der: &[u8]) -> Result<RsaPublicKey> {
     let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_RSA_ENCRYPTION {
         return Err(Error::UnsupportedFeature(
-            "spki public key algorithm is not RSA",
+            "spki public key noxtls_algorithm is not RSA",
         ));
     }
     noxtls_rsa_public_key_from_pkcs1_der(&info.subject_public_key)
@@ -575,7 +576,7 @@ pub fn noxtls_p256_public_key_from_spki_der(der: &[u8]) -> Result<P256PublicKey>
     let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_EC_PUBLIC_KEY {
         return Err(Error::UnsupportedFeature(
-            "spki public key algorithm is not EC",
+            "spki public key noxtls_algorithm is not EC",
         ));
     }
     if info.algorithm_parameters_oid.as_deref() != Some(OID_PRIME256V1) {
@@ -667,12 +668,12 @@ pub fn noxtls_x25519_public_key_from_spki_der(der: &[u8]) -> Result<X25519Public
     let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_X25519 {
         return Err(Error::UnsupportedFeature(
-            "spki public key algorithm is not X25519",
+            "spki public key noxtls_algorithm is not X25519",
         ));
     }
     if info.algorithm_parameters_oid.is_some() {
         return Err(Error::UnsupportedFeature(
-            "x25519 algorithm parameters are not supported",
+            "x25519 noxtls_algorithm parameters are not supported",
         ));
     }
     if info.subject_public_key.len() != 32 {
@@ -694,12 +695,12 @@ pub fn noxtls_x448_public_key_from_spki_der(der: &[u8]) -> Result<X448PublicKey>
     let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_X448 {
         return Err(Error::UnsupportedFeature(
-            "spki public key algorithm is not X448",
+            "spki public key noxtls_algorithm is not X448",
         ));
     }
     if info.algorithm_parameters_oid.is_some() {
         return Err(Error::UnsupportedFeature(
-            "x448 algorithm parameters are not supported",
+            "x448 noxtls_algorithm parameters are not supported",
         ));
     }
     if info.subject_public_key.len() != 56 {
@@ -720,7 +721,7 @@ pub fn noxtls_x448_public_key_from_spki_der(der: &[u8]) -> Result<X448PublicKey>
 ///
 /// # Errors
 ///
-/// Returns [`noxtls_core::Error`] when the algorithm OID is not Ed25519, parameters are present,
+/// Returns [`noxtls_core::Error`] when the noxtls_algorithm OID is not Ed25519, parameters are present,
 /// the subject key length is wrong, or the key bytes fail canonical public-key checks.
 ///
 /// # Panics
@@ -730,12 +731,12 @@ pub fn noxtls_ed25519_public_key_from_spki_der(der: &[u8]) -> Result<Ed25519Publ
     let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_ED25519 {
         return Err(Error::UnsupportedFeature(
-            "spki public key algorithm is not Ed25519",
+            "spki public key noxtls_algorithm is not Ed25519",
         ));
     }
     if info.algorithm_parameters_oid.is_some() {
         return Err(Error::UnsupportedFeature(
-            "ed25519 algorithm parameters are not supported",
+            "ed25519 noxtls_algorithm parameters are not supported",
         ));
     }
     if info.subject_public_key.len() != 32 {
@@ -757,12 +758,12 @@ pub fn noxtls_mldsa_public_key_from_spki_der(der: &[u8]) -> Result<MlDsaPublicKe
     let info = noxtls_parse_spki_public_key_info_der(der)?;
     if info.algorithm_oid != OID_ID_MLDSA65 {
         return Err(Error::UnsupportedFeature(
-            "spki public key algorithm is not ML-DSA-65",
+            "spki public key noxtls_algorithm is not ML-DSA-65",
         ));
     }
     if info.algorithm_parameters_oid.is_some() {
         return Err(Error::UnsupportedFeature(
-            "mldsa algorithm parameters are not supported",
+            "mldsa noxtls_algorithm parameters are not supported",
         ));
     }
     MlDsaPublicKey::from_bytes(&info.subject_public_key)
@@ -978,7 +979,10 @@ pub fn noxtls_p256_private_key_from_pem_file_pkcs8(path: &Path) -> Result<P256Pr
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn noxtls_p256_private_key_to_pem_file_pkcs8(path: &Path, private: &P256PrivateKey) -> Result<()> {
+pub fn noxtls_p256_private_key_to_pem_file_pkcs8(
+    path: &Path,
+    private: &P256PrivateKey,
+) -> Result<()> {
     let der = noxtls_p256_private_key_to_pkcs8_der(private)?;
     noxtls_der_to_pem_file(path, &der, "PRIVATE KEY")
 }
@@ -1021,7 +1025,10 @@ pub fn noxtls_x25519_private_key_from_pem_file_pkcs8(path: &Path) -> Result<X255
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn noxtls_x25519_private_key_to_pem_file_pkcs8(path: &Path, private: X25519PrivateKey) -> Result<()> {
+pub fn noxtls_x25519_private_key_to_pem_file_pkcs8(
+    path: &Path,
+    private: X25519PrivateKey,
+) -> Result<()> {
     let der = noxtls_x25519_private_key_to_pkcs8_der(private)?;
     noxtls_der_to_pem_file(path, &der, "PRIVATE KEY")
 }
@@ -1064,7 +1071,10 @@ pub fn noxtls_x448_private_key_from_pem_file_pkcs8(path: &Path) -> Result<X448Pr
 ///
 /// This function does not panic.
 #[cfg(feature = "std")]
-pub fn noxtls_x448_private_key_to_pem_file_pkcs8(path: &Path, private: X448PrivateKey) -> Result<()> {
+pub fn noxtls_x448_private_key_to_pem_file_pkcs8(
+    path: &Path,
+    private: X448PrivateKey,
+) -> Result<()> {
     let der = noxtls_x448_private_key_to_pkcs8_der(private)?;
     noxtls_der_to_pem_file(path, &der, "PRIVATE KEY")
 }
@@ -1180,13 +1190,13 @@ pub fn noxtls_parse_pkcs1_rsa_public_key_der(der: &[u8]) -> Result<RsaPublicKeyD
     })
 }
 
-/// Parses PKCS#8 PrivateKeyInfo DER and extracts algorithm OID and key octets.
+/// Parses PKCS#8 PrivateKeyInfo DER and extracts noxtls_algorithm OID and key octets.
 ///
 /// # Arguments
 /// * `der`: DER-encoded `PrivateKeyInfo` bytes.
 ///
 /// # Returns
-/// Parsed algorithm OID and private-key octet string payload.
+/// Parsed noxtls_algorithm OID and private-key octet string payload.
 pub fn noxtls_parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8PrivateKeyInfoDerParts> {
     let (seq, tail) = noxtls_parse_der_node(der)?;
     if seq.tag != 0x30 || !tail.is_empty() {
@@ -1198,16 +1208,16 @@ pub fn noxtls_parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8Privat
     if version.tag != 0x02 || version.body.is_empty() {
         return Err(Error::ParseFailure("pkcs8 private key missing version"));
     }
-    let (algorithm, rest) = noxtls_parse_der_node(rest)?;
-    if algorithm.tag != 0x30 {
+    let (noxtls_algorithm, rest) = noxtls_parse_der_node(rest)?;
+    if noxtls_algorithm.tag != 0x30 {
         return Err(Error::ParseFailure(
-            "pkcs8 private key missing algorithm identifier",
+            "pkcs8 private key missing noxtls_algorithm identifier",
         ));
     }
-    let (oid, params_tail) = noxtls_parse_der_node(algorithm.body)?;
+    let (oid, params_tail) = noxtls_parse_der_node(noxtls_algorithm.body)?;
     if oid.tag != 0x06 {
         return Err(Error::ParseFailure(
-            "pkcs8 private key algorithm missing oid",
+            "pkcs8 private key noxtls_algorithm missing oid",
         ));
     }
     let algorithm_parameters_oid = if params_tail.is_empty() {
@@ -1216,7 +1226,7 @@ pub fn noxtls_parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8Privat
         let (params, tail) = noxtls_parse_der_node(params_tail)?;
         if !tail.is_empty() {
             return Err(Error::ParseFailure(
-                "unsupported pkcs8 algorithm parameters",
+                "unsupported pkcs8 noxtls_algorithm parameters",
             ));
         }
         if params.tag == 0x06 {
@@ -1225,7 +1235,7 @@ pub fn noxtls_parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8Privat
             None
         } else {
             return Err(Error::ParseFailure(
-                "unsupported pkcs8 algorithm parameters",
+                "unsupported pkcs8 noxtls_algorithm parameters",
             ));
         }
     };
@@ -1242,39 +1252,39 @@ pub fn noxtls_parse_pkcs8_private_key_info_der(der: &[u8]) -> Result<Pkcs8Privat
     })
 }
 
-/// Parses SubjectPublicKeyInfo DER and extracts algorithm OID and key bit-string bytes.
+/// Parses SubjectPublicKeyInfo DER and extracts noxtls_algorithm OID and key bit-string bytes.
 ///
 /// # Arguments
 /// * `der`: DER-encoded SPKI bytes.
 ///
 /// # Returns
-/// Parsed algorithm OID and subject public key bit-string payload bytes.
+/// Parsed noxtls_algorithm OID and subject public key bit-string payload bytes.
 pub fn noxtls_parse_spki_public_key_info_der(der: &[u8]) -> Result<SpkiPublicKeyInfoDerParts> {
     let (seq, tail) = noxtls_parse_der_node(der)?;
     if seq.tag != 0x30 || !tail.is_empty() {
         return Err(Error::ParseFailure("spki must be top-level sequence"));
     }
-    let (algorithm, rest) = noxtls_parse_der_node(seq.body)?;
-    if algorithm.tag != 0x30 {
-        return Err(Error::ParseFailure("spki missing algorithm identifier"));
+    let (noxtls_algorithm, rest) = noxtls_parse_der_node(seq.body)?;
+    if noxtls_algorithm.tag != 0x30 {
+        return Err(Error::ParseFailure("spki missing noxtls_algorithm identifier"));
     }
-    let (oid, params_tail) = noxtls_parse_der_node(algorithm.body)?;
+    let (oid, params_tail) = noxtls_parse_der_node(noxtls_algorithm.body)?;
     if oid.tag != 0x06 {
-        return Err(Error::ParseFailure("spki algorithm missing oid"));
+        return Err(Error::ParseFailure("spki noxtls_algorithm missing oid"));
     }
     let algorithm_parameters_oid = if params_tail.is_empty() {
         None
     } else {
         let (params, tail) = noxtls_parse_der_node(params_tail)?;
         if !tail.is_empty() {
-            return Err(Error::ParseFailure("unsupported spki algorithm parameters"));
+            return Err(Error::ParseFailure("unsupported spki noxtls_algorithm parameters"));
         }
         if params.tag == 0x06 {
             Some(params.body.to_vec())
         } else if params.tag == 0x05 && params.body.is_empty() {
             None
         } else {
-            return Err(Error::ParseFailure("unsupported spki algorithm parameters"));
+            return Err(Error::ParseFailure("unsupported spki noxtls_algorithm parameters"));
         }
     };
     let (subject_public_key, rest) = noxtls_parse_der_node(rest)?;
@@ -1605,11 +1615,11 @@ fn encode_der_len(len: usize) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-/// Encodes an X.509 `SubjectPublicKeyInfo` SEQUENCE from algorithm OID, optional parameters OID, and key material.
+/// Encodes an X.509 `SubjectPublicKeyInfo` SEQUENCE from noxtls_algorithm OID, optional parameters OID, and key material.
 ///
 /// # Arguments
 ///
-/// * `algorithm_oid` — DER OID body bytes (without tag/length) for the public-key algorithm.
+/// * `algorithm_oid` — DER OID body bytes (without tag/length) for the public-key noxtls_algorithm.
 /// * `algorithm_parameters_oid` — When `Some`, a second OID node for parameters (for example EC named curve).
 /// * `subject_public_key` — Raw public key octets placed inside a BIT STRING with no unused bits.
 ///
@@ -1629,7 +1639,7 @@ fn encode_spki_public_key_info_der(
     algorithm_parameters_oid: Option<&[u8]>,
     subject_public_key: &[u8],
 ) -> Result<Vec<u8>> {
-    let algorithm = {
+    let noxtls_algorithm = {
         let mut algorithm_body = Vec::new();
         algorithm_body.extend_from_slice(&encode_der_node(0x06, algorithm_oid));
         if let Some(params_oid) = algorithm_parameters_oid {
@@ -1640,14 +1650,14 @@ fn encode_spki_public_key_info_der(
     let mut bit_string_body = vec![0x00];
     bit_string_body.extend_from_slice(subject_public_key);
     let subject_public_key = encode_der_node(0x03, &bit_string_body);
-    encode_der_sequence(&[algorithm, subject_public_key].concat())
+    encode_der_sequence(&[noxtls_algorithm, subject_public_key].concat())
 }
 
 /// Encodes a PKCS#8 `PrivateKeyInfo` SEQUENCE for private-key material.
 ///
 /// # Arguments
 ///
-/// * `algorithm_oid` — DER OID body bytes for `AlgorithmIdentifier.algorithm`.
+/// * `algorithm_oid` — DER OID body bytes for `AlgorithmIdentifier.noxtls_algorithm`.
 /// * `algorithm_parameters_oid` — Optional DER OID body for `AlgorithmIdentifier.parameters`.
 /// * `private_key` — Raw bytes inserted as the body of the `privateKey` OCTET STRING.
 ///
@@ -1668,7 +1678,7 @@ fn encode_pkcs8_private_key_info_der(
     private_key: &[u8],
 ) -> Result<Vec<u8>> {
     let version = encode_der_integer(&[0x00]);
-    let algorithm = {
+    let noxtls_algorithm = {
         let mut algorithm_body = Vec::new();
         algorithm_body.extend_from_slice(&encode_der_node(0x06, algorithm_oid));
         if let Some(params_oid) = algorithm_parameters_oid {
@@ -1677,7 +1687,7 @@ fn encode_pkcs8_private_key_info_der(
         encode_der_node(0x30, &algorithm_body)
     };
     let private_key = encode_der_node(0x04, private_key);
-    encode_der_sequence(&[version, algorithm, private_key].concat())
+    encode_der_sequence(&[version, noxtls_algorithm, private_key].concat())
 }
 
 #[cfg(test)]

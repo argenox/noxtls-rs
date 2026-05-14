@@ -15,7 +15,9 @@
 // See `noxtls/LICENSE` and `noxtls/LICENSE.md` in this repository for full details.
 // CONTACT: info@argenox.com
 
-use super::{noxtls_poly1305_key_gen, noxtls_poly1305_mac_padded16, noxtls_poly1305_tags_equal, ChaCha20};
+use super::{
+    noxtls_poly1305_key_gen, noxtls_poly1305_mac_padded16, noxtls_poly1305_tags_equal, ChaCha20,
+};
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 
@@ -104,7 +106,7 @@ pub fn noxtls_chacha20_poly1305_encrypt(
         ));
     }
     let otk = noxtls_poly1305_key_gen(key, nonce);
-    let mut cipher = ChaCha20::new(key, nonce, 1);
+    let mut cipher = ChaCha20::noxtls_new(key, nonce, 1);
     let mut ciphertext = vec![0_u8; plaintext.len()];
     cipher.apply_keystream(plaintext, &mut ciphertext)?;
     let mac_data = build_mac_data(aad, &ciphertext);
@@ -152,7 +154,7 @@ pub fn noxtls_chacha20_poly1305_decrypt(
             "chacha20-poly1305 authentication failed",
         ));
     }
-    let mut cipher = ChaCha20::new(key, nonce, 1);
+    let mut cipher = ChaCha20::noxtls_new(key, nonce, 1);
     let mut plaintext = vec![0_u8; ciphertext.len()];
     cipher.apply_keystream(ciphertext, &mut plaintext)?;
     Ok(plaintext)

@@ -23,9 +23,11 @@ mod mdigest;
 mod sha3;
 
 pub use mdigest::{
-    noxtls_bcrypt_pbkdf_sha512, noxtls_decode_hex, noxtls_hkdf_expand_sha256, noxtls_hkdf_expand_sha384, noxtls_hkdf_extract_sha256,
-    noxtls_hkdf_extract_sha384, noxtls_hmac_sha256, noxtls_hmac_sha384, noxtls_hmac_sha512, noxtls_sha1, noxtls_sha256, noxtls_sha384, noxtls_sha512,
-    noxtls_tls12_finished_verify_data_sha256, noxtls_tls12_finished_verify_data_sha384, noxtls_tls12_prf_sha256,
-    noxtls_tls12_prf_sha384, Digest, Sha256, Sha512, TlsTranscriptSha256, TlsTranscriptSha384,
+    noxtls_bcrypt_pbkdf_sha512, noxtls_decode_hex, noxtls_hkdf_expand_sha256,
+    noxtls_hkdf_expand_sha384, noxtls_hkdf_extract_sha256, noxtls_hkdf_extract_sha384,
+    noxtls_hmac_sha256, noxtls_hmac_sha384, noxtls_hmac_sha512, noxtls_sha1, noxtls_sha256,
+    noxtls_sha384, noxtls_sha512, noxtls_tls12_finished_verify_data_sha256,
+    noxtls_tls12_finished_verify_data_sha384, noxtls_tls12_prf_sha256, noxtls_tls12_prf_sha384,
+    Digest, Sha256, Sha512, TlsTranscriptSha256, TlsTranscriptSha384,
 };
 pub use sha3::{noxtls_sha3_256, noxtls_sha3_384, noxtls_sha3_512, noxtls_shake256};

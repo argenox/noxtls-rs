@@ -134,3 +134,67 @@ fn hmac_with_block(key: &[u8], data: &[u8], block_size: usize, variant: HashVari
         HashVariant::Sha512 => noxtls_sha512(&outer).to_vec(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{noxtls_hmac_sha256, noxtls_hmac_sha384};
+    use crate::internal_alloc::Vec;
+
+    /// Decodes lowercase/uppercase hex into bytes for compact vector tests.
+    ///
+    /// # Arguments
+    ///
+    /// * `hex` — Even-length ASCII hex string.
+    ///
+    /// # Returns
+    ///
+    /// Decoded bytes as a `Vec<u8>`.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `hex` has odd length or contains non-hex characters.
+    fn decode_hex(hex: &str) -> Vec<u8> {
+        assert_eq!(hex.len() % 2, 0, "hex string must have even length");
+        (0..hex.len())
+            .step_by(2)
+            .map(|index| {
+                u8::from_str_radix(&hex[index..index + 2], 16)
+                    .expect("hex test vector should be valid")
+            })
+            .collect()
+    }
+
+    /// Verifies HMAC-SHA256 against RFC 4231 test case 1.
+    #[test]
+    fn noxtls_hmac_sha256_matches_rfc4231_case_1() {
+        let key = vec![0x0b_u8; 20];
+        let data = b"Hi There";
+        let expected_full =
+            decode_hex("b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7");
+        let actual = noxtls_hmac_sha256(&key, data);
+        assert_eq!(actual.as_slice(), expected_full.as_slice());
+    }
+
+    /// Verifies the exact TLS 1.3 no-PSK HKDF-Extract base case used for early secret.
+    #[test]
+    fn noxtls_hmac_sha256_matches_tls13_empty_psk_extract_case() {
+        let key = [0_u8; 32];
+        let data: [u8; 0] = [];
+        let expected =
+            decode_hex("b613679a0814d9ec772f95d778c35fc5ff1697c493715653c6c712144292c5ad");
+        let actual = noxtls_hmac_sha256(&key, &data);
+        assert_eq!(actual.as_slice(), expected.as_slice());
+    }
+
+    /// Verifies HMAC-SHA384 against RFC 4231 test case 1.
+    #[test]
+    fn noxtls_hmac_sha384_matches_rfc4231_case_1() {
+        let key = vec![0x0b_u8; 20];
+        let data = b"Hi There";
+        let expected = decode_hex(
+            "afd03944d84895626b0825f4ab46907f15f9dadbe4101ec682aa034c7cebc59cfaea9ea9076ede7f4af152e8b2fa9cb6",
+        );
+        let actual = noxtls_hmac_sha384(&key, data);
+        assert_eq!(actual.as_slice(), expected.as_slice());
+    }
+}

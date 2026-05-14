@@ -72,13 +72,13 @@ impl DtlsReplayWindow {
     ///
     /// # Returns
     ///
-    /// A new or updated `Self` value as constructed in the function body.
+    /// A noxtls_new or updated `Self` value as constructed in the function body.
     ///
     /// # Panics
     ///
     /// This function does not panic.
     ///
-    pub fn new() -> Self {
+    pub fn noxtls_new() -> Self {
         Self::default()
     }
 
@@ -146,7 +146,7 @@ impl DtlsReplayWindow {
     /// Restores replay-window state from a previously captured snapshot.
     ///
     /// # Arguments
-    /// * `self`: Replay window to update.
+    /// * `self`: Replay window to noxtls_update.
     /// * `snapshot`: Snapshot payload to apply.
     ///
     /// # Returns
@@ -180,13 +180,13 @@ impl DtlsEpochReplayTracker {
     ///
     /// # Returns
     ///
-    /// A new or updated `Self` value as constructed in the function body.
+    /// A noxtls_new or updated `Self` value as constructed in the function body.
     ///
     /// # Panics
     ///
     /// This function does not panic.
     ///
-    pub fn new() -> Self {
+    pub fn noxtls_new() -> Self {
         Self::default()
     }
 
@@ -205,7 +205,7 @@ impl DtlsEpochReplayTracker {
     pub fn check_and_mark(&mut self, epoch: u16, sequence: u64) -> bool {
         let Some(current_epoch) = self.current_epoch else {
             self.current_epoch = Some(epoch);
-            self.current_window = DtlsReplayWindow::new();
+            self.current_window = DtlsReplayWindow::noxtls_new();
             return self.current_window.check_and_mark(sequence);
         };
         if epoch == current_epoch {
@@ -237,7 +237,7 @@ impl DtlsEpochReplayTracker {
         self.previous_epoch = self.current_epoch;
         self.previous_window = self.current_window;
         self.current_epoch = Some(new_epoch);
-        self.current_window = DtlsReplayWindow::new();
+        self.current_window = DtlsReplayWindow::noxtls_new();
     }
 }
 
@@ -272,13 +272,13 @@ impl DtlsFlightRetransmitTracker {
     ///
     /// # Returns
     ///
-    /// A new or updated `Self` value as constructed in the function body.
+    /// A noxtls_new or updated `Self` value as constructed in the function body.
     ///
     /// # Panics
     ///
     /// This function does not panic.
     ///
-    pub fn new(max_records: usize) -> Self {
+    pub fn noxtls_new(max_records: usize) -> Self {
         Self {
             records: Vec::new(),
             max_records: max_records.max(1),
@@ -521,7 +521,9 @@ impl DtlsFlightRetransmitTracker {
 ///
 /// This function does not panic.
 ///
-pub fn noxtls_encode_dtls_record_header(header: DtlsRecordHeader) -> Result<[u8; DTLS_RECORD_HEADER_LEN]> {
+pub fn noxtls_encode_dtls_record_header(
+    header: DtlsRecordHeader,
+) -> Result<[u8; DTLS_RECORD_HEADER_LEN]> {
     if header.sequence > DTLS_MAX_SEQUENCE {
         return Err(Error::InvalidLength(
             "dtls sequence number exceeds 48-bit range",
@@ -965,8 +967,9 @@ pub fn noxtls_seal_dtls13_aes128gcm_record(
         ));
     }
     let nonce = build_dtls13_nonce(*static_iv, epoch, sequence);
-    let cipher = AesCipher::new(key)?;
-    let payload_len = noxtls_dtls13_aes128gcm_record_size(plaintext.len())? - DTLS_RECORD_HEADER_LEN;
+    let cipher = AesCipher::noxtls_new(key)?;
+    let payload_len =
+        noxtls_dtls13_aes128gcm_record_size(plaintext.len())? - DTLS_RECORD_HEADER_LEN;
     let header = DtlsRecordHeader {
         content_type: RecordContentType::ApplicationData,
         version: [0xFE, 0xFD],
@@ -1031,7 +1034,7 @@ pub fn noxtls_open_dtls13_aes128gcm_record(
         ));
     }
     let nonce = build_dtls13_nonce(*static_iv, header.epoch, header.sequence);
-    let cipher = AesCipher::new(key)?;
+    let cipher = AesCipher::noxtls_new(key)?;
     let (ciphertext, tag_bytes) = body.split_at(body.len() - DTLS13_AEAD_TAG_LEN);
     let mut tag = [0_u8; DTLS13_AEAD_TAG_LEN];
     tag.copy_from_slice(tag_bytes);

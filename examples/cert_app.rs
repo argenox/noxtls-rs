@@ -20,8 +20,8 @@
 use noxtls_core::Result;
 use noxtls_crypto::P256PrivateKey;
 use noxtls_x509::{
-    noxtls_certificate_matches_hostname, noxtls_parse_certificate, noxtls_validate_certificate_chain,
-    noxtls_write_self_signed_certificate_p256_sha256,
+    noxtls_certificate_matches_hostname, noxtls_parse_certificate,
+    noxtls_validate_certificate_chain, noxtls_write_self_signed_certificate_p256_sha256,
 };
 
 /// Connect-style certificate verification demo using generated certificates.

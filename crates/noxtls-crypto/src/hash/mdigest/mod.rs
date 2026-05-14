@@ -17,7 +17,7 @@
 
 //! Message digests, HMAC, HKDF, TLS PRF/finished helpers, and hex decoding.
 //!
-//! Implementations are split by algorithm file; this module only wires `pub use` exports.
+//! Implementations are split by noxtls_algorithm file; this module only wires `pub use` exports.
 
 mod bcrypt_pbkdf;
 mod digest;
@@ -32,12 +32,15 @@ mod tls;
 pub use bcrypt_pbkdf::noxtls_bcrypt_pbkdf_sha512;
 pub use digest::Digest;
 pub use hex::noxtls_decode_hex;
-pub use hkdf::{noxtls_hkdf_expand_sha256, noxtls_hkdf_expand_sha384, noxtls_hkdf_extract_sha256, noxtls_hkdf_extract_sha384};
+pub use hkdf::{
+    noxtls_hkdf_expand_sha256, noxtls_hkdf_expand_sha384, noxtls_hkdf_extract_sha256,
+    noxtls_hkdf_extract_sha384,
+};
 pub use hmac::{noxtls_hmac_sha256, noxtls_hmac_sha384, noxtls_hmac_sha512};
 pub use sha1::noxtls_sha1;
 pub use sha256::{noxtls_sha256, Sha256};
 pub use sha512::{noxtls_sha384, noxtls_sha512, Sha512};
 pub use tls::{
-    noxtls_tls12_finished_verify_data_sha256, noxtls_tls12_finished_verify_data_sha384, noxtls_tls12_prf_sha256,
-    noxtls_tls12_prf_sha384, TlsTranscriptSha256, TlsTranscriptSha384,
+    noxtls_tls12_finished_verify_data_sha256, noxtls_tls12_finished_verify_data_sha384,
+    noxtls_tls12_prf_sha256, noxtls_tls12_prf_sha384, TlsTranscriptSha256, TlsTranscriptSha384,
 };

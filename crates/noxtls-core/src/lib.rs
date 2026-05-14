@@ -137,7 +137,7 @@ pub enum Profile {
     UtAllFeatures,
 }
 
-/// Boolean feature flags describing which protocol and algorithm areas are enabled for a [`Profile`].
+/// Boolean feature flags describing which protocol and noxtls_algorithm areas are enabled for a [`Profile`].
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct FeatureSet {
     /// Any TLS protocol surface is enabled.

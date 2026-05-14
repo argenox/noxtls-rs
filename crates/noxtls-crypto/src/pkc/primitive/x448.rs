@@ -144,7 +144,9 @@ impl X448PrivateKey {
             peer.validate()?;
             let shared = self.diffie_hellman(peer);
             if is_all_zero(&shared) {
-                return Err(Error::CryptoFailure("noxtls_x448 shared secret is all-zero"));
+                return Err(Error::CryptoFailure(
+                    "noxtls_x448 shared secret is all-zero",
+                ));
             }
             Ok(shared)
         }

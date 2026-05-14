@@ -29,7 +29,7 @@ use crate::provider::{
 pub struct FfiPsaBackend;
 
 impl FfiPsaBackend {
-    /// Creates a new FFI-backed backend adapter.
+    /// Creates a noxtls_new FFI-backed backend adapter.
     ///
     /// # Arguments
     ///
@@ -38,7 +38,7 @@ impl FfiPsaBackend {
     /// # Returns
     ///
     /// A default [`FfiPsaBackend`] instance.
-    pub fn new() -> Self {
+    pub fn noxtls_new() -> Self {
         Self
     }
 
@@ -57,12 +57,12 @@ impl FfiPsaBackend {
 }
 
 impl PsaCryptoBackend for FfiPsaBackend {
-    /// Signs input digest bytes using a key handle and algorithm selected in request.
+    /// Signs input digest bytes using a key handle and noxtls_algorithm selected in request.
     ///
     /// # Arguments
     ///
     /// * `self` - Backend instance receiving sign request dispatch.
-    /// * `request` - Sign request carrying key handle, algorithm, and digest bytes.
+    /// * `request` - Sign request carrying key handle, noxtls_algorithm, and digest bytes.
     ///
     /// # Returns
     ///
@@ -83,7 +83,7 @@ impl PsaCryptoBackend for FfiPsaBackend {
     /// # Arguments
     ///
     /// * `self` - Backend instance receiving decrypt request dispatch.
-    /// * `request` - Decrypt request containing handle, algorithm, and ciphertext.
+    /// * `request` - Decrypt request containing handle, noxtls_algorithm, and ciphertext.
     ///
     /// # Returns
     ///
@@ -104,11 +104,11 @@ impl PsaCryptoBackend for FfiPsaBackend {
     /// # Arguments
     ///
     /// * `self` - Backend instance receiving derive request dispatch.
-    /// * `request` - Derive request with handle, algorithm, and peer public bytes.
+    /// * `request` - Derive request with handle, noxtls_algorithm, and peer public bytes.
     ///
     /// # Returns
     ///
-    /// Shared secret bytes derived by the configured algorithm.
+    /// Shared secret bytes derived by the configured noxtls_algorithm.
     ///
     /// # Errors
     ///
@@ -176,7 +176,10 @@ impl PsaCryptoBackend for FfiPsaBackend {
     /// # Errors
     ///
     /// Returns [`Error::UnsupportedFeature`] until concrete FFI hooks are linked.
-    fn noxtls_aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
+    fn noxtls_aes_gcm_encrypt(
+        &self,
+        request: &AeadEncryptRequest<'_>,
+    ) -> Result<AeadEncryptResponse> {
         let _ = request;
         Err(Error::UnsupportedFeature(
             "psa ffi aes-gcm unavailable without linked backend",

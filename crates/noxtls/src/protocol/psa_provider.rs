@@ -44,9 +44,9 @@ impl<B: PsaCryptoBackend> PsaExternalKeyProvider<B> {
     /// # Returns
     ///
     /// New adapter implementing [`ExternalKeyProvider`].
-    pub fn new(backend: B) -> Self {
+    pub fn noxtls_new(backend: B) -> Self {
         Self {
-            provider: PsaProvider::new(backend),
+            provider: PsaProvider::noxtls_new(backend),
         }
     }
 
@@ -60,7 +60,7 @@ impl<B: PsaCryptoBackend> PsaExternalKeyProvider<B> {
     ///
     /// Converted PSA handle carrying an owned identifier copy.
     fn convert_handle(handle: &ExternalKeyHandle) -> PsaExternalKeyHandle {
-        PsaExternalKeyHandle::new(handle.as_bytes().to_vec())
+        PsaExternalKeyHandle::noxtls_new(handle.as_bytes().to_vec())
     }
 }
 
@@ -69,7 +69,7 @@ impl<B: PsaCryptoBackend> ExternalKeyProvider for PsaExternalKeyProvider<B> {
     ///
     /// # Arguments
     ///
-    /// * `request` — noxtls signing request containing key handle and algorithm.
+    /// * `request` — noxtls signing request containing key handle and noxtls_algorithm.
     ///
     /// # Returns
     ///
@@ -79,14 +79,14 @@ impl<B: PsaCryptoBackend> ExternalKeyProvider for PsaExternalKeyProvider<B> {
     ///
     /// Returns backend/provider errors for invalid handles, policy violations, or sign failures.
     fn sign(&self, request: &KeySignRequest<'_>) -> Result<Vec<u8>> {
-        let algorithm = match request.algorithm {
+        let noxtls_algorithm = match request.noxtls_algorithm {
             KeySignAlgorithm::RsaPkcs1Sha256 => PsaSignAlgorithm::RsaPkcs1Sha256,
             KeySignAlgorithm::RsaPssSha256 => PsaSignAlgorithm::RsaPssSha256,
         };
         let handle = Self::convert_handle(request.handle);
         let mapped = PsaKeySignRequest {
             handle: &handle,
-            algorithm,
+            noxtls_algorithm,
             message: request.message,
             salt: request.salt,
         };
@@ -97,7 +97,7 @@ impl<B: PsaCryptoBackend> ExternalKeyProvider for PsaExternalKeyProvider<B> {
     ///
     /// # Arguments
     ///
-    /// * `request` — noxtls decrypt request containing key handle and algorithm.
+    /// * `request` — noxtls decrypt request containing key handle and noxtls_algorithm.
     ///
     /// # Returns
     ///
@@ -107,14 +107,14 @@ impl<B: PsaCryptoBackend> ExternalKeyProvider for PsaExternalKeyProvider<B> {
     ///
     /// Returns a uniform decrypt failure error for backend decrypt failures.
     fn decrypt(&self, request: &KeyDecryptRequest<'_>) -> Result<Vec<u8>> {
-        let algorithm = match request.algorithm {
+        let noxtls_algorithm = match request.noxtls_algorithm {
             KeyDecryptAlgorithm::RsaPkcs1v15 => PsaDecryptAlgorithm::RsaPkcs1v15,
             KeyDecryptAlgorithm::RsaOaepSha256 => PsaDecryptAlgorithm::RsaOaepSha256,
         };
         let handle = Self::convert_handle(request.handle);
         let mapped = PsaKeyDecryptRequest {
             handle: &handle,
-            algorithm,
+            noxtls_algorithm,
             ciphertext: request.ciphertext,
             label: request.label,
         };
@@ -135,13 +135,13 @@ impl<B: PsaCryptoBackend> ExternalKeyProvider for PsaExternalKeyProvider<B> {
     ///
     /// Returns backend/provider errors for invalid handles, policy violations, or derive failures.
     fn derive_shared_secret(&self, request: &KeyDeriveRequest<'_>) -> Result<Vec<u8>> {
-        let algorithm = match request.algorithm {
+        let noxtls_algorithm = match request.noxtls_algorithm {
             KeyDeriveAlgorithm::X25519 => PsaDeriveAlgorithm::X25519,
         };
         let handle = Self::convert_handle(request.handle);
         let mapped = PsaKeyDeriveRequest {
             handle: &handle,
-            algorithm,
+            noxtls_algorithm,
             peer_public_key: request.peer_public_key,
         };
         self.provider.noxtls_derive(&mapped)

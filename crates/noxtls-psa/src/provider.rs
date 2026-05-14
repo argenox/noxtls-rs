@@ -19,9 +19,10 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    noxtls_aes_gcm_encrypt, noxtls_p256_ecdh_shared_secret, noxtls_p256_ecdsa_sign_sha256, noxtls_rsaes_oaep_sha256_decrypt,
-    noxtls_rsaes_pkcs1_v15_decrypt, noxtls_rsassa_pss_sha256_sign, noxtls_rsassa_sha256_sign, noxtls_sha256, noxtls_x25519, AesCipher,
-    P256PrivateKey, P256PublicKey, RsaPrivateKey,
+    noxtls_aes_gcm_encrypt, noxtls_p256_ecdh_shared_secret, noxtls_p256_ecdsa_sign_sha256,
+    noxtls_rsaes_oaep_sha256_decrypt, noxtls_rsaes_pkcs1_v15_decrypt,
+    noxtls_rsassa_pss_sha256_sign, noxtls_rsassa_sha256_sign, noxtls_sha256, noxtls_x25519,
+    AesCipher, P256PrivateKey, P256PublicKey, RsaPrivateKey,
 };
 
 /// Identifies a backend-managed external key object.
@@ -39,8 +40,8 @@ impl PsaExternalKeyHandle {
     ///
     /// # Returns
     ///
-    /// A new [`PsaExternalKeyHandle`] owning the identifier bytes.
-    pub fn new(id: Vec<u8>) -> Self {
+    /// A noxtls_new [`PsaExternalKeyHandle`] owning the identifier bytes.
+    pub fn noxtls_new(id: Vec<u8>) -> Self {
         Self { id }
     }
 
@@ -93,7 +94,7 @@ pub struct KeySignRequest<'a> {
     /// Opaque provider handle to signing key object.
     pub handle: &'a PsaExternalKeyHandle,
     /// Algorithm selector for sign operation.
-    pub algorithm: PsaSignAlgorithm,
+    pub noxtls_algorithm: PsaSignAlgorithm,
     /// Input message bytes to be signed.
     pub message: &'a [u8],
     /// Optional PSS salt bytes for algorithms requiring explicit salt.
@@ -106,7 +107,7 @@ pub struct KeyDecryptRequest<'a> {
     /// Opaque provider handle to decrypt key object.
     pub handle: &'a PsaExternalKeyHandle,
     /// Algorithm selector for decrypt operation.
-    pub algorithm: PsaDecryptAlgorithm,
+    pub noxtls_algorithm: PsaDecryptAlgorithm,
     /// Ciphertext bytes to decrypt.
     pub ciphertext: &'a [u8],
     /// Optional OAEP label bytes for algorithms requiring explicit label.
@@ -119,8 +120,8 @@ pub struct KeyDeriveRequest<'a> {
     /// Opaque provider handle to derive key object.
     pub handle: &'a PsaExternalKeyHandle,
     /// Algorithm selector for derive operation.
-    pub algorithm: PsaDeriveAlgorithm,
-    /// Peer public-key bytes in algorithm-expected encoding.
+    pub noxtls_algorithm: PsaDeriveAlgorithm,
+    /// Peer public-key bytes in noxtls_algorithm-expected encoding.
     pub peer_public_key: &'a [u8],
 }
 
@@ -153,7 +154,7 @@ pub trait PsaCryptoBackend {
     /// # Arguments
     ///
     /// * `self` - Backend implementation receiving sign request.
-    /// * `request` - Sign request containing handle, algorithm, and digest.
+    /// * `request` - Sign request containing handle, noxtls_algorithm, and digest.
     ///
     /// # Returns
     ///
@@ -169,7 +170,7 @@ pub trait PsaCryptoBackend {
     /// # Arguments
     ///
     /// * `self` - Backend implementation receiving decrypt request.
-    /// * `request` - Decrypt request containing handle, algorithm, and ciphertext.
+    /// * `request` - Decrypt request containing handle, noxtls_algorithm, and ciphertext.
     ///
     /// # Returns
     ///
@@ -185,11 +186,11 @@ pub trait PsaCryptoBackend {
     /// # Arguments
     ///
     /// * `self` - Backend implementation receiving derive request.
-    /// * `request` - Derive request containing handle, algorithm, and peer key.
+    /// * `request` - Derive request containing handle, noxtls_algorithm, and peer key.
     ///
     /// # Returns
     ///
-    /// Shared secret bytes for the selected derive algorithm.
+    /// Shared secret bytes for the selected derive noxtls_algorithm.
     ///
     /// # Errors
     ///
@@ -242,7 +243,10 @@ pub trait PsaCryptoBackend {
     /// # Errors
     ///
     /// Returns [`Error`] when backend lacks AES-GCM support or encryption fails.
-    fn noxtls_aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse>;
+    fn noxtls_aes_gcm_encrypt(
+        &self,
+        request: &AeadEncryptRequest<'_>,
+    ) -> Result<AeadEncryptResponse>;
 }
 
 /// Adapts a concrete backend into a stable PSA provider API.
@@ -260,8 +264,8 @@ impl<B> PsaProvider<B> {
     ///
     /// # Returns
     ///
-    /// A new [`PsaProvider`] owning the backend.
-    pub fn new(backend: B) -> Self {
+    /// A noxtls_new [`PsaProvider`] owning the backend.
+    pub fn noxtls_new(backend: B) -> Self {
         Self { backend }
     }
 }
@@ -373,7 +377,10 @@ impl<B: PsaCryptoBackend> PsaProvider<B> {
     /// # Errors
     ///
     /// Returns backend-provided [`Error`] when encryption fails.
-    pub fn noxtls_aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
+    pub fn noxtls_aes_gcm_encrypt(
+        &self,
+        request: &AeadEncryptRequest<'_>,
+    ) -> Result<AeadEncryptResponse> {
         self.backend.noxtls_aes_gcm_encrypt(request)
     }
 }
@@ -409,8 +416,8 @@ impl PsaSoftwareBackend {
     ///
     /// # Returns
     ///
-    /// A new empty [`PsaSoftwareBackend`] value.
-    pub fn new() -> Self {
+    /// A noxtls_new empty [`PsaSoftwareBackend`] value.
+    pub fn noxtls_new() -> Self {
         Self {
             keys: BTreeMap::new(),
         }
@@ -573,7 +580,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
     /// # Arguments
     ///
     /// * `self` - Software backend state containing registered keys.
-    /// * `request` - Sign request with handle, algorithm, and digest.
+    /// * `request` - Sign request with handle, noxtls_algorithm, and digest.
     ///
     /// # Returns
     ///
@@ -587,7 +594,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
         if !policy.allow_sign {
             return Err(Error::StateError("psa sign not permitted by key policy"));
         }
-        match (request.algorithm, material) {
+        match (request.noxtls_algorithm, material) {
             (PsaSignAlgorithm::RsaPkcs1Sha256, SoftwarePrivateMaterial::Rsa(key)) => {
                 noxtls_rsassa_sha256_sign(key, request.message)
             }
@@ -604,7 +611,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
                 signature.extend_from_slice(&s);
                 Ok(signature)
             }
-            _ => Err(Error::UnsupportedFeature("psa sign algorithm/key mismatch")),
+            _ => Err(Error::UnsupportedFeature("psa sign noxtls_algorithm/key mismatch")),
         }
     }
 
@@ -613,7 +620,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
     /// # Arguments
     ///
     /// * `self` - Software backend state containing registered keys.
-    /// * `request` - Decrypt request with handle, algorithm, and ciphertext.
+    /// * `request` - Decrypt request with handle, noxtls_algorithm, and ciphertext.
     ///
     /// # Returns
     ///
@@ -627,15 +634,19 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
         if !policy.allow_decrypt {
             return Err(Error::StateError("psa decrypt not permitted by key policy"));
         }
-        match (request.algorithm, material) {
+        match (request.noxtls_algorithm, material) {
             (PsaDecryptAlgorithm::RsaPkcs1v15, SoftwarePrivateMaterial::Rsa(key)) => {
                 noxtls_rsaes_pkcs1_v15_decrypt(key, request.ciphertext)
             }
             (PsaDecryptAlgorithm::RsaOaepSha256, SoftwarePrivateMaterial::Rsa(key)) => {
-                noxtls_rsaes_oaep_sha256_decrypt(key, request.ciphertext, request.label.unwrap_or(&[]))
+                noxtls_rsaes_oaep_sha256_decrypt(
+                    key,
+                    request.ciphertext,
+                    request.label.unwrap_or(&[]),
+                )
             }
             _ => Err(Error::UnsupportedFeature(
-                "psa decrypt algorithm/key mismatch",
+                "psa decrypt noxtls_algorithm/key mismatch",
             )),
         }
     }
@@ -645,7 +656,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
     /// # Arguments
     ///
     /// * `self` - Software backend state containing registered keys.
-    /// * `request` - Derive request with handle, algorithm, and peer key.
+    /// * `request` - Derive request with handle, noxtls_algorithm, and peer key.
     ///
     /// # Returns
     ///
@@ -659,7 +670,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
         if !policy.allow_derive {
             return Err(Error::StateError("psa derive not permitted by key policy"));
         }
-        match (request.algorithm, material) {
+        match (request.noxtls_algorithm, material) {
             (PsaDeriveAlgorithm::X25519, SoftwarePrivateMaterial::X25519(private)) => {
                 if request.peer_public_key.len() != 32 {
                     return Err(Error::ParseFailure("x25519 peer public key length invalid"));
@@ -673,7 +684,7 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
                 Ok(noxtls_p256_ecdh_shared_secret(private, &peer)?.to_vec())
             }
             _ => Err(Error::UnsupportedFeature(
-                "psa derive algorithm/key mismatch",
+                "psa derive noxtls_algorithm/key mismatch",
             )),
         }
     }
@@ -731,8 +742,11 @@ impl PsaCryptoBackend for PsaSoftwareBackend {
     /// # Errors
     ///
     /// Returns [`Error::UnsupportedFeature`] because software AES-GCM path is not wired here.
-    fn noxtls_aes_gcm_encrypt(&self, request: &AeadEncryptRequest<'_>) -> Result<AeadEncryptResponse> {
-        let cipher = AesCipher::new(request.key)?;
+    fn noxtls_aes_gcm_encrypt(
+        &self,
+        request: &AeadEncryptRequest<'_>,
+    ) -> Result<AeadEncryptResponse> {
+        let cipher = AesCipher::noxtls_new(request.key)?;
         let (ciphertext, tag) =
             noxtls_aes_gcm_encrypt(&cipher, request.nonce, request.aad, request.plaintext)?;
         Ok(AeadEncryptResponse { ciphertext, tag })

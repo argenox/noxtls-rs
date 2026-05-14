@@ -40,12 +40,12 @@ impl<T> TokioAsyncTransport<T> {
     ///
     /// # Returns
     ///
-    /// A new [`TokioAsyncTransport`] ready for use as an [`AsyncByteStream`].
+    /// A noxtls_new [`TokioAsyncTransport`] ready for use as an [`AsyncByteStream`].
     ///
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn new(inner: T) -> Self {
+    pub fn noxtls_new(inner: T) -> Self {
         Self { inner }
     }
 
@@ -57,7 +57,7 @@ impl<T> TokioAsyncTransport<T> {
     ///
     /// # Returns
     ///
-    /// The original `inner` value passed to [`Self::new`].
+    /// The original `inner` value passed to [`Self::noxtls_new`].
     ///
     /// # Panics
     ///

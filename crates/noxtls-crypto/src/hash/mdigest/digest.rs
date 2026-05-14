@@ -27,12 +27,12 @@ pub trait Digest {
     /// # Panics
     ///
     /// This function does not panic for conforming implementations in this crate.
-    fn update(&mut self, data: &[u8]);
+    fn noxtls_update(&mut self, data: &[u8]);
 
     /// Finalizes the digest and returns the resulting hash bytes.
     ///
     /// # Returns
-    /// Final digest bytes for all input provided through `update`.
+    /// Final digest bytes for all input provided through `noxtls_update`.
     ///
     /// # Panics
     ///

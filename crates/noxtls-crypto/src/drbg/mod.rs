@@ -19,7 +19,7 @@ use crate::hash::noxtls_hmac_sha256;
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 
-/// Implements HMAC-DRBG (SHA-256) per NIST SP 800-90A style update flow.
+/// Implements HMAC-DRBG (SHA-256) per NIST SP 800-90A style noxtls_update flow.
 #[derive(Debug, Clone)]
 pub struct HmacDrbgSha256 {
     k: [u8; 32],
@@ -41,7 +41,7 @@ impl HmacDrbgSha256 {
     /// # Errors
     ///
     /// Returns [`Error::InvalidLength`] when `entropy` is shorter than 16 bytes.
-    pub fn new(entropy: &[u8], nonce: &[u8], personalization: &[u8]) -> Result<Self> {
+    pub fn noxtls_new(entropy: &[u8], nonce: &[u8], personalization: &[u8]) -> Result<Self> {
         if entropy.len() < 16 {
             return Err(Error::InvalidLength(
                 "drbg entropy input must be at least 16 bytes",
@@ -56,11 +56,11 @@ impl HmacDrbgSha256 {
         seed.extend_from_slice(entropy);
         seed.extend_from_slice(nonce);
         seed.extend_from_slice(personalization);
-        drbg.update(Some(&seed));
+        drbg.noxtls_update(Some(&seed));
         Ok(drbg)
     }
 
-    /// Reseeds DRBG instance with new entropy and optional additional input.
+    /// Reseeds DRBG instance with noxtls_new entropy and optional additional input.
     ///
     /// # Arguments
     /// * `entropy`: Fresh entropy input (minimum 16 bytes).
@@ -81,7 +81,7 @@ impl HmacDrbgSha256 {
         let mut seed = Vec::with_capacity(entropy.len() + additional_input.len());
         seed.extend_from_slice(entropy);
         seed.extend_from_slice(additional_input);
-        self.update(Some(&seed));
+        self.noxtls_update(Some(&seed));
         self.reseed_counter = 1;
         Ok(())
     }
@@ -106,7 +106,7 @@ impl HmacDrbgSha256 {
             return Err(Error::StateError("drbg reseed required"));
         }
         if !additional_input.is_empty() {
-            self.update(Some(additional_input));
+            self.noxtls_update(Some(additional_input));
         }
         let mut out = Vec::with_capacity(out_len);
         while out.len() < out_len {
@@ -114,7 +114,7 @@ impl HmacDrbgSha256 {
             out.extend_from_slice(&self.v);
         }
         out.truncate(out_len);
-        self.update(if additional_input.is_empty() {
+        self.noxtls_update(if additional_input.is_empty() {
             None
         } else {
             Some(additional_input)
@@ -123,12 +123,12 @@ impl HmacDrbgSha256 {
         Ok(out)
     }
 
-    /// Applies the HMAC-DRBG update step using the current `k`/`v` and optional seed material.
+    /// Applies the HMAC-DRBG noxtls_update step using the current `k`/`v` and optional seed material.
     ///
     /// # Arguments
     ///
-    /// * `self` — DRBG state to update in place.
-    /// * `provided_data` — Optional seed bytes mixed into the update; `None` performs the zero-data path.
+    /// * `self` — DRBG state to noxtls_update in place.
+    /// * `provided_data` — Optional seed bytes mixed into the noxtls_update; `None` performs the zero-data path.
     ///
     /// # Returns
     ///
@@ -137,7 +137,7 @@ impl HmacDrbgSha256 {
     /// # Panics
     ///
     /// This function does not panic.
-    fn update(&mut self, provided_data: Option<&[u8]>) {
+    fn noxtls_update(&mut self, provided_data: Option<&[u8]>) {
         let mut msg = Vec::with_capacity(self.v.len() + 1 + provided_data.map_or(0, <[u8]>::len));
         msg.extend_from_slice(&self.v);
         msg.push(0x00);

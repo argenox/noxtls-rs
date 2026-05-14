@@ -18,8 +18,8 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    noxtls_mlkem_decapsulate, noxtls_mlkem_generate_keypair_auto, noxtls_p256_ecdh_shared_secret, noxtls_sha256,
-    HmacDrbgSha256, MlKemPrivateKey, MlKemPublicKey, P256PrivateKey, P256PublicKey,
+    noxtls_mlkem_decapsulate, noxtls_mlkem_generate_keypair_auto, noxtls_p256_ecdh_shared_secret,
+    noxtls_sha256, HmacDrbgSha256, MlKemPrivateKey, MlKemPublicKey, P256PrivateKey, P256PublicKey,
     X25519PrivateKey, X25519PublicKey,
 };
 
@@ -107,7 +107,10 @@ fn derive_deterministic_p256_private_bytes(seed: &[u8], label: &[u8]) -> Result<
 /// # Panics
 ///
 /// This function does not panic.
-pub fn noxtls_derive_deterministic_p256_private(seed: &[u8], label: &[u8]) -> Result<P256PrivateKey> {
+pub fn noxtls_derive_deterministic_p256_private(
+    seed: &[u8],
+    label: &[u8],
+) -> Result<P256PrivateKey> {
     derive_deterministic_p256_private_bytes(seed, label)
 }
 
@@ -138,7 +141,7 @@ pub fn noxtls_derive_deterministic_mlkem768_keypair(
     material.extend_from_slice(label);
     let entropy = noxtls_sha256(&material);
     let mut drbg =
-        HmacDrbgSha256::new(&entropy, b"mlkem768 deterministic nonce", b"tls13 mlkem")
+        HmacDrbgSha256::noxtls_new(&entropy, b"mlkem768 deterministic nonce", b"tls13 mlkem")
             .map_err(|_| Error::CryptoFailure("failed to initialize deterministic mlkem drbg"))?;
     noxtls_mlkem_generate_keypair_auto(&mut drbg)
 }
@@ -164,7 +167,7 @@ pub fn noxtls_tls13_key_share_group_supported(group: u16) -> bool {
         || group == TLS13_KEY_SHARE_GROUP_X25519_MLKEM768_HYBRID
 }
 
-/// Returns `true` when the given TLS 1.3 signature algorithm is supported by this build.
+/// Returns `true` when the given TLS 1.3 signature noxtls_algorithm is supported by this build.
 ///
 /// # Arguments
 ///

@@ -39,7 +39,7 @@ impl ChaCha20 {
     /// # Panics
     ///
     /// This function does not panic for fixed key and nonce sizes as typed.
-    pub fn new(key: &[u8; 32], nonce: &[u8; 12], counter: u32) -> Self {
+    pub fn noxtls_new(key: &[u8; 32], nonce: &[u8; 12], counter: u32) -> Self {
         let constants: [u8; 16] = *b"expand 32-byte k";
         let mut state = [0_u32; 16];
         state[0] = u32::from_le_bytes(constants[0..4].try_into().expect("len"));

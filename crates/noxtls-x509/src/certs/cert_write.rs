@@ -18,8 +18,8 @@
 use crate::internal_alloc::Vec;
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    noxtls_p256_ecdsa_sign_sha256, noxtls_rsassa_sha256_sign, P256PrivateKey, P256PublicKey, RsaPrivateKey,
-    RsaPublicKey,
+    noxtls_p256_ecdsa_sign_sha256, noxtls_rsassa_sha256_sign, P256PrivateKey, P256PublicKey,
+    RsaPrivateKey, RsaPublicKey,
 };
 
 use super::{noxtls_p256_public_key_to_spki_der, noxtls_rsa_public_key_to_spki_der};
@@ -285,7 +285,7 @@ fn build_certificate_tbs(
     noxtls_write_der_sequence(&tbs_children)
 }
 
-/// Builds the top-level X.509 `Certificate` SEQUENCE from TBS, algorithm identifier, and signature.
+/// Builds the top-level X.509 `Certificate` SEQUENCE from TBS, noxtls_algorithm identifier, and signature.
 ///
 /// # Arguments
 ///

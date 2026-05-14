@@ -138,7 +138,9 @@ impl X25519PrivateKey {
         peer.validate()?;
         let shared = self.diffie_hellman(peer);
         if is_all_zero(&shared) {
-            return Err(Error::CryptoFailure("noxtls_x25519 shared secret is all-zero"));
+            return Err(Error::CryptoFailure(
+                "noxtls_x25519 shared secret is all-zero",
+            ));
         }
         Ok(shared)
     }
@@ -315,7 +317,9 @@ pub fn noxtls_x25519_shared_secret(
 /// # Errors
 ///
 /// Returns DRBG errors from [`HmacDrbgSha256::generate`], or [`Error::InvalidLength`] if the DRBG output is not exactly 32 bytes.
-pub fn noxtls_x25519_generate_private_key_auto(drbg: &mut HmacDrbgSha256) -> Result<X25519PrivateKey> {
+pub fn noxtls_x25519_generate_private_key_auto(
+    drbg: &mut HmacDrbgSha256,
+) -> Result<X25519PrivateKey> {
     let scalar = drbg.generate(32, b"x25519_private_scalar")?;
     let bytes: [u8; 32] = scalar
         .as_slice()

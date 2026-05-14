@@ -22,9 +22,10 @@ use crate::internal_alloc::ToOwned;
 use crate::internal_alloc::{String, Vec};
 
 use noxtls_crypto::{
-    noxtls_ed25519_verify, noxtls_mldsa_verify, noxtls_p256_ecdsa_verify_sha256, noxtls_rsassa_pss_sha256_verify,
-    noxtls_rsassa_pss_sha384_verify, noxtls_rsassa_sha256_verify, noxtls_rsassa_sha384_verify, noxtls_rsassa_sha512_verify,
-    Ed25519PublicKey, MlDsaPublicKey, P256PublicKey, RsaPublicKey, OID_ID_MLDSA65,
+    noxtls_ed25519_verify, noxtls_mldsa_verify, noxtls_p256_ecdsa_verify_sha256,
+    noxtls_rsassa_pss_sha256_verify, noxtls_rsassa_pss_sha384_verify, noxtls_rsassa_sha256_verify,
+    noxtls_rsassa_sha384_verify, noxtls_rsassa_sha512_verify, Ed25519PublicKey, MlDsaPublicKey,
+    P256PublicKey, RsaPublicKey, OID_ID_MLDSA65,
 };
 
 use super::{noxtls_parse_der_node, Certificate};
@@ -76,13 +77,13 @@ impl Display for ValidationError {
             Self::ChainLoopDetected => f.write_str("certificate chain loop detected"),
             Self::MaxChainDepthExceeded => f.write_str("certificate chain depth exceeded"),
             Self::SignatureAlgorithmMismatch => {
-                f.write_str("certificate signature algorithm mismatch")
+                f.write_str("certificate signature noxtls_algorithm mismatch")
             }
             Self::UnsupportedSignatureAlgorithm => {
-                f.write_str("certificate signature algorithm is unsupported")
+                f.write_str("certificate signature noxtls_algorithm is unsupported")
             }
             Self::UnsupportedPublicKeyAlgorithm => {
-                f.write_str("issuer public key algorithm is unsupported")
+                f.write_str("issuer public key noxtls_algorithm is unsupported")
             }
             Self::PublicKeyDecodeFailed => f.write_str("issuer public key decode failed"),
             Self::SignatureVerificationFailed => {
@@ -516,7 +517,7 @@ pub fn noxtls_verify_certificate_signature(
         return Err(ValidationError::SignatureAlgorithmMismatch);
     }
     if issuer.subject_public_key_algorithm_oid == OID_RSA_ENCRYPTION {
-        let (n, e) = parse_rsa_public_key_der(&issuer.subject_public_key)?;
+        let (n, e) = noxtls_parse_rsa_public_key_der(&issuer.subject_public_key)?;
         let public_key = RsaPublicKey::from_be_bytes(&n, &e)
             .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
         if certificate.certificate_signature_algorithm_oid == OID_SHA256_WITH_RSA {
@@ -741,11 +742,11 @@ fn canonical_time(input: &str) -> Option<String> {
 /// # Panics
 ///
 /// This function does not panic.
-fn parse_rsa_public_key_der(
+fn noxtls_parse_rsa_public_key_der(
     public_key_der: &[u8],
 ) -> core::result::Result<(Vec<u8>, Vec<u8>), ValidationError> {
-    let (rsa_seq, rem) =
-        noxtls_parse_der_node(public_key_der).map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
+    let (rsa_seq, rem) = noxtls_parse_der_node(public_key_der)
+        .map_err(|_| ValidationError::PublicKeyDecodeFailed)?;
     if rsa_seq.tag != 0x30 || !rem.is_empty() {
         return Err(ValidationError::PublicKeyDecodeFailed);
     }
@@ -779,13 +780,13 @@ fn parse_rsa_public_key_der(
 fn noxtls_parse_ecdsa_signature_der(
     signature_der: &[u8],
 ) -> core::result::Result<([u8; 32], [u8; 32]), ValidationError> {
-    let (seq, rem) =
-        noxtls_parse_der_node(signature_der).map_err(|_| ValidationError::SignatureVerificationFailed)?;
+    let (seq, rem) = noxtls_parse_der_node(signature_der)
+        .map_err(|_| ValidationError::SignatureVerificationFailed)?;
     if seq.tag != 0x30 || !rem.is_empty() {
         return Err(ValidationError::SignatureVerificationFailed);
     }
-    let (r_node, rest) =
-        noxtls_parse_der_node(seq.body).map_err(|_| ValidationError::SignatureVerificationFailed)?;
+    let (r_node, rest) = noxtls_parse_der_node(seq.body)
+        .map_err(|_| ValidationError::SignatureVerificationFailed)?;
     let (s_node, tail) =
         noxtls_parse_der_node(rest).map_err(|_| ValidationError::SignatureVerificationFailed)?;
     if r_node.tag != 0x02 || s_node.tag != 0x02 || !tail.is_empty() {

@@ -16,15 +16,17 @@
 // CONTACT: info@argenox.com
 
 use super::dtls::{
-    noxtls_encode_dtls12_handshake_fragments, noxtls_encode_dtls_record_packet, noxtls_open_dtls13_aes128gcm_record,
-    noxtls_parse_dtls_record_packet, noxtls_reassemble_dtls12_handshake_fragments, noxtls_seal_dtls13_aes128gcm_record,
+    noxtls_encode_dtls12_handshake_fragments, noxtls_encode_dtls_record_packet,
+    noxtls_open_dtls13_aes128gcm_record, noxtls_parse_dtls_record_packet,
+    noxtls_reassemble_dtls12_handshake_fragments, noxtls_seal_dtls13_aes128gcm_record,
     DtlsEpochReplayTracker, DtlsFlightRetransmitTracker, DtlsRecordHeader, DtlsReplayWindow,
     DtlsReplayWindowSnapshot,
 };
 use super::handshake::{noxtls_encode_handshake_message, noxtls_parse_handshake_message};
 use super::kdf::{
-    noxtls_finished_hmac_for_hash, noxtls_hash_bytes_for_algorithm, noxtls_hkdf_expand_for_hash, noxtls_hkdf_extract_for_hash,
-    noxtls_hkdf_extract_with_salt_for_hash, noxtls_tls13_expand_label_for_hash, HashAlgorithm,
+    noxtls_finished_hmac_for_hash, noxtls_hash_bytes_for_algorithm, noxtls_hkdf_expand_for_hash,
+    noxtls_hkdf_extract_for_hash, noxtls_hkdf_extract_with_salt_for_hash,
+    noxtls_tls13_expand_label_for_hash, HashAlgorithm,
 };
 use super::keyshare::{
     noxtls_derive_deterministic_mlkem768_keypair, noxtls_derive_deterministic_p256_private,
@@ -32,30 +34,36 @@ use super::keyshare::{
     noxtls_derive_tls13_p256_shared_secret, noxtls_derive_tls13_x25519_shared_secret,
     noxtls_tls13_client_hello_offers_supported_key_exchange,
 };
-use super::psk::{noxtls_ticket_age_matches_policy, ResumptionTicket, TicketStore, TicketUsagePolicy};
+use super::psk::{
+    noxtls_ticket_age_matches_policy, ResumptionTicket, TicketStore, TicketUsagePolicy,
+};
 use super::record::{
-    noxtls_build_record_nonce, noxtls_decode_tls12_ciphertext_record, noxtls_decode_tls13_ciphertext_record,
-    noxtls_decode_tls13_inner_plaintext, noxtls_encode_tls12_ciphertext_record, noxtls_encode_tls13_ciphertext_record,
+    noxtls_build_record_nonce, noxtls_decode_tls12_ciphertext_record,
+    noxtls_decode_tls13_ciphertext_record, noxtls_decode_tls13_inner_plaintext,
+    noxtls_encode_tls12_ciphertext_record, noxtls_encode_tls13_ciphertext_record,
     noxtls_encode_tls13_inner_plaintext,
 };
 use super::state::{
     AlertDescription, AlertLevel, CipherSuite, HandshakeState, RecordContentType, TlsVersion,
 };
+use super::tls_wire::split_tls13_handshake_payload;
 #[cfg(not(feature = "std"))]
 use crate::internal_alloc::ToOwned;
 use crate::internal_alloc::{String, Vec};
 use noxtls_core::{Error, Result};
 use noxtls_crypto::{
-    noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, noxtls_chacha20_poly1305_decrypt, noxtls_chacha20_poly1305_encrypt,
-    noxtls_ed25519_public_key_from_subject_public_key_info, noxtls_ed25519_verify, noxtls_hkdf_extract_sha256,
-    noxtls_mldsa_verify, noxtls_p256_ecdsa_verify_sha256, noxtls_rsassa_pss_sha256_verify, noxtls_rsassa_pss_sha384_verify,
-    noxtls_sha256, noxtls_tls12_prf_sha256, noxtls_tls12_prf_sha384, AesCipher, HmacDrbgSha256, MlDsaPublicKey,
-    MlKemPrivateKey, P256PrivateKey, P256PublicKey, RsaPublicKey, TlsTranscriptSha256,
-    TlsTranscriptSha384, X25519PrivateKey, MLKEM_CIPHERTEXT_LEN,
+    noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, noxtls_chacha20_poly1305_decrypt,
+    noxtls_chacha20_poly1305_encrypt, noxtls_ed25519_public_key_from_subject_public_key_info,
+    noxtls_ed25519_verify, noxtls_hkdf_extract_sha256, noxtls_mldsa_verify,
+    noxtls_p256_ecdsa_verify_sha256, noxtls_rsassa_pss_sha256_verify,
+    noxtls_rsassa_pss_sha384_verify, noxtls_sha256, noxtls_tls12_prf_sha256,
+    noxtls_tls12_prf_sha384, AesCipher, HmacDrbgSha256, MlDsaPublicKey, MlKemPrivateKey,
+    P256PrivateKey, P256PublicKey, RsaPublicKey, TlsTranscriptSha256, TlsTranscriptSha384,
+    X25519PrivateKey, MLKEM_CIPHERTEXT_LEN,
 };
 use noxtls_x509::{
-    noxtls_certificate_matches_hostname, noxtls_parse_certificate, noxtls_parse_der_node, noxtls_parse_ecdsa_signature_der,
-    noxtls_validate_certificate_chain,
+    noxtls_certificate_matches_hostname, noxtls_parse_certificate, noxtls_parse_der_node,
+    noxtls_parse_ecdsa_signature_der, noxtls_validate_certificate_chain,
 };
 
 /// Holds connection version, handshake state, and transcript bytes.
@@ -63,18 +71,18 @@ use noxtls_x509::{
 pub struct Connection {
     pub version: TlsVersion,
     pub state: HandshakeState,
-    selected_cipher_suite: Option<CipherSuite>,
+    noxtls_selected_cipher_suite: Option<CipherSuite>,
+    tls13_client_cipher_suites: Option<Vec<CipherSuite>>,
     transcript: Vec<u8>,
-    transcript_hash: TranscriptHashState,
+    noxtls_transcript_hash: TranscriptHashState,
     handshake_secret: Option<Vec<u8>>,
     tls13_master_secret: Option<Vec<u8>>,
     tls13_client_handshake_traffic_secret: Option<Vec<u8>>,
     tls13_server_handshake_traffic_secret: Option<Vec<u8>>,
-    tls13_finished_key: Option<Vec<u8>>,
     tls13_client_application_traffic_secret: Option<Vec<u8>>,
     tls13_server_application_traffic_secret: Option<Vec<u8>>,
     tls13_exporter_master_secret: Option<Vec<u8>>,
-    tls13_resumption_master_secret: Option<Vec<u8>>,
+    noxtls_tls13_resumption_master_secret: Option<Vec<u8>>,
     tls13_client_x25519_private: Option<X25519PrivateKey>,
     tls13_client_p256_private: Option<P256PrivateKey>,
     tls13_client_mlkem768_private: Option<MlKemPrivateKey>,
@@ -88,8 +96,8 @@ pub struct Connection {
     server_write_iv: Option<[u8; 12]>,
     client_sequence: u64,
     server_sequence: u64,
-    tls13_peer_close_notify_received: bool,
-    tls13_local_close_notify_sent: bool,
+    noxtls_tls13_peer_close_notify_received: bool,
+    noxtls_tls13_local_close_notify_sent: bool,
     tls13_require_certificate_auth: bool,
     tls13_server_trust_anchors_der: Vec<Vec<u8>>,
     tls13_server_intermediates_der: Vec<Vec<u8>>,
@@ -99,12 +107,14 @@ pub struct Connection {
     tls13_request_ocsp_stapling: bool,
     tls13_require_ocsp_staple: bool,
     tls13_ocsp_staple_verifier: Option<Tls13OcspStapleVerifier>,
-    tls13_server_ocsp_staple: Option<Vec<u8>>,
-    tls13_server_ocsp_staple_verified: bool,
+    noxtls_tls13_server_ocsp_staple: Option<Vec<u8>>,
+    noxtls_tls13_server_ocsp_staple_verified: bool,
     tls13_require_server_name_ack: bool,
-    tls13_server_name_acknowledged: bool,
+    noxtls_tls13_server_name_acknowledged: bool,
     tls13_client_alpn_protocols: Vec<Vec<u8>>,
-    tls13_selected_alpn_protocol: Option<Vec<u8>>,
+    noxtls_tls13_selected_alpn_protocol: Option<Vec<u8>>,
+    tls13_client_offer_pq_key_shares: bool,
+    tls13_client_offer_mldsa_signature: bool,
     tls13_server_leaf_public_key_der: Option<Vec<u8>>,
     tls13_server_certificate_chain_validated: bool,
     tls13_early_data_require_acceptance: bool,
@@ -115,9 +125,9 @@ pub struct Connection {
     tls13_early_data_accepted_in_encrypted_extensions: bool,
     tls13_early_data_anti_replay_enabled: bool,
     tls13_early_data_replay_window: DtlsReplayWindow,
-    tls13_early_data_telemetry: Tls13EarlyDataTelemetry,
+    noxtls_tls13_early_data_telemetry: Tls13EarlyDataTelemetry,
     tls12_change_cipher_spec_seen: bool,
-    tls12_session_id: Option<Vec<u8>>,
+    noxtls_tls12_session_id: Option<Vec<u8>>,
     tls12_allow_legacy_record_versions: bool,
     dtls13_client_write_key: Option<[u8; 16]>,
     dtls13_client_write_iv: Option<[u8; 12]>,
@@ -130,11 +140,11 @@ pub struct Connection {
     dtls13_active_flight: Vec<(u16, u64)>,
     dtls13_active_flight_started_at_ms: Option<u64>,
     dtls13_active_flight_timeout_ms: u64,
-    dtls13_active_flight_failed: bool,
+    noxtls_dtls13_active_flight_failed: bool,
     dtls_retransmit_tracker: DtlsFlightRetransmitTracker,
     dtls_retransmit_initial_timeout_ms: u64,
     dtls_max_retransmit_attempts: u8,
-    dtls12_handshake_phase: Dtls12HandshakePhase,
+    noxtls_dtls12_handshake_phase: Dtls12HandshakePhase,
     dtls12_expected_cookie: Option<Vec<u8>>,
     dtls12_anti_amplification_enforced: bool,
     dtls12_inbound_bytes: u64,
@@ -256,6 +266,7 @@ const HANDSHAKE_FINISHED: u8 = 0x14;
 const HANDSHAKE_KEY_UPDATE: u8 = 0x18;
 const EXT_SERVER_NAME: u16 = 0x0000;
 const EXT_STATUS_REQUEST: u16 = 0x0005;
+const EXT_SUPPORTED_GROUPS: u16 = 0x000A;
 const EXT_ALPN: u16 = 0x0010;
 const EXT_SUPPORTED_VERSIONS: u16 = 0x002B;
 const EXT_SIGNATURE_ALGORITHMS: u16 = 0x000D;
@@ -383,7 +394,7 @@ enum Dtls12HandshakePhase {
     Connected,
 }
 
-/// Selects transcript hashing algorithm based on protocol version profile.
+/// Selects transcript hashing noxtls_algorithm based on protocol version profile.
 #[derive(Debug, Clone)]
 enum TranscriptHashState {
     Sha256(TlsTranscriptSha256),
@@ -399,17 +410,17 @@ impl TranscriptHashState {
     ///
     /// # Returns
     ///
-    /// A new or updated `Self` value as constructed in the function body.
+    /// A noxtls_new or updated `Self` value as constructed in the function body.
     ///
     /// # Panics
     ///
     /// This function does not panic.
     ///
-    fn for_version(version: TlsVersion) -> Self {
+    fn noxtls_for_version(version: TlsVersion) -> Self {
         match version {
-            TlsVersion::Tls13 | TlsVersion::Dtls13 => Self::Sha384(TlsTranscriptSha384::new()),
+            TlsVersion::Tls13 | TlsVersion::Dtls13 => Self::Sha384(TlsTranscriptSha384::noxtls_new()),
             TlsVersion::Tls10 | TlsVersion::Tls11 | TlsVersion::Tls12 | TlsVersion::Dtls12 => {
-                Self::Sha256(TlsTranscriptSha256::new())
+                Self::Sha256(TlsTranscriptSha256::noxtls_new())
             }
         }
     }
@@ -425,10 +436,10 @@ impl TranscriptHashState {
     ///
     /// This function does not panic.
     ///
-    fn update(&mut self, message: &[u8]) {
+    fn noxtls_update(&mut self, message: &[u8]) {
         match self {
-            Self::Sha256(hasher) => hasher.update(message),
-            Self::Sha384(hasher) => hasher.update(message),
+            Self::Sha256(hasher) => hasher.noxtls_update(message),
+            Self::Sha384(hasher) => hasher.noxtls_update(message),
         }
     }
 
@@ -446,14 +457,14 @@ impl TranscriptHashState {
     ///
     /// This function does not panic.
     ///
-    fn snapshot_hash(&self) -> Vec<u8> {
+    fn noxtls_snapshot_hash(&self) -> Vec<u8> {
         match self {
-            Self::Sha256(hasher) => hasher.snapshot_hash().to_vec(),
-            Self::Sha384(hasher) => hasher.snapshot_hash().to_vec(),
+            Self::Sha256(hasher) => hasher.noxtls_snapshot_hash().to_vec(),
+            Self::Sha384(hasher) => hasher.noxtls_snapshot_hash().to_vec(),
         }
     }
 
-    /// Returns hash algorithm represented by this transcript state.
+    /// Returns hash noxtls_algorithm represented by this transcript state.
     ///
     /// # Arguments
     ///
@@ -467,7 +478,7 @@ impl TranscriptHashState {
     ///
     /// This function does not panic.
     ///
-    fn algorithm(&self) -> HashAlgorithm {
+    fn noxtls_algorithm(&self) -> HashAlgorithm {
         match self {
             Self::Sha256(_) => HashAlgorithm::Sha256,
             Self::Sha384(_) => HashAlgorithm::Sha384,
@@ -490,7 +501,7 @@ impl CipherSuite {
     ///
     /// This function does not panic.
     ///
-    fn from_u16(codepoint: u16) -> Option<Self> {
+    fn noxtls_from_u16(codepoint: u16) -> Option<Self> {
         match codepoint {
             0x1301 => Some(Self::TlsAes128GcmSha256),
             0x1302 => Some(Self::TlsAes256GcmSha384),
@@ -515,20 +526,20 @@ impl CipherSuite {
     ///
     /// This function does not panic.
     ///
-    fn transcript_hash_state(self) -> TranscriptHashState {
+    fn noxtls_transcript_hash_state(self) -> TranscriptHashState {
         match self {
             Self::TlsAes128GcmSha256
             | Self::TlsChacha20Poly1305Sha256
             | Self::TlsEcdheRsaWithAes128GcmSha256 => {
-                TranscriptHashState::Sha256(TlsTranscriptSha256::new())
+                TranscriptHashState::Sha256(TlsTranscriptSha256::noxtls_new())
             }
             Self::TlsAes256GcmSha384 | Self::TlsEcdheRsaWithAes256GcmSha384 => {
-                TranscriptHashState::Sha384(TlsTranscriptSha384::new())
+                TranscriptHashState::Sha384(TlsTranscriptSha384::noxtls_new())
             }
         }
     }
 
-    /// Returns key-schedule hash algorithm policy for this suite.
+    /// Returns key-schedule hash noxtls_algorithm policy for this suite.
     ///
     /// # Arguments
     ///
@@ -542,7 +553,7 @@ impl CipherSuite {
     ///
     /// This function does not panic.
     ///
-    fn hash_algorithm(self) -> HashAlgorithm {
+    fn noxtls_hash_algorithm(self) -> HashAlgorithm {
         match self {
             Self::TlsAes128GcmSha256
             | Self::TlsChacha20Poly1305Sha256
@@ -567,7 +578,7 @@ impl CipherSuite {
     ///
     /// This function does not panic.
     ///
-    fn tls13_traffic_key_len(self) -> Option<usize> {
+    fn noxtls_tls13_traffic_key_len(self) -> Option<usize> {
         match self {
             CipherSuite::TlsAes128GcmSha256 => Some(16),
             CipherSuite::TlsAes256GcmSha384 | CipherSuite::TlsChacha20Poly1305Sha256 => Some(32),
@@ -590,7 +601,7 @@ impl CipherSuite {
     ///
     /// This function does not panic.
     ///
-    fn to_u16(self) -> u16 {
+    fn noxtls_to_u16(self) -> u16 {
         match self {
             Self::TlsAes128GcmSha256 => 0x1301,
             Self::TlsAes256GcmSha384 => 0x1302,
@@ -602,7 +613,7 @@ impl CipherSuite {
 }
 
 impl Connection {
-    /// Creates a new connection initialized in the `Idle` handshake state.
+    /// Creates a noxtls_new connection initialized in the `Idle` handshake state.
     ///
     /// # Arguments
     /// * `version`: Protocol version profile for this connection.
@@ -613,22 +624,22 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn new(version: TlsVersion) -> Self {
+    pub fn noxtls_new(version: TlsVersion) -> Self {
         Self {
             version,
             state: HandshakeState::Idle,
-            selected_cipher_suite: None,
+            noxtls_selected_cipher_suite: None,
+            tls13_client_cipher_suites: None,
             transcript: Vec::new(),
-            transcript_hash: TranscriptHashState::for_version(version),
+            noxtls_transcript_hash: TranscriptHashState::noxtls_for_version(version),
             handshake_secret: None,
             tls13_master_secret: None,
             tls13_client_handshake_traffic_secret: None,
             tls13_server_handshake_traffic_secret: None,
-            tls13_finished_key: None,
             tls13_client_application_traffic_secret: None,
             tls13_server_application_traffic_secret: None,
             tls13_exporter_master_secret: None,
-            tls13_resumption_master_secret: None,
+            noxtls_tls13_resumption_master_secret: None,
             tls13_client_x25519_private: None,
             tls13_client_p256_private: None,
             tls13_client_mlkem768_private: None,
@@ -641,8 +652,8 @@ impl Connection {
             server_write_iv: None,
             client_sequence: 0,
             server_sequence: 0,
-            tls13_peer_close_notify_received: false,
-            tls13_local_close_notify_sent: false,
+            noxtls_tls13_peer_close_notify_received: false,
+            noxtls_tls13_local_close_notify_sent: false,
             tls13_require_certificate_auth: false,
             tls13_server_trust_anchors_der: Vec::new(),
             tls13_server_intermediates_der: Vec::new(),
@@ -652,12 +663,14 @@ impl Connection {
             tls13_request_ocsp_stapling: false,
             tls13_require_ocsp_staple: false,
             tls13_ocsp_staple_verifier: None,
-            tls13_server_ocsp_staple: None,
-            tls13_server_ocsp_staple_verified: false,
+            noxtls_tls13_server_ocsp_staple: None,
+            noxtls_tls13_server_ocsp_staple_verified: false,
             tls13_require_server_name_ack: false,
-            tls13_server_name_acknowledged: false,
+            noxtls_tls13_server_name_acknowledged: false,
             tls13_client_alpn_protocols: Vec::new(),
-            tls13_selected_alpn_protocol: None,
+            noxtls_tls13_selected_alpn_protocol: None,
+            tls13_client_offer_pq_key_shares: true,
+            tls13_client_offer_mldsa_signature: true,
             tls13_server_leaf_public_key_der: None,
             tls13_server_certificate_chain_validated: false,
             tls13_early_data_require_acceptance: false,
@@ -667,10 +680,10 @@ impl Connection {
             tls13_early_data_offered_in_client_hello: false,
             tls13_early_data_accepted_in_encrypted_extensions: false,
             tls13_early_data_anti_replay_enabled: true,
-            tls13_early_data_replay_window: DtlsReplayWindow::new(),
-            tls13_early_data_telemetry: Tls13EarlyDataTelemetry::default(),
+            tls13_early_data_replay_window: DtlsReplayWindow::noxtls_new(),
+            noxtls_tls13_early_data_telemetry: Tls13EarlyDataTelemetry::default(),
             tls12_change_cipher_spec_seen: false,
-            tls12_session_id: None,
+            noxtls_tls12_session_id: None,
             tls12_allow_legacy_record_versions: false,
             dtls13_client_write_key: None,
             dtls13_client_write_iv: None,
@@ -678,18 +691,18 @@ impl Connection {
             dtls13_server_write_iv: None,
             dtls13_outbound_epoch: 0,
             dtls13_outbound_sequence: 0,
-            dtls13_inbound_replay_tracker: DtlsEpochReplayTracker::new(),
-            dtls13_client_inbound_replay_tracker: DtlsEpochReplayTracker::new(),
+            dtls13_inbound_replay_tracker: DtlsEpochReplayTracker::noxtls_new(),
+            dtls13_client_inbound_replay_tracker: DtlsEpochReplayTracker::noxtls_new(),
             dtls13_active_flight: Vec::new(),
             dtls13_active_flight_started_at_ms: None,
             dtls13_active_flight_timeout_ms: DTLS13_ACTIVE_FLIGHT_TIMEOUT_MS,
-            dtls13_active_flight_failed: false,
-            dtls_retransmit_tracker: DtlsFlightRetransmitTracker::new(
+            noxtls_dtls13_active_flight_failed: false,
+            dtls_retransmit_tracker: DtlsFlightRetransmitTracker::noxtls_new(
                 DTLS_RETRANSMIT_TRACKER_MAX_RECORDS,
             ),
             dtls_retransmit_initial_timeout_ms: DTLS_RETRANSMIT_INITIAL_TIMEOUT_MS,
             dtls_max_retransmit_attempts: DTLS_MAX_RETRANSMIT_ATTEMPTS,
-            dtls12_handshake_phase: Dtls12HandshakePhase::AwaitingClientHello,
+            noxtls_dtls12_handshake_phase: Dtls12HandshakePhase::AwaitingClientHello,
             dtls12_expected_cookie: None,
             dtls12_anti_amplification_enforced: true,
             dtls12_inbound_bytes: 0,
@@ -715,7 +728,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn dtls_operational_policy(&self) -> Option<DtlsOperationalPolicy> {
+    pub fn noxtls_dtls_operational_policy(&self) -> Option<DtlsOperationalPolicy> {
         if !self.version.is_dtls() {
             return None;
         }
@@ -741,11 +754,11 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_dtls_operational_policy(
+    pub fn noxtls_set_dtls_operational_policy(
         &mut self,
         policy: DtlsOperationalPolicy,
     ) -> Result<DtlsOperationalPolicy> {
-        self.ensure_dtls12_mode()?;
+        self.noxtls_ensure_dtls12_mode()?;
         let effective = DtlsOperationalPolicy {
             retransmit_initial_timeout_ms: policy.retransmit_initial_timeout_ms.max(1),
             max_retransmit_attempts: policy.max_retransmit_attempts.max(1),
@@ -773,7 +786,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn apply_dtls_operational_profile(
+    pub fn noxtls_apply_dtls_operational_profile(
         &mut self,
         profile: DtlsOperationalProfile,
     ) -> Result<DtlsOperationalPolicy> {
@@ -794,7 +807,7 @@ impl Connection {
                 active_flight_timeout_ms: 20_000,
             },
         };
-        self.set_dtls_operational_policy(policy)
+        self.noxtls_set_dtls_operational_policy(policy)
     }
 
     /// Enables or disables strict TLS 1.3 certificate-authentication enforcement.
@@ -805,7 +818,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_tls13_require_certificate_auth(&mut self, required: bool) {
+    pub fn noxtls_set_tls13_require_certificate_auth(&mut self, required: bool) {
         self.tls13_require_certificate_auth = required;
     }
 
@@ -826,7 +839,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn configure_tls13_server_auth(
+    pub fn noxtls_configure_tls13_server_auth(
         &mut self,
         trust_anchors_der: &[Vec<u8>],
         intermediates_der: &[Vec<u8>],
@@ -863,7 +876,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_tls13_server_expected_hostname(&mut self, hostname: Option<&str>) -> Result<()> {
+    pub fn noxtls_set_tls13_server_expected_hostname(&mut self, hostname: Option<&str>) -> Result<()> {
         match hostname {
             Some(value) if value.is_empty() => Err(Error::InvalidLength(
                 "tls13 expected hostname must not be empty",
@@ -893,7 +906,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn set_tls12_session_id(&mut self, session_id: Option<&[u8]>) -> Result<()> {
+    pub fn noxtls_set_tls12_session_id(&mut self, session_id: Option<&[u8]>) -> Result<()> {
         match session_id {
             Some(value) if value.is_empty() => Err(Error::InvalidLength(
                 "tls12 session id must not be empty when present",
@@ -902,11 +915,11 @@ impl Connection {
                 "tls12 session id must not exceed 32 bytes",
             )),
             Some(value) => {
-                self.tls12_session_id = Some(value.to_vec());
+                self.noxtls_tls12_session_id = Some(value.to_vec());
                 Ok(())
             }
             None => {
-                self.tls12_session_id = None;
+                self.noxtls_tls12_session_id = None;
                 Ok(())
             }
         }
@@ -926,8 +939,8 @@ impl Connection {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn tls12_session_id(&self) -> Option<&[u8]> {
-        self.tls12_session_id.as_deref()
+    pub fn noxtls_tls12_session_id(&self) -> Option<&[u8]> {
+        self.noxtls_tls12_session_id.as_deref()
     }
 
     /// Enables or disables TLS 1.0/1.1 compatibility record-version acceptance in TLS 1.2 packet APIs.
@@ -939,7 +952,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn set_tls12_allow_legacy_record_versions(&mut self, allow: bool) {
+    pub fn noxtls_set_tls12_allow_legacy_record_versions(&mut self, allow: bool) {
         self.tls12_allow_legacy_record_versions = allow;
     }
 
@@ -958,7 +971,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_tls13_server_name(&mut self, server_name: Option<&str>) -> Result<()> {
+    pub fn noxtls_set_tls13_server_name(&mut self, server_name: Option<&str>) -> Result<()> {
         match server_name {
             Some(name) if name.is_empty() => {
                 Err(Error::InvalidLength("sni server_name must not be empty"))
@@ -967,16 +980,16 @@ impl Connection {
                 "sni server_name length must not exceed 65535 bytes",
             )),
             Some(name) => {
-                if !is_valid_sni_dns_name(name) {
+                if !noxtls_is_valid_sni_dns_name(name) {
                     return Err(Error::ParseFailure("invalid sni server_name"));
                 }
                 self.tls13_client_server_name = Some(name.to_owned());
-                self.tls13_server_name_acknowledged = false;
+                self.noxtls_tls13_server_name_acknowledged = false;
                 Ok(())
             }
             None => {
                 self.tls13_client_server_name = None;
-                self.tls13_server_name_acknowledged = false;
+                self.noxtls_tls13_server_name_acknowledged = false;
                 Ok(())
             }
         }
@@ -990,7 +1003,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn set_tls13_request_ocsp_stapling(&mut self, enabled: bool) {
+    pub fn noxtls_set_tls13_request_ocsp_stapling(&mut self, enabled: bool) {
         self.tls13_request_ocsp_stapling = enabled;
     }
 
@@ -1002,7 +1015,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn set_tls13_require_ocsp_staple(&mut self, required: bool) {
+    pub fn noxtls_set_tls13_require_ocsp_staple(&mut self, required: bool) {
         self.tls13_require_ocsp_staple = required;
     }
 
@@ -1014,20 +1027,20 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn set_tls13_ocsp_staple_verifier(&mut self, verifier: Option<Tls13OcspStapleVerifier>) {
+    pub fn noxtls_set_tls13_ocsp_staple_verifier(&mut self, verifier: Option<Tls13OcspStapleVerifier>) {
         self.tls13_ocsp_staple_verifier = verifier;
     }
 
     /// Returns the most recently parsed server OCSP staple bytes.
     #[must_use]
-    pub fn tls13_server_ocsp_staple(&self) -> Option<&[u8]> {
-        self.tls13_server_ocsp_staple.as_deref()
+    pub fn noxtls_tls13_server_ocsp_staple(&self) -> Option<&[u8]> {
+        self.noxtls_tls13_server_ocsp_staple.as_deref()
     }
 
     /// Reports whether the most recently parsed OCSP staple passed verification policy.
     #[must_use]
-    pub fn tls13_server_ocsp_staple_verified(&self) -> bool {
-        self.tls13_server_ocsp_staple_verified
+    pub fn noxtls_tls13_server_ocsp_staple_verified(&self) -> bool {
+        self.noxtls_tls13_server_ocsp_staple_verified
     }
 
     /// Enables strict policy requiring server_name acknowledgment in EncryptedExtensions.
@@ -1038,7 +1051,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_tls13_require_server_name_ack(&mut self, required: bool) {
+    pub fn noxtls_set_tls13_require_server_name_ack(&mut self, required: bool) {
         self.tls13_require_server_name_ack = required;
     }
 
@@ -1056,8 +1069,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn tls13_server_name_acknowledged(&self) -> bool {
-        self.tls13_server_name_acknowledged
+    pub fn noxtls_tls13_server_name_acknowledged(&self) -> bool {
+        self.noxtls_tls13_server_name_acknowledged
     }
 
     /// Configures ALPN protocol IDs offered in TLS 1.3 ClientHello extension data.
@@ -1075,7 +1088,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_tls13_alpn_protocols(&mut self, protocols: &[&str]) -> Result<()> {
+    pub fn noxtls_set_tls13_alpn_protocols(&mut self, protocols: &[&str]) -> Result<()> {
         let mut parsed_protocols = Vec::with_capacity(protocols.len());
         for protocol in protocols {
             if protocol.is_empty() {
@@ -1093,7 +1106,68 @@ impl Connection {
             parsed_protocols.push(encoded);
         }
         self.tls13_client_alpn_protocols = parsed_protocols;
-        self.tls13_selected_alpn_protocol = None;
+        self.noxtls_tls13_selected_alpn_protocol = None;
+        Ok(())
+    }
+
+    /// Enables or disables advertising PQ key-share groups in TLS 1.3 ClientHello.
+    ///
+    /// # Arguments
+    /// * `enabled`: `true` includes ML-KEM and hybrid key shares; `false` offers only X25519/P-256.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    pub fn noxtls_set_tls13_client_offer_pq_key_shares(&mut self, enabled: bool) {
+        self.tls13_client_offer_pq_key_shares = enabled;
+    }
+
+    /// Enables or disables advertising ML-DSA in TLS 1.3 signature_algorithms.
+    ///
+    /// # Arguments
+    /// * `enabled`: `true` includes ML-DSA65 (`0x0905`); `false` advertises classical + Ed25519 only.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    pub fn noxtls_set_tls13_client_offer_mldsa_signature(&mut self, enabled: bool) {
+        self.tls13_client_offer_mldsa_signature = enabled;
+    }
+
+    /// Overrides TLS 1.3 cipher-suite offer order used by ClientHello builders.
+    ///
+    /// # Arguments
+    /// * `suites`: Ordered TLS 1.3 cipher suites to advertise; empty resets to defaults.
+    ///
+    /// # Returns
+    /// `Ok(())` when the suite offer policy is stored.
+    /// # Errors
+    ///
+    /// Returns [`noxtls_core::Error`] when inputs or handshake state invalidate the operation; see the function body for specific error construction sites.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    pub fn noxtls_set_tls13_client_cipher_suites(&mut self, suites: &[CipherSuite]) -> Result<()> {
+        if suites.is_empty() {
+            self.tls13_client_cipher_suites = None;
+            return Ok(());
+        }
+        let mut ordered = Vec::with_capacity(suites.len());
+        for suite in suites {
+            if !noxtls_is_tls13_suite(*suite) {
+                return Err(Error::ParseFailure(
+                    "tls13 client cipher suite override contains non-tls13 suite",
+                ));
+            }
+            if ordered.contains(suite) {
+                return Err(Error::ParseFailure(
+                    "tls13 client cipher suite override contains duplicates",
+                ));
+            }
+            ordered.push(*suite);
+        }
+        self.tls13_client_cipher_suites = Some(ordered);
         Ok(())
     }
 
@@ -1114,8 +1188,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn tls13_selected_alpn_protocol(&self) -> Option<&[u8]> {
-        self.tls13_selected_alpn_protocol.as_deref()
+    pub fn noxtls_tls13_selected_alpn_protocol(&self) -> Option<&[u8]> {
+        self.noxtls_tls13_selected_alpn_protocol.as_deref()
     }
 
     /// Sets maximum accepted record plaintext length for seal/open operations.
@@ -1133,7 +1207,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_max_record_plaintext_len(&mut self, max_len: usize) -> Result<()> {
+    pub fn noxtls_set_max_record_plaintext_len(&mut self, max_len: usize) -> Result<()> {
         if max_len == 0 || max_len > TLS_MAX_RECORD_PLAINTEXT_LEN {
             return Err(Error::InvalidLength(
                 "record plaintext limit must be between 1 and 16384 bytes",
@@ -1143,7 +1217,7 @@ impl Connection {
         Ok(())
     }
 
-    /// Enables or disables 0-RTT anti-replay checks for `open_tls13_early_data_record`.
+    /// Enables or disables 0-RTT anti-replay checks for `noxtls_open_tls13_early_data_record`.
     ///
     /// # Arguments
     /// * `enabled`: `true` to reject replay/too-old sequences, `false` to bypass checks.
@@ -1151,10 +1225,10 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_tls13_early_data_anti_replay_enabled(&mut self, enabled: bool) {
+    pub fn noxtls_set_tls13_early_data_anti_replay_enabled(&mut self, enabled: bool) {
         self.tls13_early_data_anti_replay_enabled = enabled;
         if enabled {
-            self.tls13_early_data_replay_window = DtlsReplayWindow::new();
+            self.tls13_early_data_replay_window = DtlsReplayWindow::noxtls_new();
         }
     }
 
@@ -1166,7 +1240,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_tls13_require_early_data_acceptance(&mut self, required: bool) {
+    pub fn noxtls_set_tls13_require_early_data_acceptance(&mut self, required: bool) {
         self.tls13_early_data_require_acceptance = required;
         self.tls13_early_data_accepted_psk = None;
         self.tls13_early_data_max_bytes = None;
@@ -1185,7 +1259,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn set_tls13_early_data_operational_profile(
+    pub fn noxtls_set_tls13_early_data_operational_profile(
         &mut self,
         profile: Tls13EarlyDataOperationalProfile,
     ) {
@@ -1199,7 +1273,7 @@ impl Connection {
                 anti_replay_enabled: true,
             },
         };
-        self.set_tls13_early_data_operational_policy(policy);
+        self.noxtls_set_tls13_early_data_operational_policy(policy);
     }
 
     /// Applies explicit operational policy controls for modeled TLS 1.3 early-data handling.
@@ -1213,12 +1287,12 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn set_tls13_early_data_operational_policy(
+    pub fn noxtls_set_tls13_early_data_operational_policy(
         &mut self,
         policy: Tls13EarlyDataOperationalPolicy,
     ) {
-        self.set_tls13_require_early_data_acceptance(policy.require_acceptance);
-        self.set_tls13_early_data_anti_replay_enabled(policy.anti_replay_enabled);
+        self.noxtls_set_tls13_require_early_data_acceptance(policy.require_acceptance);
+        self.noxtls_set_tls13_early_data_anti_replay_enabled(policy.anti_replay_enabled);
     }
 
     /// Returns currently active operational policy for modeled TLS 1.3 early-data handling.
@@ -1230,7 +1304,7 @@ impl Connection {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn tls13_early_data_operational_policy(&self) -> Tls13EarlyDataOperationalPolicy {
+    pub fn noxtls_tls13_early_data_operational_policy(&self) -> Tls13EarlyDataOperationalPolicy {
         Tls13EarlyDataOperationalPolicy {
             require_acceptance: self.tls13_early_data_require_acceptance,
             anti_replay_enabled: self.tls13_early_data_anti_replay_enabled,
@@ -1246,8 +1320,8 @@ impl Connection {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn tls13_early_data_telemetry(&self) -> Tls13EarlyDataTelemetry {
-        self.tls13_early_data_telemetry
+    pub fn noxtls_tls13_early_data_telemetry(&self) -> Tls13EarlyDataTelemetry {
+        self.noxtls_tls13_early_data_telemetry
     }
 
     /// Resets modeled TLS 1.3 early-data telemetry counters to zero.
@@ -1258,8 +1332,8 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn reset_tls13_early_data_telemetry(&mut self) {
-        self.tls13_early_data_telemetry = Tls13EarlyDataTelemetry::default();
+    pub fn noxtls_reset_tls13_early_data_telemetry(&mut self) {
+        self.noxtls_tls13_early_data_telemetry = Tls13EarlyDataTelemetry::default();
     }
 
     /// Exports replay-window state for modeled TLS 1.3 early-data anti-replay continuity.
@@ -1271,7 +1345,7 @@ impl Connection {
     ///
     /// This function does not panic.
     #[must_use]
-    pub fn export_tls13_early_data_replay_state(&self) -> Tls13EarlyDataReplayState {
+    pub fn noxtls_export_tls13_early_data_replay_state(&self) -> Tls13EarlyDataReplayState {
         let snapshot = self.tls13_early_data_replay_window.snapshot();
         Tls13EarlyDataReplayState {
             latest_sequence: snapshot.latest_sequence,
@@ -1295,7 +1369,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn import_tls13_early_data_replay_state(
+    pub fn noxtls_import_tls13_early_data_replay_state(
         &mut self,
         state: Tls13EarlyDataReplayState,
     ) -> Result<()> {
@@ -1328,31 +1402,47 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello(&mut self, random: &[u8]) -> Result<Vec<u8>> {
+    fn noxtls_client_hello_offer_suites(&self) -> Vec<CipherSuite> {
+        if self.version.uses_tls13_handshake_semantics() {
+            return self
+                .tls13_client_cipher_suites
+                .clone()
+                .unwrap_or_else(|| noxtls_default_client_cipher_suites(self.version));
+        }
+        noxtls_default_client_cipher_suites(self.version)
+    }
+
+    pub fn noxtls_send_client_hello(&mut self, random: &[u8]) -> Result<Vec<u8>> {
         if self.state != HandshakeState::Idle {
             return Err(Error::StateError("client hello can only be sent from idle"));
         }
         if random.len() != 32 {
             return Err(Error::InvalidLength("client hello random must be 32 bytes"));
         }
-        self.reset_transcript_for_new_handshake();
-        self.validate_tls13_hrr_retry_group_support()?;
-        self.reset_tls13_certificate_auth_state();
-        let key_shares = self.prepare_client_key_share(random)?;
-        let client_hello_body = encode_client_hello_body(
+        self.noxtls_reset_transcript_for_new_handshake();
+        self.noxtls_validate_tls13_hrr_retry_group_support()?;
+        self.noxtls_reset_tls13_certificate_auth_state();
+        let offered_suites = self.noxtls_client_hello_offer_suites();
+        let key_shares = self.noxtls_prepare_client_key_share(random)?;
+        let client_hello_body = noxtls_encode_client_hello_body(
             self.version,
             random,
-            &default_client_cipher_suites(self.version),
+            &offered_suites,
             &key_shares,
             self.tls13_client_server_name.as_deref(),
             &self.tls13_client_alpn_protocols,
             self.tls13_request_ocsp_stapling,
+            self.tls13_client_offer_mldsa_signature,
             false,
             None,
-            self.tls12_session_id.as_deref(),
+            self.noxtls_tls12_session_id.as_deref(),
         )?;
         let msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &client_hello_body);
-        self.append_transcript(&msg);
+        noxtls_tls13_debug_log_bytes("tls13.transcript.client_hello", &msg);
+        if let Ok(Some(wire_x25519)) = noxtls_extract_tls13_client_hello_x25519_key_share(&msg) {
+            noxtls_tls13_debug_log_bytes("tls13.client_key_share.x25519_wire", &wire_x25519);
+        }
+        self.noxtls_append_transcript(&msg);
         self.state = HandshakeState::ClientHelloSent;
         self.tls13_early_data_offered_in_client_hello = false;
         self.tls13_early_data_accepted_in_encrypted_extensions = false;
@@ -1377,14 +1467,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_psk(
+    pub fn noxtls_send_client_hello_with_psk(
         &mut self,
         random: &[u8],
         identity: &[u8],
         obfuscated_ticket_age: u32,
         psk: &[u8],
     ) -> Result<Vec<u8>> {
-        self.send_client_hello_with_psk_internal(
+        self.noxtls_send_client_hello_with_psk_internal(
             random,
             identity,
             obfuscated_ticket_age,
@@ -1412,7 +1502,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn send_client_hello_with_psk_internal(
+    fn noxtls_send_client_hello_with_psk_internal(
         &mut self,
         random: &[u8],
         identity: &[u8],
@@ -1437,10 +1527,10 @@ impl Connection {
         if psk.is_empty() {
             return Err(Error::InvalidLength("psk must not be empty"));
         }
-        self.reset_transcript_for_new_handshake();
-        self.validate_tls13_hrr_retry_group_support()?;
-        self.reset_tls13_certificate_auth_state();
-        let binder_len = self.negotiated_hash_algorithm().output_len();
+        self.noxtls_reset_transcript_for_new_handshake();
+        self.noxtls_validate_tls13_hrr_retry_group_support()?;
+        self.noxtls_reset_tls13_certificate_auth_state();
+        let binder_len = self.noxtls_negotiated_hash_algorithm().output_len();
         let placeholder = vec![0_u8; binder_len];
         let placeholder_offer = PskClientOffer {
             identities: vec![PskIdentityOffer {
@@ -1449,21 +1539,24 @@ impl Connection {
             }],
             binders: vec![placeholder.as_slice()],
         };
-        let key_shares = self.prepare_client_key_share(random)?;
-        let placeholder_body = encode_client_hello_body(
+        let offered_suites = self.noxtls_client_hello_offer_suites();
+        let key_shares = self.noxtls_prepare_client_key_share(random)?;
+        let placeholder_body = noxtls_encode_client_hello_body(
             self.version,
             random,
-            &default_client_cipher_suites(self.version),
+            &offered_suites,
             &key_shares,
             self.tls13_client_server_name.as_deref(),
             &self.tls13_client_alpn_protocols,
             self.tls13_request_ocsp_stapling,
+            self.tls13_client_offer_mldsa_signature,
             offer_early_data,
             Some(&placeholder_offer),
-            self.tls12_session_id.as_deref(),
+            self.noxtls_tls12_session_id.as_deref(),
         )?;
-        let placeholder_msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &placeholder_body);
-        let binder = self.compute_tls13_psk_binder(psk, &placeholder_msg)?;
+        let placeholder_msg =
+            noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &placeholder_body);
+        let binder = self.noxtls_compute_tls13_psk_binder(psk, &placeholder_msg)?;
         let final_offer = PskClientOffer {
             identities: vec![PskIdentityOffer {
                 identity,
@@ -1471,20 +1564,21 @@ impl Connection {
             }],
             binders: vec![binder.as_slice()],
         };
-        let final_body = encode_client_hello_body(
+        let final_body = noxtls_encode_client_hello_body(
             self.version,
             random,
-            &default_client_cipher_suites(self.version),
+            &offered_suites,
             &key_shares,
             self.tls13_client_server_name.as_deref(),
             &self.tls13_client_alpn_protocols,
             self.tls13_request_ocsp_stapling,
+            self.tls13_client_offer_mldsa_signature,
             offer_early_data,
             Some(&final_offer),
-            self.tls12_session_id.as_deref(),
+            self.noxtls_tls12_session_id.as_deref(),
         )?;
         let msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &final_body);
-        self.append_transcript(&msg);
+        self.noxtls_append_transcript(&msg);
         self.state = HandshakeState::ClientHelloSent;
         self.tls13_early_data_offered_in_client_hello = offer_early_data;
         self.tls13_early_data_accepted_in_encrypted_extensions = false;
@@ -1507,7 +1601,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_resumption_tickets(
+    pub fn noxtls_send_client_hello_with_resumption_tickets(
         &mut self,
         random: &[u8],
         tickets: &[ResumptionTicket],
@@ -1516,7 +1610,7 @@ impl Connection {
         for ticket in tickets {
             obfuscated_ages.push(ticket.obfuscated_ticket_age);
         }
-        self.send_client_hello_with_resumption_tickets_with_ages(random, tickets, &obfuscated_ages)
+        self.noxtls_send_client_hello_with_resumption_tickets_with_ages(random, tickets, &obfuscated_ages)
     }
 
     /// Builds and records a TLS 1.3 ClientHello offering multiple resumption tickets.
@@ -1536,7 +1630,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_resumption_tickets_at(
+    pub fn noxtls_send_client_hello_with_resumption_tickets_at(
         &mut self,
         random: &[u8],
         tickets: &[ResumptionTicket],
@@ -1562,7 +1656,7 @@ impl Connection {
             let elapsed_u32 = elapsed_ms.min(u64::from(u32::MAX)) as u32;
             obfuscated_ages.push(ticket.age_add.wrapping_add(elapsed_u32));
         }
-        self.send_client_hello_with_resumption_tickets_with_ages(random, tickets, &obfuscated_ages)
+        self.noxtls_send_client_hello_with_resumption_tickets_with_ages(random, tickets, &obfuscated_ages)
     }
 
     /// Builds multi-ticket ClientHello using caller-selected obfuscated ticket ages.
@@ -1586,16 +1680,16 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn send_client_hello_with_resumption_tickets_with_ages(
+    fn noxtls_send_client_hello_with_resumption_tickets_with_ages(
         &mut self,
         random: &[u8],
         tickets: &[ResumptionTicket],
         obfuscated_ages: &[u32],
     ) -> Result<Vec<u8>> {
-        self.reset_transcript_for_new_handshake();
-        self.validate_tls13_hrr_retry_group_support()?;
-        self.reset_tls13_certificate_auth_state();
-        let hash_len = self.negotiated_hash_algorithm().output_len();
+        self.noxtls_reset_transcript_for_new_handshake();
+        self.noxtls_validate_tls13_hrr_retry_group_support()?;
+        self.noxtls_reset_tls13_certificate_auth_state();
+        let hash_len = self.noxtls_negotiated_hash_algorithm().output_len();
         let mut psk_identities = Vec::with_capacity(tickets.len());
         let mut psks = Vec::with_capacity(tickets.len());
         for (ticket, obfuscated_age) in tickets.iter().zip(obfuscated_ages.iter().copied()) {
@@ -1603,7 +1697,7 @@ impl Connection {
                 identity: ticket.identity.as_slice(),
                 obfuscated_ticket_age: obfuscated_age,
             });
-            psks.push(self.derive_tls13_resumption_psk(&ticket.ticket_nonce)?);
+            psks.push(self.noxtls_derive_tls13_resumption_psk(&ticket.ticket_nonce)?);
         }
         let zero_binders: Vec<Vec<u8>> = (0..tickets.len()).map(|_| vec![0_u8; hash_len]).collect();
         let zero_binder_refs: Vec<&[u8]> = zero_binders.iter().map(Vec::as_slice).collect();
@@ -1611,43 +1705,47 @@ impl Connection {
             identities: psk_identities,
             binders: zero_binder_refs,
         };
-        let key_shares = self.prepare_client_key_share(random)?;
-        let placeholder_body = encode_client_hello_body(
+        let offered_suites = self.noxtls_client_hello_offer_suites();
+        let key_shares = self.noxtls_prepare_client_key_share(random)?;
+        let placeholder_body = noxtls_encode_client_hello_body(
             self.version,
             random,
-            &default_client_cipher_suites(self.version),
+            &offered_suites,
             &key_shares,
             self.tls13_client_server_name.as_deref(),
             &self.tls13_client_alpn_protocols,
             self.tls13_request_ocsp_stapling,
+            self.tls13_client_offer_mldsa_signature,
             tickets.iter().any(|ticket| ticket.max_early_data_size > 0),
             Some(&placeholder_offer),
-            self.tls12_session_id.as_deref(),
+            self.noxtls_tls12_session_id.as_deref(),
         )?;
-        let placeholder_msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &placeholder_body);
+        let placeholder_msg =
+            noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &placeholder_body);
         let mut binders = Vec::with_capacity(psks.len());
         for psk in &psks {
-            binders.push(self.compute_tls13_psk_binder(psk, &placeholder_msg)?);
+            binders.push(self.noxtls_compute_tls13_psk_binder(psk, &placeholder_msg)?);
         }
         let binder_refs: Vec<&[u8]> = binders.iter().map(Vec::as_slice).collect();
         let final_offer = PskClientOffer {
             identities: placeholder_offer.identities,
             binders: binder_refs,
         };
-        let final_body = encode_client_hello_body(
+        let final_body = noxtls_encode_client_hello_body(
             self.version,
             random,
-            &default_client_cipher_suites(self.version),
+            &offered_suites,
             &key_shares,
             self.tls13_client_server_name.as_deref(),
             &self.tls13_client_alpn_protocols,
             self.tls13_request_ocsp_stapling,
+            self.tls13_client_offer_mldsa_signature,
             tickets.iter().any(|ticket| ticket.max_early_data_size > 0),
             Some(&final_offer),
-            self.tls12_session_id.as_deref(),
+            self.noxtls_tls12_session_id.as_deref(),
         )?;
         let msg = noxtls_encode_handshake_message(HANDSHAKE_CLIENT_HELLO, &final_body);
-        self.append_transcript(&msg);
+        self.noxtls_append_transcript(&msg);
         self.state = HandshakeState::ClientHelloSent;
         self.tls13_early_data_offered_in_client_hello =
             tickets.iter().any(|ticket| ticket.max_early_data_size > 0);
@@ -1671,13 +1769,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_resumption_ticket(
+    pub fn noxtls_send_client_hello_with_resumption_ticket(
         &mut self,
         random: &[u8],
         ticket: &ResumptionTicket,
     ) -> Result<Vec<u8>> {
-        let psk = self.derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
-        self.send_client_hello_with_psk_internal(
+        let psk = self.noxtls_derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
+        self.noxtls_send_client_hello_with_psk_internal(
             random,
             &ticket.identity,
             ticket.obfuscated_ticket_age,
@@ -1703,17 +1801,17 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_resumption_ticket_at(
+    pub fn noxtls_send_client_hello_with_resumption_ticket_at(
         &mut self,
         random: &[u8],
         ticket: &ResumptionTicket,
         current_time_ms: u64,
     ) -> Result<Vec<u8>> {
-        let psk = self.derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
+        let psk = self.noxtls_derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
         let elapsed_ms = current_time_ms.saturating_sub(ticket.issued_at_ms);
         let elapsed_u32 = elapsed_ms.min(u64::from(u32::MAX)) as u32;
         let obfuscated_age = ticket.age_add.wrapping_add(elapsed_u32);
-        self.send_client_hello_with_psk_internal(
+        self.noxtls_send_client_hello_with_psk_internal(
             random,
             &ticket.identity,
             obfuscated_age,
@@ -1737,9 +1835,9 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_auto(&mut self, drbg: &mut HmacDrbgSha256) -> Result<Vec<u8>> {
+    pub fn noxtls_send_client_hello_auto(&mut self, drbg: &mut HmacDrbgSha256) -> Result<Vec<u8>> {
         let random = drbg.generate(32, b"client_hello_random")?;
-        self.send_client_hello(&random)
+        self.noxtls_send_client_hello(&random)
     }
 
     /// Builds and records a TLS 1.3 PSK ClientHello with DRBG-generated random bytes.
@@ -1760,7 +1858,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_psk_auto(
+    pub fn noxtls_send_client_hello_with_psk_auto(
         &mut self,
         drbg: &mut HmacDrbgSha256,
         identity: &[u8],
@@ -1768,7 +1866,7 @@ impl Connection {
         psk: &[u8],
     ) -> Result<Vec<u8>> {
         let random = drbg.generate(32, b"client_hello_random")?;
-        self.send_client_hello_with_psk(&random, identity, obfuscated_ticket_age, psk)
+        self.noxtls_send_client_hello_with_psk(&random, identity, obfuscated_ticket_age, psk)
     }
 
     /// Builds and records a TLS 1.3 ClientHello from one ticket with DRBG random bytes.
@@ -1787,13 +1885,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_resumption_ticket_auto(
+    pub fn noxtls_send_client_hello_with_resumption_ticket_auto(
         &mut self,
         drbg: &mut HmacDrbgSha256,
         ticket: &ResumptionTicket,
     ) -> Result<Vec<u8>> {
         let random = drbg.generate(32, b"client_hello_random")?;
-        self.send_client_hello_with_resumption_ticket(&random, ticket)
+        self.noxtls_send_client_hello_with_resumption_ticket(&random, ticket)
     }
 
     /// Builds and records a TLS 1.3 ClientHello with ticket age using DRBG random bytes.
@@ -1813,14 +1911,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_resumption_ticket_at_auto(
+    pub fn noxtls_send_client_hello_with_resumption_ticket_at_auto(
         &mut self,
         drbg: &mut HmacDrbgSha256,
         ticket: &ResumptionTicket,
         current_time_ms: u64,
     ) -> Result<Vec<u8>> {
         let random = drbg.generate(32, b"client_hello_random")?;
-        self.send_client_hello_with_resumption_ticket_at(&random, ticket, current_time_ms)
+        self.noxtls_send_client_hello_with_resumption_ticket_at(&random, ticket, current_time_ms)
     }
 
     /// Builds and records a TLS 1.3 multi-ticket ClientHello with DRBG random bytes.
@@ -1840,13 +1938,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_resumption_tickets_auto(
+    pub fn noxtls_send_client_hello_with_resumption_tickets_auto(
         &mut self,
         drbg: &mut HmacDrbgSha256,
         tickets: &[ResumptionTicket],
     ) -> Result<Vec<u8>> {
         let random = drbg.generate(32, b"client_hello_random")?;
-        self.send_client_hello_with_resumption_tickets(&random, tickets)
+        self.noxtls_send_client_hello_with_resumption_tickets(&random, tickets)
     }
 
     /// Builds and records a TLS 1.3 multi-ticket ClientHello with DRBG random bytes.
@@ -1866,14 +1964,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_client_hello_with_resumption_tickets_at_auto(
+    pub fn noxtls_send_client_hello_with_resumption_tickets_at_auto(
         &mut self,
         drbg: &mut HmacDrbgSha256,
         tickets: &[ResumptionTicket],
         current_time_ms: u64,
     ) -> Result<Vec<u8>> {
         let random = drbg.generate(32, b"client_hello_random")?;
-        self.send_client_hello_with_resumption_tickets_at(&random, tickets, current_time_ms)
+        self.noxtls_send_client_hello_with_resumption_tickets_at(&random, tickets, current_time_ms)
     }
 
     /// Validates and records server hello bytes for transcript hashing.
@@ -1891,21 +1989,21 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_server_hello(&mut self, msg: &[u8]) -> Result<()> {
+    pub fn noxtls_recv_server_hello(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::ClientHelloSent {
             return Err(Error::StateError(
                 "server hello can only be processed after client hello",
             ));
         }
-        let parsed = parse_server_hello(msg)?;
+        let parsed = noxtls_parse_server_hello(msg)?;
         if parsed.hello_retry_request {
             if self.tls13_hrr_seen {
                 return Err(Error::ParseFailure("duplicate hello retry request"));
             }
             self.tls13_hrr_seen = true;
             self.tls13_hrr_requested_group = parsed.requested_group;
-            self.reset_transcript_for_hrr();
-            self.append_transcript(msg);
+            self.noxtls_reset_transcript_for_hrr();
+            self.noxtls_append_transcript(msg);
             self.state = HandshakeState::Idle;
             return Ok(());
         }
@@ -1916,39 +2014,63 @@ impl Connection {
         if let Some(share) = server_key_share {
             self.tls13_shared_secret = Some(match share {
                 Tls13ServerKeyShareParsed::X25519(peer_key_share) => {
+                    noxtls_tls13_debug_log_bytes("tls13.server_hello.peer_key_share.x25519", &peer_key_share);
                     let private = self
                         .tls13_client_x25519_private
                         .clone()
                         .ok_or(Error::StateError(
                         "client x25519 key share must be available before server x25519 key share",
                     ))?;
-                    noxtls_derive_tls13_x25519_shared_secret(private, &peer_key_share)?
+                    let shared = noxtls_derive_tls13_x25519_shared_secret(private, &peer_key_share)?;
+                    noxtls_tls13_debug_log_bytes("tls13.shared_secret", &shared);
+                    shared
                 }
                 Tls13ServerKeyShareParsed::Secp256r1(peer_uncompressed) => {
+                    noxtls_tls13_debug_log_bytes(
+                        "tls13.server_hello.peer_key_share.secp256r1",
+                        &peer_uncompressed,
+                    );
                     let private = self.tls13_client_p256_private.as_ref().ok_or(
                         Error::StateError(
                             "client secp256r1 key share must be available before server secp256r1 key share",
                         ),
                     )?;
-                    noxtls_derive_tls13_p256_shared_secret(private, &peer_uncompressed)?
+                    let shared = noxtls_derive_tls13_p256_shared_secret(private, &peer_uncompressed)?;
+                    noxtls_tls13_debug_log_bytes("tls13.shared_secret", &shared);
+                    shared
                 }
                 Tls13ServerKeyShareParsed::MlKem768(peer_key_share) => {
+                    noxtls_tls13_debug_log_bytes(
+                        "tls13.server_hello.peer_key_share.mlkem768_ciphertext",
+                        &peer_key_share,
+                    );
                     let private =
                         self.tls13_client_mlkem768_private
                             .as_ref()
                             .ok_or(Error::StateError(
                                 "client mlkem768 key share must be available before server mlkem768 key share",
                             ))?;
-                    noxtls_derive_tls13_mlkem768_shared_secret(private, &peer_key_share)?
+                    let shared = noxtls_derive_tls13_mlkem768_shared_secret(private, &peer_key_share)?;
+                    noxtls_tls13_debug_log_bytes("tls13.shared_secret", &shared);
+                    shared
                 }
                 Tls13ServerKeyShareParsed::X25519MlKem768Hybrid { x25519, mlkem768 } => {
+                    noxtls_tls13_debug_log_bytes(
+                        "tls13.server_hello.peer_key_share.hybrid.x25519",
+                        &x25519,
+                    );
+                    noxtls_tls13_debug_log_bytes(
+                        "tls13.server_hello.peer_key_share.hybrid.mlkem768_ciphertext",
+                        &mlkem768,
+                    );
                     let x25519_private = self
                         .tls13_client_x25519_private
                         .clone()
                         .ok_or(Error::StateError(
                         "client x25519 key share must be available before server hybrid key share",
                     ))?;
-                    let x25519_shared = noxtls_derive_tls13_x25519_shared_secret(x25519_private, &x25519)?;
+                    let x25519_shared =
+                        noxtls_derive_tls13_x25519_shared_secret(x25519_private, &x25519)?;
                     let mlkem_private =
                         self.tls13_client_mlkem768_private
                             .as_ref()
@@ -1957,13 +2079,19 @@ impl Connection {
                             ))?;
                     let mlkem_shared =
                         noxtls_derive_tls13_mlkem768_shared_secret(mlkem_private, &mlkem768)?;
-                    combine_tls13_hybrid_shared_secret(&x25519_shared, &mlkem_shared)
+                    let shared =
+                        noxtls_combine_tls13_hybrid_shared_secret(&x25519_shared, &mlkem_shared);
+                    noxtls_tls13_debug_log_bytes("tls13.shared_secret.classical", &x25519_shared);
+                    noxtls_tls13_debug_log_bytes("tls13.shared_secret.pq", &mlkem_shared);
+                    noxtls_tls13_debug_log_bytes("tls13.shared_secret", &shared);
+                    shared
                 }
             });
         }
-        self.append_transcript(msg);
-        self.selected_cipher_suite = Some(selected_suite);
-        self.rebuild_transcript_hash_from_selected_suite();
+        noxtls_tls13_debug_log_bytes("tls13.transcript.server_hello", msg);
+        self.noxtls_append_transcript(msg);
+        self.noxtls_selected_cipher_suite = Some(selected_suite);
+        self.noxtls_rebuild_transcript_hash_from_selected_suite();
         self.state = HandshakeState::ServerHelloReceived;
         Ok(())
     }
@@ -1984,22 +2112,25 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_hello_retry_request(suite: CipherSuite, requested_group: u16) -> Result<Vec<u8>> {
+    pub fn noxtls_build_hello_retry_request(suite: CipherSuite, requested_group: u16) -> Result<Vec<u8>> {
         let mut body = Vec::new();
-        body.extend_from_slice(&legacy_wire_version(TlsVersion::Tls13));
+        body.extend_from_slice(&noxtls_legacy_wire_version(TlsVersion::Tls13));
         body.extend_from_slice(&TLS13_HRR_RANDOM);
         body.push(0x00); // session_id length
-        body.extend_from_slice(&suite.to_u16().to_be_bytes());
+        body.extend_from_slice(&suite.noxtls_to_u16().to_be_bytes());
         body.push(0x00); // compression method
         let mut extensions = Vec::new();
-        push_extension(
+        noxtls_push_extension(
             &mut extensions,
             EXT_KEY_SHARE,
             &requested_group.to_be_bytes(),
         );
         body.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         body.extend_from_slice(&extensions);
-        Ok(noxtls_encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
+        Ok(noxtls_encode_handshake_message(
+            HANDSHAKE_SERVER_HELLO,
+            &body,
+        ))
     }
 
     /// Parses and records a TLS 1.3 EncryptedExtensions handshake message.
@@ -2017,8 +2148,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_encrypted_extensions(&mut self, msg: &[u8]) -> Result<()> {
-        if self.state != HandshakeState::ServerHelloReceived {
+    pub fn noxtls_recv_encrypted_extensions(&mut self, msg: &[u8]) -> Result<()> {
+        let allowed = if self.version.uses_tls13_handshake_semantics() {
+            self.state == HandshakeState::ServerHelloReceived
+                || self.state == HandshakeState::KeysDerived
+        } else {
+            self.state == HandshakeState::ServerHelloReceived
+        };
+        if !allowed {
             return Err(Error::StateError(
                 "encrypted extensions can only be processed after server hello",
             ));
@@ -2027,7 +2164,7 @@ impl Connection {
         if handshake_type != HANDSHAKE_ENCRYPTED_EXTENSIONS {
             return Err(Error::ParseFailure("invalid encrypted extensions type"));
         }
-        let encrypted_extensions = parse_encrypted_extensions_body(body)?;
+        let encrypted_extensions = noxtls_parse_encrypted_extensions_body(body)?;
         if encrypted_extensions.server_name_acknowledged && self.tls13_client_server_name.is_none()
         {
             return Err(Error::ParseFailure(
@@ -2057,9 +2194,9 @@ impl Connection {
             self.tls13_early_data_accepted_psk = None;
             self.tls13_early_data_max_bytes = None;
             self.tls13_early_data_opened_bytes = 0;
-            self.tls13_early_data_replay_window = DtlsReplayWindow::new();
+            self.tls13_early_data_replay_window = DtlsReplayWindow::noxtls_new();
         }
-        self.tls13_server_name_acknowledged = encrypted_extensions.server_name_acknowledged;
+        self.noxtls_tls13_server_name_acknowledged = encrypted_extensions.server_name_acknowledged;
         if let Some(selected_protocol) = encrypted_extensions.selected_alpn_protocol {
             if !self.tls13_client_alpn_protocols.is_empty()
                 && !self
@@ -2070,11 +2207,11 @@ impl Connection {
                     "encrypted extensions selected unsupported alpn protocol",
                 ));
             }
-            self.tls13_selected_alpn_protocol = Some(selected_protocol);
+            self.noxtls_tls13_selected_alpn_protocol = Some(selected_protocol);
         } else {
-            self.tls13_selected_alpn_protocol = None;
+            self.noxtls_tls13_selected_alpn_protocol = None;
         }
-        self.append_transcript(msg);
+        self.noxtls_append_transcript(msg);
         self.state = HandshakeState::ServerEncryptedExtensionsReceived;
         Ok(())
     }
@@ -2091,7 +2228,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_certificate_request_message() -> Vec<u8> {
+    pub fn noxtls_build_certificate_request_message() -> Vec<u8> {
         // Empty request context + signature_algorithms extension.
         let mut extensions = Vec::new();
         let mut sigalgs = Vec::new();
@@ -2106,7 +2243,7 @@ impl Connection {
         for sigalg in requested_sigalgs {
             sigalgs.extend_from_slice(&sigalg.to_be_bytes());
         }
-        push_extension(&mut extensions, EXT_SIGNATURE_ALGORITHMS, &sigalgs);
+        noxtls_push_extension(&mut extensions, EXT_SIGNATURE_ALGORITHMS, &sigalgs);
         let mut body = Vec::new();
         body.push(0x00); // certificate_request_context length
         body.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
@@ -2129,7 +2266,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_certificate_request(&mut self, msg: &[u8]) -> Result<()> {
+    pub fn noxtls_recv_certificate_request(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::ServerEncryptedExtensionsReceived {
             return Err(Error::StateError(
                 "certificate request can only be processed after encrypted extensions",
@@ -2139,8 +2276,8 @@ impl Connection {
         if handshake_type != HANDSHAKE_CERTIFICATE_REQUEST {
             return Err(Error::ParseFailure("invalid certificate request type"));
         }
-        parse_certificate_request_body(body)?;
-        self.append_transcript(msg);
+        noxtls_parse_certificate_request_body(body)?;
+        self.noxtls_append_transcript(msg);
         self.state = HandshakeState::ServerCertificateRequestReceived;
         Ok(())
     }
@@ -2157,9 +2294,9 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_encrypted_extensions() -> Vec<u8> {
+    pub fn noxtls_build_encrypted_extensions() -> Vec<u8> {
         // Minimal empty extension block.
-        Self::build_encrypted_extensions_with_policy(None, false, false)
+        Self::noxtls_build_encrypted_extensions_with_policy(None, false, false)
             .expect("empty encrypted extensions must always encode")
     }
 
@@ -2178,8 +2315,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_encrypted_extensions_with_alpn(selected_alpn: Option<&[u8]>) -> Result<Vec<u8>> {
-        Self::build_encrypted_extensions_with_policy(selected_alpn, false, false)
+    pub fn noxtls_build_encrypted_extensions_with_alpn(selected_alpn: Option<&[u8]>) -> Result<Vec<u8>> {
+        Self::noxtls_build_encrypted_extensions_with_policy(selected_alpn, false, false)
     }
 
     /// Builds a TLS 1.3 EncryptedExtensions handshake message with optional ALPN and early_data ack.
@@ -2197,11 +2334,11 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn build_encrypted_extensions_with_alpn_and_early_data(
+    pub fn noxtls_build_encrypted_extensions_with_alpn_and_early_data(
         selected_alpn: Option<&[u8]>,
         accept_early_data: bool,
     ) -> Result<Vec<u8>> {
-        Self::build_encrypted_extensions_with_policy(selected_alpn, false, accept_early_data)
+        Self::noxtls_build_encrypted_extensions_with_policy(selected_alpn, false, accept_early_data)
     }
 
     /// Builds a TLS 1.3 EncryptedExtensions handshake message with ALPN and SNI-ack policy.
@@ -2220,7 +2357,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_encrypted_extensions_with_policy(
+    pub fn noxtls_build_encrypted_extensions_with_policy(
         selected_alpn: Option<&[u8]>,
         acknowledge_server_name: bool,
         accept_early_data: bool,
@@ -2237,14 +2374,14 @@ impl Connection {
                 ));
             }
             let protocols = vec![protocol.to_vec()];
-            let extension_data = encode_alpn_extension_data(&protocols)?;
-            push_extension(&mut extensions, EXT_ALPN, &extension_data);
+            let extension_data = noxtls_encode_alpn_extension_data(&protocols)?;
+            noxtls_push_extension(&mut extensions, EXT_ALPN, &extension_data);
         }
         if acknowledge_server_name {
-            push_extension(&mut extensions, EXT_SERVER_NAME, &[]);
+            noxtls_push_extension(&mut extensions, EXT_SERVER_NAME, &[]);
         }
         if accept_early_data {
-            push_extension(&mut extensions, EXT_EARLY_DATA, &[]);
+            noxtls_push_extension(&mut extensions, EXT_EARLY_DATA, &[]);
         }
         body.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         body.extend_from_slice(&extensions);
@@ -2269,7 +2406,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_certificate(&mut self, msg: &[u8]) -> Result<()> {
+    pub fn noxtls_recv_certificate(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::ServerEncryptedExtensionsReceived
             && self.state != HandshakeState::ServerCertificateRequestReceived
         {
@@ -2281,9 +2418,9 @@ impl Connection {
         if handshake_type != HANDSHAKE_CERTIFICATE {
             return Err(Error::ParseFailure("invalid certificate type"));
         }
-        let parsed = parse_certificate_body(body)?;
-        self.tls13_server_ocsp_staple = parsed.leaf_ocsp_staple.clone();
-        self.tls13_server_ocsp_staple_verified = false;
+        let parsed = noxtls_parse_certificate_body(body)?;
+        self.noxtls_tls13_server_ocsp_staple = parsed.leaf_ocsp_staple.clone();
+        self.noxtls_tls13_server_ocsp_staple_verified = false;
         if self.tls13_require_ocsp_staple && parsed.leaf_ocsp_staple.is_none() {
             return Err(Error::ParseFailure(
                 "certificate message missing required ocsp staple",
@@ -2293,7 +2430,7 @@ impl Connection {
             if let Some(verifier) = self.tls13_ocsp_staple_verifier {
                 match verifier(staple)? {
                     Tls13OcspStapleVerification::Good => {
-                        self.tls13_server_ocsp_staple_verified = true;
+                        self.noxtls_tls13_server_ocsp_staple_verified = true;
                     }
                     Tls13OcspStapleVerification::Expired => {
                         return Err(Error::ParseFailure("ocsp staple expired"));
@@ -2303,13 +2440,13 @@ impl Connection {
                     }
                 }
             } else {
-                self.tls13_server_ocsp_staple_verified = true;
+                self.noxtls_tls13_server_ocsp_staple_verified = true;
             }
         }
         if self.tls13_require_certificate_auth {
-            self.validate_tls13_server_certificate_chain(&parsed.certificates)?;
+            self.noxtls_validate_tls13_server_certificate_chain(&parsed.certificates)?;
         }
-        self.append_transcript(msg);
+        self.noxtls_append_transcript(msg);
         self.state = HandshakeState::ServerCertificateReceived;
         Ok(())
     }
@@ -2337,30 +2474,106 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_server_handshake_flight(&mut self, messages: &[Vec<u8>]) -> Result<()> {
+    pub fn noxtls_process_server_handshake_flight(&mut self, messages: &[Vec<u8>]) -> Result<()> {
         if messages.len() < 5 {
             return Err(Error::ParseFailure("server handshake flight is too short"));
         }
         let mut index = 0_usize;
-        self.recv_server_hello(&messages[index])?;
+        self.noxtls_recv_server_hello(&messages[index])?;
         index += 1;
-        self.recv_encrypted_extensions(&messages[index])?;
+        self.noxtls_derive_handshake_secret()?;
+        self.noxtls_recv_encrypted_extensions(&messages[index])?;
         index += 1;
         let (next_type, _) = noxtls_parse_handshake_message(&messages[index])?;
         if next_type == HANDSHAKE_CERTIFICATE_REQUEST {
-            self.recv_certificate_request(&messages[index])?;
+            self.noxtls_recv_certificate_request(&messages[index])?;
             index += 1;
         }
-        self.recv_certificate(&messages[index])?;
+        self.noxtls_recv_certificate(&messages[index])?;
         index += 1;
-        self.recv_certificate_verify(&messages[index])?;
+        self.noxtls_recv_certificate_verify(&messages[index])?;
         index += 1;
-        self.derive_handshake_secret()?;
-        self.recv_finished_message(&messages[index])?;
+        self.noxtls_recv_finished_message(&messages[index])?;
         index += 1;
         if index != messages.len() {
             return Err(Error::ParseFailure(
                 "unexpected trailing server handshake messages",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Decrypts TLS 1.3 server post-`ServerHello` records and completes the canonical server handshake flight.
+    ///
+    /// Callers must have sent `ClientHello` and processed plaintext `ServerHello` so the transcript hash
+    /// through `ServerHello` matches RFC 8446 handshake traffic key derivation inputs.
+    ///
+    /// # Arguments
+    ///
+    /// * `packets` — Ordered TLS 1.3 `application_data` ciphertext record bytes (one outer record per element).
+    /// * `aad` — AEAD additional data for each record (often empty when integrating minimal transports).
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` when decrypted handshake messages match the strict ordering enforced by
+    /// [`Connection::noxtls_process_server_handshake_flight`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`noxtls_core::Error`] when decryption, parsing, or handshake policy checks fail.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    pub fn noxtls_process_tls13_server_encrypted_handshake_flight(
+        &mut self,
+        packets: &[Vec<u8>],
+        aad: &[u8],
+    ) -> Result<()> {
+        if !self.version.uses_tls13_handshake_semantics() || self.version.is_dtls() {
+            return Err(Error::StateError(
+                "tls13 encrypted server flight requires tls 1.3 non-dtls connection",
+            ));
+        }
+        if self.state != HandshakeState::ServerHelloReceived {
+            return Err(Error::StateError(
+                "tls13 encrypted server flight requires server hello received state",
+            ));
+        }
+        self.noxtls_derive_handshake_secret()?;
+        let mut messages = Vec::new();
+        for packet in packets {
+            let (inner, content_type) = self.noxtls_open_tls13_record_packet(packet, aad)?;
+            if content_type != RecordContentType::Handshake.to_u8() {
+                return Err(Error::ParseFailure(
+                    "tls13 encrypted server flight inner record must be handshake",
+                ));
+            }
+            let parts = split_tls13_handshake_payload(&inner)?;
+            messages.extend(parts);
+        }
+        if messages.len() < 4 {
+            return Err(Error::ParseFailure(
+                "tls13 decrypted server handshake flight is too short",
+            ));
+        }
+        let mut index = 0_usize;
+        self.noxtls_recv_encrypted_extensions(&messages[index])?;
+        index += 1;
+        let (next_type, _) = noxtls_parse_handshake_message(&messages[index])?;
+        if next_type == HANDSHAKE_CERTIFICATE_REQUEST {
+            self.noxtls_recv_certificate_request(&messages[index])?;
+            index += 1;
+        }
+        self.noxtls_recv_certificate(&messages[index])?;
+        index += 1;
+        self.noxtls_recv_certificate_verify(&messages[index])?;
+        index += 1;
+        self.noxtls_recv_finished_message(&messages[index])?;
+        index += 1;
+        if index != messages.len() {
+            return Err(Error::ParseFailure(
+                "unexpected trailing tls13 decrypted server handshake messages",
             ));
         }
         Ok(())
@@ -2388,7 +2601,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_tls12_server_handshake_flight(&mut self, messages: &[Vec<u8>]) -> Result<()> {
+    pub fn noxtls_process_tls12_server_handshake_flight(&mut self, messages: &[Vec<u8>]) -> Result<()> {
         if self.version != TlsVersion::Tls12 {
             return Err(Error::StateError(
                 "tls12 server flight processing requires tls1.2 connection version",
@@ -2406,7 +2619,7 @@ impl Connection {
         }
 
         let mut index = 0_usize;
-        self.recv_server_hello(&messages[index])?;
+        self.noxtls_recv_server_hello(&messages[index])?;
         index += 1;
         let (next_type, _body) = noxtls_parse_handshake_message(&messages[index])?;
         if next_type != HANDSHAKE_CERTIFICATE {
@@ -2414,18 +2627,18 @@ impl Connection {
                 "tls12 server handshake flight expected certificate after server hello",
             ));
         }
-        self.recv_tls12_server_certificate(&messages[index])?;
+        self.noxtls_recv_tls12_server_certificate(&messages[index])?;
         index += 1;
 
         while index < messages.len() {
             let (message_type, _body) = noxtls_parse_handshake_message(&messages[index])?;
             if message_type == HANDSHAKE_SERVER_KEY_EXCHANGE {
-                self.recv_tls12_server_key_exchange(&messages[index])?;
+                self.noxtls_recv_tls12_server_key_exchange(&messages[index])?;
                 index += 1;
                 continue;
             }
             if message_type == HANDSHAKE_CERTIFICATE_REQUEST {
-                self.recv_tls12_server_certificate_request(&messages[index])?;
+                self.noxtls_recv_tls12_server_certificate_request(&messages[index])?;
                 index += 1;
                 continue;
             }
@@ -2437,7 +2650,7 @@ impl Connection {
                 "tls12 server handshake flight missing server hello done",
             ));
         }
-        self.recv_tls12_server_hello_done(&messages[index])?;
+        self.noxtls_recv_tls12_server_hello_done(&messages[index])?;
         index += 1;
         if index != messages.len() {
             return Err(Error::ParseFailure(
@@ -2464,7 +2677,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_tls12_change_cipher_spec(&mut self) -> Result<()> {
+    pub fn noxtls_recv_tls12_change_cipher_spec(&mut self) -> Result<()> {
         if self.version != TlsVersion::Tls12 {
             return Err(Error::StateError(
                 "tls12 change cipher spec requires tls1.2 connection version",
@@ -2499,7 +2712,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_tls12_client_handshake_flight(&mut self, messages: &[Vec<u8>]) -> Result<()> {
+    pub fn noxtls_process_tls12_client_handshake_flight(&mut self, messages: &[Vec<u8>]) -> Result<()> {
         if self.version != TlsVersion::Tls12 {
             return Err(Error::StateError(
                 "tls12 client flight processing requires tls1.2 connection version",
@@ -2522,13 +2735,13 @@ impl Connection {
                 "tls12 client handshake flight expected client key exchange first",
             ));
         }
-        self.recv_tls12_client_key_exchange(&messages[index])?;
+        self.noxtls_recv_tls12_client_key_exchange(&messages[index])?;
         index += 1;
 
         if index < messages.len() {
             let (message_type, _body) = noxtls_parse_handshake_message(&messages[index])?;
             if message_type == HANDSHAKE_CERTIFICATE_VERIFY {
-                self.recv_tls12_client_certificate_verify(&messages[index])?;
+                self.noxtls_recv_tls12_client_certificate_verify(&messages[index])?;
                 index += 1;
             }
         }
@@ -2543,7 +2756,7 @@ impl Connection {
                 "tls12 client handshake flight missing finished message",
             ));
         }
-        self.recv_tls12_client_finished(&messages[index])?;
+        self.noxtls_recv_tls12_client_finished(&messages[index])?;
         index += 1;
         if index != messages.len() {
             return Err(Error::ParseFailure(
@@ -2572,14 +2785,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_tls12_server_handshake_flight_with_alert(
+    pub fn noxtls_process_tls12_server_handshake_flight_with_alert(
         &mut self,
         messages: &[Vec<u8>],
     ) -> core::result::Result<(), (Error, Option<Vec<u8>>)> {
-        match self.process_tls12_server_handshake_flight(messages) {
+        match self.noxtls_process_tls12_server_handshake_flight(messages) {
             Ok(()) => Ok(()),
             Err(error) => {
-                let alert_packet = self.send_tls12_alert_for_handshake_error(&error).ok();
+                let alert_packet = self.noxtls_send_tls12_alert_for_handshake_error(&error).ok();
                 Err((error, alert_packet))
             }
         }
@@ -2601,14 +2814,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_tls12_client_handshake_flight_with_alert(
+    pub fn noxtls_process_tls12_client_handshake_flight_with_alert(
         &mut self,
         messages: &[Vec<u8>],
     ) -> core::result::Result<(), (Error, Option<Vec<u8>>)> {
-        match self.process_tls12_client_handshake_flight(messages) {
+        match self.noxtls_process_tls12_client_handshake_flight(messages) {
             Ok(()) => Ok(()),
             Err(error) => {
-                let alert_packet = self.send_tls12_alert_for_handshake_error(&error).ok();
+                let alert_packet = self.noxtls_send_tls12_alert_for_handshake_error(&error).ok();
                 Err((error, alert_packet))
             }
         }
@@ -2634,7 +2847,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn tls12_alert_for_handshake_error(error: &Error) -> (AlertLevel, AlertDescription) {
+    pub fn noxtls_tls12_alert_for_handshake_error(error: &Error) -> (AlertLevel, AlertDescription) {
         let description = match error {
             Error::StateError(message) => {
                 if message.contains("can only be processed")
@@ -2687,7 +2900,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn recv_tls12_server_certificate(&mut self, msg: &[u8]) -> Result<()> {
+    fn noxtls_recv_tls12_server_certificate(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::ServerHelloReceived {
             return Err(Error::StateError(
                 "tls12 certificate can only be processed after server hello",
@@ -2699,11 +2912,11 @@ impl Connection {
                 "invalid tls12 certificate message type",
             ));
         }
-        let certificates = parse_tls12_certificate_list(body)?;
+        let certificates = noxtls_parse_tls12_certificate_list(body)?;
         if self.tls13_require_certificate_auth {
-            self.validate_tls13_server_certificate_chain(&certificates)?;
+            self.noxtls_validate_tls13_server_certificate_chain(&certificates)?;
         }
-        self.append_transcript(msg);
+        self.noxtls_append_transcript(msg);
         self.state = HandshakeState::ServerCertificateReceived;
         Ok(())
     }
@@ -2727,7 +2940,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn recv_tls12_server_key_exchange(&mut self, msg: &[u8]) -> Result<()> {
+    fn noxtls_recv_tls12_server_key_exchange(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::ServerCertificateReceived {
             return Err(Error::StateError(
                 "tls12 server key exchange can only be processed after certificate",
@@ -2739,8 +2952,8 @@ impl Connection {
                 "invalid tls12 server key exchange message type",
             ));
         }
-        parse_tls12_server_key_exchange_body(body)?;
-        self.append_transcript(msg);
+        noxtls_parse_tls12_server_key_exchange_body(body)?;
+        self.noxtls_append_transcript(msg);
         Ok(())
     }
 
@@ -2763,7 +2976,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn recv_tls12_server_certificate_request(&mut self, msg: &[u8]) -> Result<()> {
+    fn noxtls_recv_tls12_server_certificate_request(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::ServerCertificateReceived {
             return Err(Error::StateError(
                 "tls12 certificate request can only be processed after certificate",
@@ -2780,7 +2993,7 @@ impl Connection {
                 "tls12 certificate request body must not be empty",
             ));
         }
-        self.append_transcript(msg);
+        self.noxtls_append_transcript(msg);
         Ok(())
     }
 
@@ -2803,7 +3016,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn recv_tls12_server_hello_done(&mut self, msg: &[u8]) -> Result<()> {
+    fn noxtls_recv_tls12_server_hello_done(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::ServerCertificateReceived {
             return Err(Error::StateError(
                 "tls12 server hello done can only be processed after certificate flight",
@@ -2820,7 +3033,7 @@ impl Connection {
                 "tls12 server hello done body must be empty",
             ));
         }
-        self.append_transcript(msg);
+        self.noxtls_append_transcript(msg);
         Ok(())
     }
 
@@ -2843,7 +3056,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn recv_tls12_client_key_exchange(&mut self, msg: &[u8]) -> Result<()> {
+    fn noxtls_recv_tls12_client_key_exchange(&mut self, msg: &[u8]) -> Result<()> {
         let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_CLIENT_KEY_EXCHANGE {
             return Err(Error::ParseFailure(
@@ -2855,7 +3068,7 @@ impl Connection {
                 "tls12 client key exchange body must not be empty",
             ));
         }
-        self.append_transcript(msg);
+        self.noxtls_append_transcript(msg);
         Ok(())
     }
 
@@ -2878,15 +3091,15 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn recv_tls12_client_certificate_verify(&mut self, msg: &[u8]) -> Result<()> {
+    fn noxtls_recv_tls12_client_certificate_verify(&mut self, msg: &[u8]) -> Result<()> {
         let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_CERTIFICATE_VERIFY {
             return Err(Error::ParseFailure(
                 "invalid tls12 client certificate verify message type",
             ));
         }
-        parse_tls12_certificate_verify_body(body)?;
-        self.append_transcript(msg);
+        noxtls_parse_tls12_certificate_verify_body(body)?;
+        self.noxtls_append_transcript(msg);
         Ok(())
     }
 
@@ -2909,7 +3122,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn recv_tls12_client_finished(&mut self, msg: &[u8]) -> Result<()> {
+    fn noxtls_recv_tls12_client_finished(&mut self, msg: &[u8]) -> Result<()> {
         let (message_type, body) = noxtls_parse_handshake_message(msg)?;
         if message_type != HANDSHAKE_FINISHED {
             return Err(Error::ParseFailure("invalid tls12 finished message type"));
@@ -2917,7 +3130,7 @@ impl Connection {
         if body.is_empty() {
             return Err(Error::ParseFailure("tls12 finished body must not be empty"));
         }
-        self.append_transcript(msg);
+        self.noxtls_append_transcript(msg);
         Ok(())
     }
 
@@ -2936,8 +3149,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_certificate_message(certificate_der: &[u8]) -> Result<Vec<u8>> {
-        Self::build_certificate_message_with_ocsp_staple(certificate_der, None)
+    pub fn noxtls_build_certificate_message(certificate_der: &[u8]) -> Result<Vec<u8>> {
+        Self::noxtls_build_certificate_message_with_ocsp_staple(certificate_der, None)
     }
 
     /// Builds a TLS 1.3 Certificate handshake message with optional leaf OCSP staple.
@@ -2952,7 +3165,7 @@ impl Connection {
     /// # Errors
     ///
     /// Returns [`noxtls_core::Error`] when inputs or handshake state invalidate the operation; see the function body for specific error construction sites.
-    pub fn build_certificate_message_with_ocsp_staple(
+    pub fn noxtls_build_certificate_message_with_ocsp_staple(
         certificate_der: &[u8],
         ocsp_staple: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
@@ -2963,7 +3176,7 @@ impl Connection {
             return Err(Error::InvalidLength("certificate der is too large"));
         }
         let certificate_extensions = if let Some(staple) = ocsp_staple {
-            encode_certificate_entry_status_request_extension(staple)?
+            noxtls_encode_certificate_entry_status_request_extension(staple)?
         } else {
             Vec::new()
         };
@@ -2977,7 +3190,10 @@ impl Connection {
         body.extend_from_slice(certificate_der);
         body.extend_from_slice(&(certificate_extensions.len() as u16).to_be_bytes());
         body.extend_from_slice(&certificate_extensions);
-        Ok(noxtls_encode_handshake_message(HANDSHAKE_CERTIFICATE, &body))
+        Ok(noxtls_encode_handshake_message(
+            HANDSHAKE_CERTIFICATE,
+            &body,
+        ))
     }
 
     /// Parses and records a TLS 1.3 CertificateVerify handshake message.
@@ -2995,7 +3211,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_certificate_verify(&mut self, msg: &[u8]) -> Result<()> {
+    pub fn noxtls_recv_certificate_verify(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::ServerCertificateReceived {
             return Err(Error::StateError(
                 "certificate verify can only be processed after certificate",
@@ -3005,13 +3221,13 @@ impl Connection {
         if handshake_type != HANDSHAKE_CERTIFICATE_VERIFY {
             return Err(Error::ParseFailure("invalid certificate verify type"));
         }
-        let (signature_scheme, signature) = parse_certificate_verify_fields(body)?;
+        let (signature_scheme, signature) = noxtls_parse_certificate_verify_fields(body)?;
         if signature.is_empty() {
             return Err(Error::ParseFailure(
                 "certificate verify signature must not be empty",
             ));
         }
-        if !tls13_supported_certificate_verify_signature_scheme(signature_scheme) {
+        if !noxtls_tls13_supported_certificate_verify_signature_scheme(signature_scheme) {
             return Err(Error::UnsupportedFeature(
                 "unsupported tls13 certificate verify signature scheme",
             ));
@@ -3022,9 +3238,9 @@ impl Connection {
                     "certificate verify requires validated server certificate chain",
                 ));
             }
-            self.verify_tls13_server_certificate_verify_signature(signature_scheme, signature)?;
+            self.noxtls_verify_tls13_server_certificate_verify_signature(signature_scheme, signature)?;
         }
-        self.append_transcript(msg);
+        self.noxtls_append_transcript(msg);
         self.state = HandshakeState::ServerCertificateVerified;
         Ok(())
     }
@@ -3045,7 +3261,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_certificate_verify_message(
+    pub fn noxtls_build_certificate_verify_message(
         signature_scheme: u16,
         signature: &[u8],
     ) -> Result<Vec<u8>> {
@@ -3084,41 +3300,79 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn derive_handshake_secret(&mut self) -> Result<[u8; 32]> {
-        if self.state != HandshakeState::ServerHelloReceived
+    pub fn noxtls_derive_handshake_secret(&mut self) -> Result<[u8; 32]> {
+        if self.version.uses_tls13_handshake_semantics() {
+            if self.state != HandshakeState::ServerHelloReceived {
+                return Err(Error::StateError(
+                    "tls13 handshake traffic keys require server hello received state",
+                ));
+            }
+        } else if self.state != HandshakeState::ServerHelloReceived
             && self.state != HandshakeState::ServerCertificateVerified
         {
             return Err(Error::StateError(
                 "cannot derive handshake secret before server hello",
             ));
         }
-        let transcript_hash = self.transcript_hash();
-        let hash_algorithm = self.negotiated_hash_algorithm();
+        let noxtls_transcript_hash = self.noxtls_transcript_hash();
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+        noxtls_tls13_debug_log(
+            "tls13.kdf.hash_algorithm",
+            noxtls_hash_algorithm_name(noxtls_hash_algorithm),
+        );
+        noxtls_tls13_debug_log_bytes("tls13.kdf.transcript_hash", &noxtls_transcript_hash);
+        if self.version.uses_tls13_handshake_semantics() {
+            if let Some(secret) = self.tls13_shared_secret.as_ref() {
+                noxtls_tls13_debug_log_bytes("tls13.kdf.shared_secret_input", secret);
+            } else {
+                noxtls_tls13_debug_log("tls13.kdf.shared_secret_input", "none");
+            }
+        }
         let secret_material = match self.version {
-            TlsVersion::Tls13 | TlsVersion::Dtls13 => derive_tls13_handshake_secret(
-                hash_algorithm,
+            TlsVersion::Tls13 | TlsVersion::Dtls13 => noxtls_derive_tls13_handshake_secret(
+                noxtls_hash_algorithm,
                 self.tls13_shared_secret
                     .as_ref()
-                    .map_or(&transcript_hash, |secret| secret),
-                self.selected_cipher_suite,
+                    .map_or(&noxtls_transcript_hash, |secret| secret),
+                self.noxtls_selected_cipher_suite,
             )?,
             TlsVersion::Tls12 | TlsVersion::Dtls12 => {
-                let prk = noxtls_hkdf_extract_for_hash(hash_algorithm, &transcript_hash);
-                tls12_prf_for_hash(
-                    hash_algorithm,
+                let prk = noxtls_hkdf_extract_for_hash(noxtls_hash_algorithm, &noxtls_transcript_hash);
+                noxtls_tls12_prf_for_hash(
+                    noxtls_hash_algorithm,
                     &prk,
                     b"handshake secret",
-                    &transcript_hash,
+                    &noxtls_transcript_hash,
                     32,
                 )?
             }
             TlsVersion::Tls10 | TlsVersion::Tls11 => {
-                let prk = noxtls_hkdf_extract_for_hash(hash_algorithm, &transcript_hash);
-                noxtls_hkdf_expand_for_hash(hash_algorithm, &prk, b"handshake secret", 32)?
+                let prk = noxtls_hkdf_extract_for_hash(noxtls_hash_algorithm, &noxtls_transcript_hash);
+                noxtls_hkdf_expand_for_hash(noxtls_hash_algorithm, &prk, b"handshake secret", 32)?
             }
         };
-        self.install_traffic_keys(hash_algorithm, &secret_material, &transcript_hash)?;
-        self.install_tls13_finished_key(hash_algorithm, &secret_material)?;
+        noxtls_tls13_debug_log_bytes("tls13.kdf.handshake_secret", &secret_material);
+        self.noxtls_install_traffic_keys(noxtls_hash_algorithm, &secret_material, &noxtls_transcript_hash)?;
+        if self.version.uses_tls13_handshake_semantics() {
+            if let Some(secret) = self.tls13_client_handshake_traffic_secret.as_ref() {
+                noxtls_tls13_debug_log_bytes("tls13.kdf.client_hs_traffic_secret", secret);
+            }
+            if let Some(secret) = self.tls13_server_handshake_traffic_secret.as_ref() {
+                noxtls_tls13_debug_log_bytes("tls13.kdf.server_hs_traffic_secret", secret);
+            }
+            if let Some(key) = self.client_write_key.as_ref() {
+                noxtls_tls13_debug_log_bytes("tls13.record.client_write_key", key);
+            }
+            if let Some(key) = self.server_write_key.as_ref() {
+                noxtls_tls13_debug_log_bytes("tls13.record.server_write_key", key);
+            }
+            if let Some(iv) = self.client_write_iv.as_ref() {
+                noxtls_tls13_debug_log_bytes("tls13.record.client_write_iv", iv);
+            }
+            if let Some(iv) = self.server_write_iv.as_ref() {
+                noxtls_tls13_debug_log_bytes("tls13.record.server_write_iv", iv);
+            }
+        }
         self.handshake_secret = Some(secret_material.clone());
         let mut secret = [0_u8; 32];
         let copy_len = secret_material.len().min(32);
@@ -3142,18 +3396,22 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn finish(&mut self, verify_data: &[u8]) -> Result<()> {
+    pub fn noxtls_finish(&mut self, verify_data: &[u8]) -> Result<()> {
         if self.state != HandshakeState::KeysDerived
             && self.state != HandshakeState::ServerCertificateVerified
         {
-            return Err(Error::StateError("finish must follow key derivation"));
+            return Err(Error::StateError("noxtls_finish must follow key derivation"));
         }
-        let expected = self.compute_expected_finished()?;
+        let expected = self.noxtls_compute_expected_finished()?;
         if verify_data != expected.as_slice() {
             return Err(Error::CryptoFailure("finished verify_data mismatch"));
         }
-        self.append_transcript(verify_data);
-        self.install_tls13_application_traffic_keys()?;
+        if self.version.uses_tls13_handshake_semantics() {
+            let finished_message = noxtls_encode_handshake_message(HANDSHAKE_FINISHED, verify_data);
+            self.noxtls_append_transcript(&finished_message);
+        } else {
+            self.noxtls_append_transcript(verify_data);
+        }
         self.state = HandshakeState::Finished;
         Ok(())
     }
@@ -3173,7 +3431,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_finished_message(&mut self, msg: &[u8]) -> Result<()> {
+    pub fn noxtls_recv_finished_message(&mut self, msg: &[u8]) -> Result<()> {
         let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_FINISHED {
             return Err(Error::ParseFailure("invalid finished type"));
@@ -3181,13 +3439,45 @@ impl Connection {
         if self.state != HandshakeState::KeysDerived
             && self.state != HandshakeState::ServerCertificateVerified
         {
-            return Err(Error::StateError("finish must follow key derivation"));
+            return Err(Error::StateError("noxtls_finish must follow key derivation"));
         }
-        let expected_len = self.compute_expected_finished()?.len();
+        let expected_len = self.noxtls_compute_expected_finished()?.len();
         if body.len() != expected_len {
             return Err(Error::ParseFailure("finished verify_data length mismatch"));
         }
-        self.finish(body)
+        self.noxtls_finish(body)
+    }
+
+    /// Activates TLS 1.3 application traffic keys after local Finished has been sent.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` — `&mut self`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` when application traffic keys are installed for post-handshake records.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`noxtls_core::Error`] when called outside TLS 1.3 `Finished` state or when
+    /// key-schedule material is unavailable.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    pub fn noxtls_activate_tls13_application_traffic_keys(&mut self) -> Result<()> {
+        if !self.version.uses_tls13_handshake_semantics() {
+            return Err(Error::StateError(
+                "application traffic key activation requires TLS 1.3 connection",
+            ));
+        }
+        if self.state != HandshakeState::Finished {
+            return Err(Error::StateError(
+                "application traffic keys can only be activated in finished state",
+            ));
+        }
+        self.noxtls_install_tls13_application_traffic_keys()
     }
 
     /// Builds local TLS 1.3 Finished handshake message from current transcript state.
@@ -3206,9 +3496,42 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_finished_message(&self) -> Result<Vec<u8>> {
-        let verify_data = self.compute_finished_verify_data()?;
-        Ok(noxtls_encode_handshake_message(HANDSHAKE_FINISHED, &verify_data))
+    pub fn noxtls_build_finished_message(&self) -> Result<Vec<u8>> {
+        let verify_data = self.noxtls_compute_finished_verify_data()?;
+        Ok(noxtls_encode_handshake_message(
+            HANDSHAKE_FINISHED,
+            &verify_data,
+        ))
+    }
+
+    /// Builds a TLS Finished handshake message for the **peer** (e.g. server's Finished on a client `Connection`).
+    ///
+    /// This wraps [`Self::noxtls_compute_expected_finished`] as a handshake message. Use this when
+    /// modeling inbound server Finished bytes; use [`Self::noxtls_build_finished_message`] for the
+    /// local endpoint's Finished to transmit.
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` — `&self`.
+    ///
+    /// # Returns
+    ///
+    /// Encoded `Finished` handshake message bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`noxtls_core::Error`] when inputs or handshake state invalidate the operation; see the function body for specific error construction sites.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    ///
+    pub fn noxtls_build_peer_finished_message(&self) -> Result<Vec<u8>> {
+        let verify_data = self.noxtls_compute_expected_finished()?;
+        Ok(noxtls_encode_handshake_message(
+            HANDSHAKE_FINISHED,
+            &verify_data,
+        ))
     }
 
     /// Builds a minimal TLS 1.3 NewSessionTicket handshake message.
@@ -3229,7 +3552,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_new_session_ticket_message(
+    pub fn noxtls_build_new_session_ticket_message(
         ticket_lifetime: u32,
         ticket_age_add: u32,
         ticket_nonce: &[u8],
@@ -3270,25 +3593,25 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_new_session_ticket_message(&mut self, msg: &[u8]) -> Result<()> {
+    pub fn noxtls_recv_new_session_ticket_message(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::Finished {
             return Err(Error::StateError(
-                "new session ticket requires finished handshake state",
+                "noxtls_new session ticket requires finished handshake state",
             ));
         }
         let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_NEW_SESSION_TICKET {
-            return Err(Error::ParseFailure("invalid new session ticket type"));
+            return Err(Error::ParseFailure("invalid noxtls_new session ticket type"));
         }
-        parse_new_session_ticket_body(body)?;
-        self.append_transcript(msg);
+        noxtls_parse_new_session_ticket_body(body)?;
+        self.noxtls_append_transcript(msg);
         Ok(())
     }
 
     /// Builds a TLS 1.3 KeyUpdate handshake message.
     ///
     /// # Arguments
-    /// * `request_update`: Whether peer should also update its sending keys.
+    /// * `request_update`: Whether peer should also noxtls_update its sending keys.
     ///
     /// # Returns
     /// Encoded KeyUpdate message bytes.
@@ -3296,7 +3619,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_key_update_message(request_update: bool) -> Vec<u8> {
+    pub fn noxtls_build_key_update_message(request_update: bool) -> Vec<u8> {
         let request = if request_update { 1_u8 } else { 0_u8 };
         noxtls_encode_handshake_message(HANDSHAKE_KEY_UPDATE, &[request])
     }
@@ -3316,28 +3639,28 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_key_update_message(&mut self, msg: &[u8]) -> Result<()> {
+    pub fn noxtls_recv_key_update_message(&mut self, msg: &[u8]) -> Result<()> {
         if self.state != HandshakeState::Finished {
             return Err(Error::StateError(
-                "key update requires finished handshake state",
+                "key noxtls_update requires finished handshake state",
             ));
         }
         let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
         if handshake_type != HANDSHAKE_KEY_UPDATE {
-            return Err(Error::ParseFailure("invalid key update type"));
+            return Err(Error::ParseFailure("invalid key noxtls_update type"));
         }
         if body.len() != 1 || body[0] > 1 {
-            return Err(Error::ParseFailure("invalid key update request value"));
+            return Err(Error::ParseFailure("invalid key noxtls_update request value"));
         }
-        self.update_tls13_traffic_keys()?;
-        self.append_transcript(msg);
+        self.noxtls_update_tls13_traffic_keys()?;
+        self.noxtls_append_transcript(msg);
         Ok(())
     }
 
     /// Computes the current transcript hash bytes for post-handshake key schedule use.
     ///
     /// # Returns
-    /// Current transcript hash bytes from selected hash algorithm.
+    /// Current transcript hash bytes from selected hash noxtls_algorithm.
     #[must_use]
     /// # Arguments
     ///
@@ -3351,8 +3674,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn transcript_hash(&self) -> Vec<u8> {
-        self.transcript_hash.snapshot_hash()
+    pub fn noxtls_transcript_hash(&self) -> Vec<u8> {
+        self.noxtls_transcript_hash.noxtls_snapshot_hash()
     }
 
     /// Returns currently negotiated cipher suite, if known from ServerHello.
@@ -3372,8 +3695,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn selected_cipher_suite(&self) -> Option<CipherSuite> {
-        self.selected_cipher_suite
+    pub fn noxtls_selected_cipher_suite(&self) -> Option<CipherSuite> {
+        self.noxtls_selected_cipher_suite
     }
 
     /// Builds a minimally-encoded TLS ServerHello handshake message.
@@ -3393,7 +3716,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_server_hello(
+    pub fn noxtls_build_server_hello(
         version: TlsVersion,
         suite: CipherSuite,
         random: &[u8],
@@ -3401,8 +3724,11 @@ impl Connection {
         if random.len() != 32 {
             return Err(Error::InvalidLength("server hello random must be 32 bytes"));
         }
-        let body = encode_server_hello_body(version, suite, random)?;
-        Ok(noxtls_encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
+        let body = noxtls_encode_server_hello_body(version, suite, random)?;
+        Ok(noxtls_encode_handshake_message(
+            HANDSHAKE_SERVER_HELLO,
+            &body,
+        ))
     }
 
     /// Builds a TLS 1.3 ServerHello with an explicit ECDHE `key_share` entry (interop/tests).
@@ -3424,7 +3750,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_server_hello_with_key_share(
+    pub fn noxtls_build_server_hello_with_key_share(
         version: TlsVersion,
         suite: CipherSuite,
         random: &[u8],
@@ -3434,13 +3760,16 @@ impl Connection {
         if random.len() != 32 {
             return Err(Error::InvalidLength("server hello random must be 32 bytes"));
         }
-        let body = encode_server_hello_body_with_key_share(
+        let body = noxtls_encode_server_hello_body_with_key_share(
             version,
             suite,
             random,
             Some((named_group, key_exchange)),
         )?;
-        Ok(noxtls_encode_handshake_message(HANDSHAKE_SERVER_HELLO, &body))
+        Ok(noxtls_encode_handshake_message(
+            HANDSHAKE_SERVER_HELLO,
+            &body,
+        ))
     }
 
     /// Builds a TLS ServerHello with randomness sourced from HMAC-DRBG.
@@ -3460,13 +3789,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_server_hello_auto(
+    pub fn noxtls_build_server_hello_auto(
         version: TlsVersion,
         suite: CipherSuite,
         drbg: &mut HmacDrbgSha256,
     ) -> Result<Vec<u8>> {
         let random = drbg.generate(32, b"server_hello_random")?;
-        Self::build_server_hello(version, suite, &random)
+        Self::noxtls_build_server_hello(version, suite, &random)
     }
 
     /// Parses a ClientHello and returns advertised cipher suites in wire order.
@@ -3484,8 +3813,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn parse_client_hello_cipher_suites(msg: &[u8]) -> Result<Vec<CipherSuite>> {
-        parse_client_hello_info(msg).map(|hello| hello.offered_cipher_suites)
+    pub fn noxtls_parse_client_hello_cipher_suites(msg: &[u8]) -> Result<Vec<CipherSuite>> {
+        noxtls_parse_client_hello_info(msg).map(|hello| hello.offered_cipher_suites)
     }
 
     /// Parses a ClientHello into suites and selected extension metadata.
@@ -3503,21 +3832,21 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn parse_client_hello_info(msg: &[u8]) -> Result<ClientHelloInfo> {
-        parse_client_hello_info(msg)
+    pub fn noxtls_parse_client_hello_info(msg: &[u8]) -> Result<ClientHelloInfo> {
+        noxtls_parse_client_hello_info(msg)
     }
 
     /// Builds TLS 1.3 server CertificateVerify signed content from transcript hash.
     ///
     /// # Arguments
-    /// * `transcript_hash`: Transcript hash bytes for the signing context.
+    /// * `noxtls_transcript_hash`: Transcript hash bytes for the signing context.
     ///
     /// # Returns
     /// Byte vector to be signed/verified for server CertificateVerify.
     #[must_use]
     /// # Arguments
     ///
-    /// * `transcript_hash` — `transcript_hash: &[u8]`.
+    /// * `noxtls_transcript_hash` — `noxtls_transcript_hash: &[u8]`.
     ///
     /// # Returns
     ///
@@ -3527,8 +3856,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn tls13_server_certificate_verify_content(transcript_hash: &[u8]) -> Vec<u8> {
-        build_tls13_server_certificate_verify_message(transcript_hash)
+    pub fn noxtls_tls13_server_certificate_verify_content(noxtls_transcript_hash: &[u8]) -> Vec<u8> {
+        noxtls_build_tls13_server_certificate_verify_message(noxtls_transcript_hash)
     }
 
     /// Selects one server-preferred suite that is also offered by the client.
@@ -3548,13 +3877,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn select_cipher_suite_from_client_hello(
+    pub fn noxtls_select_cipher_suite_from_client_hello(
         client_hello: &[u8],
         server_preferred: &[CipherSuite],
         version: TlsVersion,
     ) -> Result<CipherSuite> {
-        let hello = parse_client_hello_info(client_hello)?;
-        pick_intersection_suite(&hello, server_preferred, version)
+        let hello = noxtls_parse_client_hello_info(client_hello)?;
+        noxtls_pick_intersection_suite(&hello, server_preferred, version)
     }
 
     /// Builds a ServerHello by negotiating against offered client cipher suites.
@@ -3575,15 +3904,15 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_server_hello_for_client(
+    pub fn noxtls_build_server_hello_for_client(
         version: TlsVersion,
         client_hello: &[u8],
         server_random: &[u8],
         server_preferred: &[CipherSuite],
     ) -> Result<Vec<u8>> {
         let selected =
-            Self::select_cipher_suite_from_client_hello(client_hello, server_preferred, version)?;
-        Self::build_server_hello(version, selected, server_random)
+            Self::noxtls_select_cipher_suite_from_client_hello(client_hello, server_preferred, version)?;
+        Self::noxtls_build_server_hello(version, selected, server_random)
     }
 
     /// Builds a ServerHello for a parsed ClientHello with DRBG-generated random.
@@ -3604,14 +3933,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_server_hello_for_client_auto(
+    pub fn noxtls_build_server_hello_for_client_auto(
         version: TlsVersion,
         client_hello: &[u8],
         server_preferred: &[CipherSuite],
         drbg: &mut HmacDrbgSha256,
     ) -> Result<Vec<u8>> {
         let random = drbg.generate(32, b"server_hello_random")?;
-        Self::build_server_hello_for_client(version, client_hello, &random, server_preferred)
+        Self::noxtls_build_server_hello_for_client(version, client_hello, &random, server_preferred)
     }
 
     /// Computes TLS-style Finished verify_data from transcript hash context.
@@ -3630,11 +3959,36 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn compute_finished_verify_data(&self) -> Result<Vec<u8>> {
-        self.compute_expected_finished()
+    pub fn noxtls_compute_finished_verify_data(&self) -> Result<Vec<u8>> {
+        let hash = self.noxtls_transcript_hash();
+        match self.version {
+            TlsVersion::Tls13 | TlsVersion::Dtls13 => {
+                let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+                let hash_len = noxtls_hash_algorithm.output_len();
+                let client_hs = self
+                    .tls13_client_handshake_traffic_secret
+                    .as_ref()
+                    .ok_or(Error::StateError(
+                        "tls13 client handshake traffic secret must be installed before client finished",
+                    ))?;
+                let finished_key = noxtls_tls13_expand_label_for_hash(
+                    noxtls_hash_algorithm,
+                    client_hs,
+                    b"finished",
+                    &[],
+                    hash_len,
+                )?;
+                Ok(noxtls_finished_hmac_for_hash(
+                    noxtls_hash_algorithm,
+                    &finished_key,
+                    &hash,
+                ))
+            }
+            _ => self.noxtls_compute_expected_finished(),
+        }
     }
 
-    /// Rolls TLS 1.3 application traffic keys to the next key-update generation.
+    /// Rolls TLS 1.3 application traffic keys to the next key-noxtls_update generation.
     ///
     /// # Arguments
     /// * `self`: Finished TLS 1.3 connection with installed application secrets.
@@ -3649,19 +4003,19 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn update_tls13_traffic_keys(&mut self) -> Result<()> {
+    pub fn noxtls_update_tls13_traffic_keys(&mut self) -> Result<()> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Err(Error::StateError(
-                "tls13 traffic key update is only valid for TLS 1.3",
+                "tls13 traffic key noxtls_update is only valid for TLS 1.3",
             ));
         }
         if self.state != HandshakeState::Finished {
             return Err(Error::StateError(
-                "tls13 traffic key update requires finished handshake",
+                "tls13 traffic key noxtls_update requires finished handshake",
             ));
         }
-        let hash_algorithm = self.negotiated_hash_algorithm();
-        let hash_len = hash_algorithm.output_len();
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+        let hash_len = noxtls_hash_algorithm.output_len();
         let client_secret = self
             .tls13_client_application_traffic_secret
             .as_ref()
@@ -3675,21 +4029,21 @@ impl Connection {
                 "tls13 application server traffic secret is not installed",
             ))?;
         let next_client_secret = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             client_secret,
             b"traffic upd",
             &[],
             hash_len,
         )?;
         let next_server_secret = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             server_secret,
             b"traffic upd",
             &[],
             hash_len,
         )?;
-        self.install_tls13_record_protection_keys(
-            hash_algorithm,
+        self.noxtls_install_tls13_record_protection_keys(
+            noxtls_hash_algorithm,
             &next_client_secret,
             &next_server_secret,
         )?;
@@ -3715,7 +4069,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn derive_tls13_quic_initial_secrets_v1(
+    pub fn noxtls_derive_tls13_quic_initial_secrets_v1(
         destination_connection_id: &[u8],
     ) -> Result<Tls13QuicInitialSecrets> {
         if destination_connection_id.is_empty() {
@@ -3724,7 +4078,8 @@ impl Connection {
             ));
         }
         let initial_secret =
-            noxtls_hkdf_extract_sha256(&TLS13_QUIC_V1_INITIAL_SALT, destination_connection_id).to_vec();
+            noxtls_hkdf_extract_sha256(&TLS13_QUIC_V1_INITIAL_SALT, destination_connection_id)
+                .to_vec();
         let client_initial_secret = noxtls_tls13_expand_label_for_hash(
             HashAlgorithm::Sha256,
             &initial_secret,
@@ -3749,7 +4104,7 @@ impl Connection {
     /// Derives QUIC packet-protection key material from one traffic secret.
     ///
     /// # Arguments
-    /// * `hash_algorithm`: Hash profile used for TLS HKDF label expansion.
+    /// * `noxtls_hash_algorithm`: Hash profile used for TLS HKDF label expansion.
     /// * `traffic_secret`: QUIC traffic secret at a specific encryption level.
     /// * `key_len`: AEAD key length in bytes.
     /// * `header_protection_key_len`: Header-protection key length in bytes.
@@ -3764,8 +4119,8 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn derive_tls13_quic_packet_protection_keys(
-        hash_algorithm: HashAlgorithm,
+    pub fn noxtls_derive_tls13_quic_packet_protection_keys(
+        noxtls_hash_algorithm: HashAlgorithm,
         traffic_secret: &[u8],
         key_len: usize,
         header_protection_key_len: usize,
@@ -3780,11 +4135,22 @@ impl Connection {
                 "quic header protection key length must be greater than zero",
             ));
         }
-        let key =
-            noxtls_tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic key", &[], key_len)?;
-        let iv = noxtls_tls13_expand_label_for_hash(hash_algorithm, traffic_secret, b"quic iv", &[], 12)?;
+        let key = noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
+            traffic_secret,
+            b"quic key",
+            &[],
+            key_len,
+        )?;
+        let iv = noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
+            traffic_secret,
+            b"quic iv",
+            &[],
+            12,
+        )?;
         let header_protection_key = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             traffic_secret,
             b"quic hp",
             &[],
@@ -3809,7 +4175,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn tls13_quic_traffic_secret_snapshot(&self) -> Result<Tls13QuicTrafficSecretSnapshot> {
+    pub fn noxtls_tls13_quic_traffic_secret_snapshot(&self) -> Result<Tls13QuicTrafficSecretSnapshot> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Err(Error::StateError(
                 "quic traffic secret snapshot is only defined for TLS 1.3",
@@ -3859,14 +4225,14 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn derive_tls13_quic_next_traffic_secrets(&self) -> Result<Tls13QuicNextTrafficSecrets> {
+    pub fn noxtls_derive_tls13_quic_next_traffic_secrets(&self) -> Result<Tls13QuicNextTrafficSecrets> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Err(Error::StateError(
-                "quic key update secrets are only defined for TLS 1.3",
+                "quic key noxtls_update secrets are only defined for TLS 1.3",
             ));
         }
-        let hash_algorithm = self.negotiated_hash_algorithm();
-        let hash_len = hash_algorithm.output_len();
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+        let hash_len = noxtls_hash_algorithm.output_len();
         let client_secret = self
             .tls13_client_application_traffic_secret
             .as_ref()
@@ -3879,10 +4245,20 @@ impl Connection {
             .ok_or(Error::StateError(
                 "tls13 application server traffic secret is not installed",
             ))?;
-        let client_next_application_secret =
-            noxtls_tls13_expand_label_for_hash(hash_algorithm, client_secret, b"quic ku", &[], hash_len)?;
-        let server_next_application_secret =
-            noxtls_tls13_expand_label_for_hash(hash_algorithm, server_secret, b"quic ku", &[], hash_len)?;
+        let client_next_application_secret = noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
+            client_secret,
+            b"quic ku",
+            &[],
+            hash_len,
+        )?;
+        let server_next_application_secret = noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
+            server_secret,
+            b"quic ku",
+            &[],
+            hash_len,
+        )?;
         Ok(Tls13QuicNextTrafficSecrets {
             client_next_application_secret,
             server_next_application_secret,
@@ -3901,12 +4277,12 @@ impl Connection {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::StateError`] when label namespace is not QUIC, or other exporter errors from [`Self::export_keying_material`].
+    /// Returns [`Error::StateError`] when label namespace is not QUIC, or other exporter errors from [`Self::noxtls_export_keying_material`].
     ///
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn export_quic_keying_material(
+    pub fn noxtls_export_quic_keying_material(
         &self,
         label: &[u8],
         context: &[u8],
@@ -3917,7 +4293,7 @@ impl Connection {
                 "quic exporter requires label prefix EXPORTER-QUIC ",
             ));
         }
-        self.export_keying_material(label, context, len)
+        self.noxtls_export_keying_material(label, context, len)
     }
 
     /// Exports keying material from TLS 1.3 exporter secret for application protocols.
@@ -3937,7 +4313,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn export_keying_material(
+    pub fn noxtls_export_keying_material(
         &self,
         label: &[u8],
         context: &[u8],
@@ -3953,23 +4329,29 @@ impl Connection {
                 "key exporter requires finished handshake state",
             ));
         }
-        let hash_algorithm = self.negotiated_hash_algorithm();
-        let hash_len = hash_algorithm.output_len();
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+        let hash_len = noxtls_hash_algorithm.output_len();
         let exporter_master =
             self.tls13_exporter_master_secret
                 .as_ref()
                 .ok_or(Error::StateError(
                     "tls13 exporter master secret is not installed",
                 ))?;
-        let context_hash = noxtls_hash_bytes_for_algorithm(hash_algorithm, context);
+        let context_hash = noxtls_hash_bytes_for_algorithm(noxtls_hash_algorithm, context);
         let exporter_secret = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             exporter_master,
             b"exporter",
             &context_hash,
             hash_len,
         )?;
-        noxtls_tls13_expand_label_for_hash(hash_algorithm, &exporter_secret, label, &context_hash, len)
+        noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
+            &exporter_secret,
+            label,
+            &context_hash,
+            len,
+        )
     }
 
     /// Returns TLS 1.3 resumption master secret snapshot for ticket/resumption plumbing.
@@ -3988,7 +4370,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn tls13_resumption_master_secret(&self) -> Result<Vec<u8>> {
+    pub fn noxtls_tls13_resumption_master_secret(&self) -> Result<Vec<u8>> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Err(Error::StateError(
                 "resumption master secret is only defined for TLS 1.3",
@@ -3999,7 +4381,7 @@ impl Connection {
                 "resumption master secret requires finished handshake state",
             ));
         }
-        self.tls13_resumption_master_secret
+        self.noxtls_tls13_resumption_master_secret
             .clone()
             .ok_or(Error::StateError(
                 "tls13 resumption master secret is not installed",
@@ -4021,7 +4403,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn derive_tls13_resumption_psk(&self, ticket_nonce: &[u8]) -> Result<Vec<u8>> {
+    pub fn noxtls_derive_tls13_resumption_psk(&self, ticket_nonce: &[u8]) -> Result<Vec<u8>> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Err(Error::StateError(
                 "resumption psk derivation is only defined for TLS 1.3",
@@ -4030,16 +4412,16 @@ impl Connection {
         if ticket_nonce.is_empty() {
             return Err(Error::InvalidLength("ticket nonce must not be empty"));
         }
-        let hash_algorithm = self.negotiated_hash_algorithm();
-        let hash_len = hash_algorithm.output_len();
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+        let hash_len = noxtls_hash_algorithm.output_len();
         let resumption_master =
-            self.tls13_resumption_master_secret
+            self.noxtls_tls13_resumption_master_secret
                 .as_ref()
                 .ok_or(Error::StateError(
                     "tls13 resumption master secret is not installed",
                 ))?;
         noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             resumption_master,
             b"resumption",
             ticket_nonce,
@@ -4063,12 +4445,12 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn issue_tls13_resumption_ticket(
+    pub fn noxtls_issue_tls13_resumption_ticket(
         &self,
         drbg: &mut HmacDrbgSha256,
         age_add: u32,
     ) -> Result<ResumptionTicket> {
-        self.issue_tls13_resumption_ticket_with_time(drbg, age_add, 0, u64::MAX)
+        self.noxtls_issue_tls13_resumption_ticket_with_time(drbg, age_add, 0, u64::MAX)
     }
 
     /// Issues one TLS 1.3 ticket and inserts it into a mutable ticket store.
@@ -4088,13 +4470,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn issue_tls13_resumption_ticket_into_store(
+    pub fn noxtls_issue_tls13_resumption_ticket_into_store(
         &self,
         drbg: &mut HmacDrbgSha256,
         age_add: u32,
         ticket_store: &mut TicketStore,
     ) -> Result<ResumptionTicket> {
-        let ticket = self.issue_tls13_resumption_ticket(drbg, age_add)?;
+        let ticket = self.noxtls_issue_tls13_resumption_ticket(drbg, age_add)?;
         ticket_store.insert(ticket.clone());
         Ok(ticket)
     }
@@ -4117,7 +4499,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn issue_tls13_resumption_ticket_with_time(
+    pub fn noxtls_issue_tls13_resumption_ticket_with_time(
         &self,
         drbg: &mut HmacDrbgSha256,
         age_add: u32,
@@ -4135,10 +4517,10 @@ impl Connection {
             ));
         }
         let nonce = drbg.generate(16, b"tls13_ticket_nonce")?;
-        let hash_algorithm = self.negotiated_hash_algorithm();
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
         let identity = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
-            &self.tls13_resumption_master_secret()?,
+            noxtls_hash_algorithm,
+            &self.noxtls_tls13_resumption_master_secret()?,
             b"ticket",
             &nonce,
             16,
@@ -4173,7 +4555,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn issue_tls13_resumption_ticket_with_time_and_early_data(
+    pub fn noxtls_issue_tls13_resumption_ticket_with_time_and_early_data(
         &self,
         drbg: &mut HmacDrbgSha256,
         age_add: u32,
@@ -4182,7 +4564,7 @@ impl Connection {
         max_early_data_size: u32,
     ) -> Result<ResumptionTicket> {
         let mut ticket =
-            self.issue_tls13_resumption_ticket_with_time(drbg, age_add, issued_at_ms, lifetime_ms)?;
+            self.noxtls_issue_tls13_resumption_ticket_with_time(drbg, age_add, issued_at_ms, lifetime_ms)?;
         ticket.max_early_data_size = max_early_data_size;
         Ok(ticket)
     }
@@ -4206,7 +4588,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn issue_tls13_resumption_ticket_with_time_into_store(
+    pub fn noxtls_issue_tls13_resumption_ticket_with_time_into_store(
         &self,
         drbg: &mut HmacDrbgSha256,
         age_add: u32,
@@ -4215,7 +4597,7 @@ impl Connection {
         ticket_store: &mut TicketStore,
     ) -> Result<ResumptionTicket> {
         let ticket =
-            self.issue_tls13_resumption_ticket_with_time(drbg, age_add, issued_at_ms, lifetime_ms)?;
+            self.noxtls_issue_tls13_resumption_ticket_with_time(drbg, age_add, issued_at_ms, lifetime_ms)?;
         ticket_store.insert(ticket.clone());
         Ok(ticket)
     }
@@ -4239,7 +4621,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn issue_tls13_resumption_ticket_with_time_and_early_data_into_store(
+    pub fn noxtls_issue_tls13_resumption_ticket_with_time_and_early_data_into_store(
         &self,
         drbg: &mut HmacDrbgSha256,
         age_add: u32,
@@ -4248,7 +4630,7 @@ impl Connection {
         max_early_data_size: u32,
         ticket_store: &mut TicketStore,
     ) -> Result<ResumptionTicket> {
-        let ticket = self.issue_tls13_resumption_ticket_with_time_and_early_data(
+        let ticket = self.noxtls_issue_tls13_resumption_ticket_with_time_and_early_data(
             drbg,
             age_add,
             issued_at_ms,
@@ -4275,7 +4657,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn compute_tls13_psk_binder(
+    pub fn noxtls_compute_tls13_psk_binder(
         &self,
         psk: &[u8],
         truncated_client_hello: &[u8],
@@ -4293,23 +4675,29 @@ impl Connection {
                 "truncated client hello must not be empty",
             ));
         }
-        let hash_algorithm = self.negotiated_hash_algorithm();
-        let hash_len = hash_algorithm.output_len();
-        let early_secret = noxtls_hkdf_extract_for_hash(hash_algorithm, psk);
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+        let hash_len = noxtls_hash_algorithm.output_len();
+        let early_secret = noxtls_hkdf_extract_for_hash(noxtls_hash_algorithm, psk);
         let binder_key = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             &early_secret,
             b"res binder",
             &[],
             hash_len,
         )?;
-        let finished_key =
-            noxtls_tls13_expand_label_for_hash(hash_algorithm, &binder_key, b"finished", &[], hash_len)?;
-        let transcript_hash = noxtls_hash_bytes_for_algorithm(hash_algorithm, truncated_client_hello);
+        let finished_key = noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
+            &binder_key,
+            b"finished",
+            &[],
+            hash_len,
+        )?;
+        let noxtls_transcript_hash =
+            noxtls_hash_bytes_for_algorithm(noxtls_hash_algorithm, truncated_client_hello);
         Ok(noxtls_finished_hmac_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             &finished_key,
-            &transcript_hash,
+            &noxtls_transcript_hash,
         ))
     }
 
@@ -4330,14 +4718,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn verify_tls13_psk_binder(
+    pub fn noxtls_verify_tls13_psk_binder(
         &self,
         psk: &[u8],
         truncated_client_hello: &[u8],
         received_binder: &[u8],
     ) -> Result<bool> {
-        let expected = self.compute_tls13_psk_binder(psk, truncated_client_hello)?;
-        Ok(constant_time_eq(&expected, received_binder))
+        let expected = self.noxtls_compute_tls13_psk_binder(psk, truncated_client_hello)?;
+        Ok(noxtls_constant_time_eq(&expected, received_binder))
     }
 
     /// Verifies first PSK binder inside a TLS 1.3 ClientHello pre_shared_key extension.
@@ -4356,7 +4744,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn verify_client_hello_psk_binder(&self, client_hello: &[u8], psk: &[u8]) -> Result<bool> {
+    pub fn noxtls_verify_client_hello_psk_binder(&self, client_hello: &[u8], psk: &[u8]) -> Result<bool> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Err(Error::StateError(
                 "psk binder verification is only defined for TLS 1.3",
@@ -4365,9 +4753,9 @@ impl Connection {
         if psk.is_empty() {
             return Err(Error::InvalidLength("psk must not be empty"));
         }
-        let received = extract_first_psk_binder_from_client_hello(client_hello)?;
-        let normalized = zero_client_hello_psk_binders(client_hello)?;
-        self.verify_tls13_psk_binder(psk, &normalized, &received)
+        let received = noxtls_extract_first_psk_binder_from_client_hello(client_hello)?;
+        let normalized = noxtls_zero_client_hello_psk_binders(client_hello)?;
+        self.noxtls_verify_tls13_psk_binder(psk, &normalized, &received)
     }
 
     /// Verifies a ClientHello pre_shared_key offer against a locally-issued resumption ticket.
@@ -4386,12 +4774,12 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn verify_client_hello_psk_binder_for_ticket(
+    pub fn noxtls_verify_client_hello_psk_binder_for_ticket(
         &self,
         client_hello: &[u8],
         ticket: &ResumptionTicket,
     ) -> Result<bool> {
-        self.verify_client_hello_psk_binder_for_ticket_with_age(
+        self.noxtls_verify_client_hello_psk_binder_for_ticket_with_age(
             client_hello,
             ticket,
             ticket.issued_at_ms,
@@ -4417,7 +4805,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn verify_client_hello_psk_binder_for_ticket_with_age(
+    pub fn noxtls_verify_client_hello_psk_binder_for_ticket_with_age(
         &self,
         client_hello: &[u8],
         ticket: &ResumptionTicket,
@@ -4429,7 +4817,7 @@ impl Connection {
                 "psk binder verification is only defined for TLS 1.3",
             ));
         }
-        let info = parse_client_hello_info(client_hello)?;
+        let info = noxtls_parse_client_hello_info(client_hello)?;
         let Some(identity) = info.extensions.psk_identities.first() else {
             return Ok(false);
         };
@@ -4445,8 +4833,8 @@ impl Connection {
         if !noxtls_ticket_age_matches_policy(ticket, offered_age, current_time_ms, max_skew_ms) {
             return Ok(false);
         }
-        let psk = self.derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
-        self.verify_client_hello_psk_binder(client_hello, &psk)
+        let psk = self.noxtls_derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
+        self.noxtls_verify_client_hello_psk_binder(client_hello, &psk)
     }
 
     /// Verifies ClientHello PSK binders by scanning all offered identities against ticket set.
@@ -4467,7 +4855,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn verify_client_hello_psk_binder_for_tickets_with_age(
+    pub fn noxtls_verify_client_hello_psk_binder_for_tickets_with_age(
         &self,
         client_hello: &[u8],
         tickets: &[ResumptionTicket],
@@ -4482,11 +4870,11 @@ impl Connection {
         if tickets.is_empty() {
             return Ok(None);
         }
-        let info = parse_client_hello_info(client_hello)?;
+        let info = noxtls_parse_client_hello_info(client_hello)?;
         if info.extensions.psk_identities.is_empty() || info.extensions.psk_binders.is_empty() {
             return Ok(None);
         }
-        let normalized = zero_client_hello_psk_binders(client_hello)?;
+        let normalized = noxtls_zero_client_hello_psk_binders(client_hello)?;
         for (identity_idx, identity) in info.extensions.psk_identities.iter().enumerate() {
             let Some(offered_age) = info
                 .extensions
@@ -4506,12 +4894,17 @@ impl Connection {
                 if ticket.consumed {
                     continue;
                 }
-                if !noxtls_ticket_age_matches_policy(ticket, offered_age, current_time_ms, max_skew_ms) {
+                if !noxtls_ticket_age_matches_policy(
+                    ticket,
+                    offered_age,
+                    current_time_ms,
+                    max_skew_ms,
+                ) {
                     continue;
                 }
-                let psk = self.derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
-                let expected_binder = self.compute_tls13_psk_binder(&psk, &normalized)?;
-                if constant_time_eq(&expected_binder, received_binder) {
+                let psk = self.noxtls_derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
+                let expected_binder = self.noxtls_compute_tls13_psk_binder(&psk, &normalized)?;
+                if noxtls_constant_time_eq(&expected_binder, received_binder) {
                     return Ok(Some(ticket_idx));
                 }
             }
@@ -4538,7 +4931,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn verify_and_apply_client_hello_psk_policy(
+    pub fn noxtls_verify_and_apply_client_hello_psk_policy(
         &self,
         client_hello: &[u8],
         tickets: &mut [ResumptionTicket],
@@ -4546,7 +4939,7 @@ impl Connection {
         max_skew_ms: u32,
         usage_policy: TicketUsagePolicy,
     ) -> Result<Option<usize>> {
-        let matched = self.verify_client_hello_psk_binder_for_tickets_with_age(
+        let matched = self.noxtls_verify_client_hello_psk_binder_for_tickets_with_age(
             client_hello,
             tickets,
             current_time_ms,
@@ -4581,7 +4974,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn verify_and_apply_client_hello_psk_policy_with_store(
+    pub fn noxtls_verify_and_apply_client_hello_psk_policy_with_store(
         &self,
         client_hello: &[u8],
         ticket_store: &mut TicketStore,
@@ -4589,7 +4982,7 @@ impl Connection {
         max_skew_ms: u32,
         usage_policy: TicketUsagePolicy,
     ) -> Result<Option<usize>> {
-        self.verify_and_apply_client_hello_psk_policy(
+        self.noxtls_verify_and_apply_client_hello_psk_policy(
             client_hello,
             ticket_store.tickets_mut(),
             current_time_ms,
@@ -4617,7 +5010,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn accept_tls13_early_data_with_ticket_policy(
+    pub fn noxtls_accept_tls13_early_data_with_ticket_policy(
         &mut self,
         client_hello: &[u8],
         tickets: &mut [ResumptionTicket],
@@ -4625,12 +5018,12 @@ impl Connection {
         max_skew_ms: u32,
         usage_policy: TicketUsagePolicy,
     ) -> Result<bool> {
-        let info = parse_client_hello_info(client_hello)?;
+        let info = noxtls_parse_client_hello_info(client_hello)?;
         self.tls13_early_data_offered_in_client_hello = info.extensions.early_data_offered;
         self.tls13_early_data_accepted_in_encrypted_extensions = false;
         self.tls13_early_data_opened_bytes = 0;
-        self.reset_tls13_early_data_transcript_to_client_hello(client_hello);
-        let matched = self.verify_and_apply_client_hello_psk_policy(
+        self.noxtls_reset_tls13_early_data_transcript_to_client_hello(client_hello);
+        let matched = self.noxtls_verify_and_apply_client_hello_psk_policy(
             client_hello,
             tickets,
             current_time_ms,
@@ -4655,10 +5048,10 @@ impl Connection {
             self.tls13_early_data_max_bytes = None;
             return Ok(false);
         }
-        let psk = self.derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
+        let psk = self.noxtls_derive_tls13_resumption_psk(&ticket.ticket_nonce)?;
         self.tls13_early_data_accepted_psk = Some(psk);
         self.tls13_early_data_max_bytes = Some(ticket.max_early_data_size);
-        self.tls13_early_data_replay_window = DtlsReplayWindow::new();
+        self.tls13_early_data_replay_window = DtlsReplayWindow::noxtls_new();
         Ok(true)
     }
 
@@ -4681,7 +5074,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn accept_tls13_early_data_with_ticket_store(
+    pub fn noxtls_accept_tls13_early_data_with_ticket_store(
         &mut self,
         client_hello: &[u8],
         ticket_store: &mut TicketStore,
@@ -4689,7 +5082,7 @@ impl Connection {
         max_skew_ms: u32,
         usage_policy: TicketUsagePolicy,
     ) -> Result<bool> {
-        self.accept_tls13_early_data_with_ticket_policy(
+        self.noxtls_accept_tls13_early_data_with_ticket_policy(
             client_hello,
             ticket_store.tickets_mut(),
             current_time_ms,
@@ -4714,10 +5107,10 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_record(&mut self, plaintext: &[u8], aad: &[u8]) -> Result<ProtectedRecord> {
+    pub fn noxtls_seal_record(&mut self, plaintext: &[u8], aad: &[u8]) -> Result<ProtectedRecord> {
         if self.state != HandshakeState::Finished {
             return Err(Error::StateError(
-                "cannot seal record before handshake finish",
+                "cannot seal record before handshake noxtls_finish",
             ));
         }
         if plaintext.len() > self.max_record_plaintext_len {
@@ -4728,7 +5121,7 @@ impl Connection {
         if self.client_sequence == u64::MAX {
             return Err(Error::StateError("client record sequence exhausted"));
         }
-        let suite = self.selected_cipher_suite.ok_or(Error::StateError(
+        let suite = self.noxtls_selected_cipher_suite.ok_or(Error::StateError(
             "cipher suite must be selected before sealing records",
         ))?;
         let key = self
@@ -4743,15 +5136,15 @@ impl Connection {
                 noxtls_chacha20_poly1305_encrypt(&key, &nonce, aad, plaintext)?
             }
             CipherSuite::TlsAes128GcmSha256 | CipherSuite::TlsAes256GcmSha384 => {
-                let key_len = suite.tls13_traffic_key_len().ok_or(Error::StateError(
+                let key_len = suite.noxtls_tls13_traffic_key_len().ok_or(Error::StateError(
                     "tls 1.3 aes suites must define traffic key length",
                 ))?;
-                let cipher = AesCipher::new(&key[..key_len])?;
+                let cipher = AesCipher::noxtls_new(&key[..key_len])?;
                 noxtls_aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
             }
             CipherSuite::TlsEcdheRsaWithAes128GcmSha256
             | CipherSuite::TlsEcdheRsaWithAes256GcmSha384 => {
-                let cipher = AesCipher::new(&key[..16])?;
+                let cipher = AesCipher::noxtls_new(&key[..16])?;
                 noxtls_aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
             }
         };
@@ -4785,7 +5178,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_tls13_early_data_record(
+    pub fn noxtls_seal_tls13_early_data_record(
         &self,
         psk: &[u8],
         plaintext: &[u8],
@@ -4812,15 +5205,15 @@ impl Connection {
                 "tls13 early-data may only be sealed in ClientHelloSent state",
             ));
         }
-        let (key, iv) = self.derive_tls13_early_data_record_key_iv(psk)?;
+        let (key, iv) = self.noxtls_derive_tls13_early_data_record_key_iv(psk)?;
         let nonce = noxtls_build_record_nonce(&iv, sequence);
-        let (ciphertext, tag) = if self.tls13_early_data_uses_chacha20_poly1305() {
+        let (ciphertext, tag) = if self.noxtls_tls13_early_data_uses_chacha20_poly1305() {
             let key_32: [u8; 32] = key.as_slice().try_into().map_err(|_| {
                 Error::InvalidLength("tls13 early-data chacha key must be 32 bytes")
             })?;
             noxtls_chacha20_poly1305_encrypt(&key_32, &nonce, aad, plaintext)?
         } else {
-            let cipher = AesCipher::new(&key)?;
+            let cipher = AesCipher::noxtls_new(&key)?;
             noxtls_aes_gcm_encrypt(&cipher, &nonce, aad, plaintext)?
         };
         Ok(ProtectedRecord {
@@ -4847,15 +5240,15 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_tls13_early_data_record(
+    pub fn noxtls_open_tls13_early_data_record(
         &mut self,
         psk: &[u8],
         record: &ProtectedRecord,
         aad: &[u8],
     ) -> Result<Vec<u8>> {
         if !self.version.uses_tls13_handshake_semantics() {
-            self.tls13_early_data_telemetry.rejected_invalid_input = self
-                .tls13_early_data_telemetry
+            self.noxtls_tls13_early_data_telemetry.rejected_invalid_input = self
+                .noxtls_tls13_early_data_telemetry
                 .rejected_invalid_input
                 .saturating_add(1);
             return Err(Error::StateError(
@@ -4863,8 +5256,8 @@ impl Connection {
             ));
         }
         if psk.is_empty() {
-            self.tls13_early_data_telemetry.rejected_invalid_input = self
-                .tls13_early_data_telemetry
+            self.noxtls_tls13_early_data_telemetry.rejected_invalid_input = self
+                .noxtls_tls13_early_data_telemetry
                 .rejected_invalid_input
                 .saturating_add(1);
             return Err(Error::InvalidLength(
@@ -4877,8 +5270,8 @@ impl Connection {
                 | HandshakeState::ServerHelloReceived
                 | HandshakeState::Finished
         ) {
-            self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
-                .tls13_early_data_telemetry
+            self.noxtls_tls13_early_data_telemetry.rejected_decrypt_or_policy = self
+                .noxtls_tls13_early_data_telemetry
                 .rejected_decrypt_or_policy
                 .saturating_add(1);
             return Err(Error::StateError(
@@ -4887,17 +5280,17 @@ impl Connection {
         }
         if self.tls13_early_data_require_acceptance {
             let Some(accepted_psk) = self.tls13_early_data_accepted_psk.as_deref() else {
-                self.tls13_early_data_telemetry.rejected_missing_acceptance = self
-                    .tls13_early_data_telemetry
+                self.noxtls_tls13_early_data_telemetry.rejected_missing_acceptance = self
+                    .noxtls_tls13_early_data_telemetry
                     .rejected_missing_acceptance
                     .saturating_add(1);
                 return Err(Error::StateError(
                     "tls13 early-data requires prior ticket-policy acceptance",
                 ));
             };
-            if !constant_time_eq(accepted_psk, psk) {
-                self.tls13_early_data_telemetry.rejected_psk_mismatch = self
-                    .tls13_early_data_telemetry
+            if !noxtls_constant_time_eq(accepted_psk, psk) {
+                self.noxtls_tls13_early_data_telemetry.rejected_psk_mismatch = self
+                    .noxtls_tls13_early_data_telemetry
                     .rejected_psk_mismatch
                     .saturating_add(1);
                 return Err(Error::StateError(
@@ -4910,34 +5303,34 @@ impl Connection {
                 .tls13_early_data_replay_window
                 .check_and_mark(record.sequence)
         {
-            self.tls13_early_data_telemetry.rejected_replay_or_too_old = self
-                .tls13_early_data_telemetry
+            self.noxtls_tls13_early_data_telemetry.rejected_replay_or_too_old = self
+                .noxtls_tls13_early_data_telemetry
                 .rejected_replay_or_too_old
                 .saturating_add(1);
             return Err(Error::StateError(
                 "tls13 early-data replay detected or sequence is too old",
             ));
         }
-        let (key, iv) = self.derive_tls13_early_data_record_key_iv(psk)?;
+        let (key, iv) = self.noxtls_derive_tls13_early_data_record_key_iv(psk)?;
         let nonce = noxtls_build_record_nonce(&iv, record.sequence);
-        let plaintext = if self.tls13_early_data_uses_chacha20_poly1305() {
+        let plaintext = if self.noxtls_tls13_early_data_uses_chacha20_poly1305() {
             let key_32: [u8; 32] = key.as_slice().try_into().map_err(|_| {
                 Error::InvalidLength("tls13 early-data chacha key must be 32 bytes")
             })?;
             noxtls_chacha20_poly1305_decrypt(&key_32, &nonce, aad, &record.ciphertext, &record.tag)
                 .map_err(|err| {
-                    self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
-                        .tls13_early_data_telemetry
+                    self.noxtls_tls13_early_data_telemetry.rejected_decrypt_or_policy = self
+                        .noxtls_tls13_early_data_telemetry
                         .rejected_decrypt_or_policy
                         .saturating_add(1);
                     err
                 })?
         } else {
-            let cipher = AesCipher::new(&key)?;
+            let cipher = AesCipher::noxtls_new(&key)?;
             noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag).map_err(
                 |err| {
-                    self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
-                        .tls13_early_data_telemetry
+                    self.noxtls_tls13_early_data_telemetry.rejected_decrypt_or_policy = self
+                        .noxtls_tls13_early_data_telemetry
                         .rejected_decrypt_or_policy
                         .saturating_add(1);
                     err
@@ -4945,8 +5338,8 @@ impl Connection {
             )?
         };
         if plaintext.len() > self.max_record_plaintext_len {
-            self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
-                .tls13_early_data_telemetry
+            self.noxtls_tls13_early_data_telemetry.rejected_decrypt_or_policy = self
+                .noxtls_tls13_early_data_telemetry
                 .rejected_decrypt_or_policy
                 .saturating_add(1);
             return Err(Error::InvalidLength(
@@ -4958,8 +5351,8 @@ impl Connection {
                 .tls13_early_data_opened_bytes
                 .saturating_add(plaintext.len() as u64);
             if next_total > u64::from(max_bytes) {
-                self.tls13_early_data_telemetry.rejected_decrypt_or_policy = self
-                    .tls13_early_data_telemetry
+                self.noxtls_tls13_early_data_telemetry.rejected_decrypt_or_policy = self
+                    .noxtls_tls13_early_data_telemetry
                     .rejected_decrypt_or_policy
                     .saturating_add(1);
                 return Err(Error::InvalidLength(
@@ -4968,8 +5361,8 @@ impl Connection {
             }
             self.tls13_early_data_opened_bytes = next_total;
         }
-        self.tls13_early_data_telemetry.accepted_records = self
-            .tls13_early_data_telemetry
+        self.noxtls_tls13_early_data_telemetry.accepted_records = self
+            .noxtls_tls13_early_data_telemetry
             .accepted_records
             .saturating_add(1);
         Ok(plaintext)
@@ -4977,7 +5370,7 @@ impl Connection {
 
     /// Seals one TLS 1.3 early-data wire record packet from TLSInnerPlaintext content.
     ///
-    /// Inherits the same [`HandshakeState::ClientHelloSent`] requirement as [`Self::seal_tls13_early_data_record`].
+    /// Inherits the same [`HandshakeState::ClientHelloSent`] requirement as [`Self::noxtls_seal_tls13_early_data_record`].
     ///
     /// # Arguments
     /// * `psk`: Resumption/external PSK bytes used to derive early-data traffic secret.
@@ -4997,7 +5390,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_tls13_early_data_record_packet(
+    pub fn noxtls_seal_tls13_early_data_record_packet(
         &self,
         psk: &[u8],
         content: &[u8],
@@ -5007,14 +5400,14 @@ impl Connection {
         padding_len: usize,
     ) -> Result<Vec<u8>> {
         let inner = noxtls_encode_tls13_inner_plaintext(content, content_type, padding_len);
-        let expected_aad = self.build_tls13_record_aad(inner.len().saturating_add(16))?;
+        let expected_aad = self.noxtls_build_tls13_record_aad(inner.len().saturating_add(16))?;
         let aad_to_use = if aad.is_empty() {
             &expected_aad[..]
         } else {
             aad
         };
-        let record = self.seal_tls13_early_data_record(psk, &inner, aad_to_use, sequence)?;
-        self.encode_tls13_record_packet(&record)
+        let record = self.noxtls_seal_tls13_early_data_record(psk, &inner, aad_to_use, sequence)?;
+        self.noxtls_encode_tls13_record_packet(&record)
     }
 
     /// Opens one TLS 1.3 early-data wire record packet and decodes TLSInnerPlaintext.
@@ -5035,22 +5428,22 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_tls13_early_data_record_packet(
+    pub fn noxtls_open_tls13_early_data_record_packet(
         &mut self,
         psk: &[u8],
         packet: &[u8],
         aad: &[u8],
         sequence: u64,
     ) -> Result<(Vec<u8>, u8)> {
-        let record = self.decode_tls13_record_packet(packet, sequence)?;
+        let record = self.noxtls_decode_tls13_record_packet(packet, sequence)?;
         let expected_aad =
-            self.build_tls13_record_aad(record.ciphertext.len().saturating_add(record.tag.len()))?;
+            self.noxtls_build_tls13_record_aad(record.ciphertext.len().saturating_add(record.tag.len()))?;
         let aad_to_use = if aad.is_empty() {
             &expected_aad[..]
         } else {
             aad
         };
-        let inner = self.open_tls13_early_data_record(psk, &record, aad_to_use)?;
+        let inner = self.noxtls_open_tls13_early_data_record(psk, &record, aad_to_use)?;
         noxtls_decode_tls13_inner_plaintext(&inner)
     }
 
@@ -5070,7 +5463,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn open_tls13_early_data_client_flight_packets(
+    pub fn noxtls_open_tls13_early_data_client_flight_packets(
         &mut self,
         psk: &[u8],
         packets: &[Vec<u8>],
@@ -5080,7 +5473,7 @@ impl Connection {
         for (idx, packet) in packets.iter().enumerate() {
             let sequence = first_sequence.saturating_add(idx as u64);
             let (payload, content_type) =
-                self.open_tls13_early_data_record_packet(psk, packet, &[], sequence)?;
+                self.noxtls_open_tls13_early_data_record_packet(psk, packet, &[], sequence)?;
             if content_type != RecordContentType::ApplicationData.to_u8() {
                 return Err(Error::ParseFailure(
                     "tls13 early-data packet inner content type must be application_data",
@@ -5112,7 +5505,7 @@ impl Connection {
     ///
     /// This function does not panic.
     #[allow(clippy::too_many_arguments)]
-    pub fn accept_and_open_tls13_early_data_client_flight_with_ticket_policy(
+    pub fn noxtls_accept_and_open_tls13_early_data_client_flight_with_ticket_policy(
         &mut self,
         client_hello: &[u8],
         tickets: &mut [ResumptionTicket],
@@ -5122,7 +5515,7 @@ impl Connection {
         packets: &[Vec<u8>],
         first_sequence: u64,
     ) -> Result<Vec<Vec<u8>>> {
-        if !self.accept_tls13_early_data_with_ticket_policy(
+        if !self.noxtls_accept_tls13_early_data_with_ticket_policy(
             client_hello,
             tickets,
             current_time_ms,
@@ -5137,7 +5530,7 @@ impl Connection {
             .ok_or(Error::StateError(
                 "tls13 early-data accepted ticket context is not installed",
             ))?;
-        self.open_tls13_early_data_client_flight_packets(&accepted_psk, packets, first_sequence)
+        self.noxtls_open_tls13_early_data_client_flight_packets(&accepted_psk, packets, first_sequence)
     }
 
     /// Accepts ClientHello policy from ticket store and opens early-data packets from the client flight.
@@ -5161,7 +5554,7 @@ impl Connection {
     ///
     /// This function does not panic.
     #[allow(clippy::too_many_arguments)]
-    pub fn accept_and_open_tls13_early_data_client_flight_with_ticket_store(
+    pub fn noxtls_accept_and_open_tls13_early_data_client_flight_with_ticket_store(
         &mut self,
         client_hello: &[u8],
         ticket_store: &mut TicketStore,
@@ -5171,7 +5564,7 @@ impl Connection {
         packets: &[Vec<u8>],
         first_sequence: u64,
     ) -> Result<Vec<Vec<u8>>> {
-        if !self.accept_tls13_early_data_with_ticket_store(
+        if !self.noxtls_accept_tls13_early_data_with_ticket_store(
             client_hello,
             ticket_store,
             current_time_ms,
@@ -5186,7 +5579,7 @@ impl Connection {
             .ok_or(Error::StateError(
                 "tls13 early-data accepted ticket context is not installed",
             ))?;
-        self.open_tls13_early_data_client_flight_packets(&accepted_psk, packets, first_sequence)
+        self.noxtls_open_tls13_early_data_client_flight_packets(&accepted_psk, packets, first_sequence)
     }
 
     /// Opens inbound application data using installed server traffic keys.
@@ -5205,10 +5598,19 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_record(&mut self, record: &ProtectedRecord, aad: &[u8]) -> Result<Vec<u8>> {
-        if self.state != HandshakeState::Finished {
+    pub fn noxtls_open_record(&mut self, record: &ProtectedRecord, aad: &[u8]) -> Result<Vec<u8>> {
+        let tls13_handshake_open_allowed = self.version.uses_tls13_handshake_semantics()
+            && matches!(
+                self.state,
+                HandshakeState::KeysDerived
+                    | HandshakeState::ServerEncryptedExtensionsReceived
+                    | HandshakeState::ServerCertificateRequestReceived
+                    | HandshakeState::ServerCertificateReceived
+                    | HandshakeState::ServerCertificateVerified
+            );
+        if self.state != HandshakeState::Finished && !tls13_handshake_open_allowed {
             return Err(Error::StateError(
-                "cannot open record before handshake finish",
+                "cannot open record before handshake noxtls_finish",
             ));
         }
         if self.server_sequence == u64::MAX {
@@ -5219,7 +5621,7 @@ impl Connection {
                 "unexpected server record sequence number",
             ));
         }
-        let suite = self.selected_cipher_suite.ok_or(Error::StateError(
+        let suite = self.noxtls_selected_cipher_suite.ok_or(Error::StateError(
             "cipher suite must be selected before opening records",
         ))?;
         let key = self
@@ -5230,19 +5632,23 @@ impl Connection {
             .ok_or(Error::StateError("server write iv is not installed"))?;
         let nonce = noxtls_build_record_nonce(&iv, record.sequence);
         let plaintext = match suite {
-            CipherSuite::TlsChacha20Poly1305Sha256 => {
-                noxtls_chacha20_poly1305_decrypt(&key, &nonce, aad, &record.ciphertext, &record.tag)?
-            }
+            CipherSuite::TlsChacha20Poly1305Sha256 => noxtls_chacha20_poly1305_decrypt(
+                &key,
+                &nonce,
+                aad,
+                &record.ciphertext,
+                &record.tag,
+            )?,
             CipherSuite::TlsAes128GcmSha256 | CipherSuite::TlsAes256GcmSha384 => {
-                let key_len = suite.tls13_traffic_key_len().ok_or(Error::StateError(
+                let key_len = suite.noxtls_tls13_traffic_key_len().ok_or(Error::StateError(
                     "tls 1.3 aes suites must define traffic key length",
                 ))?;
-                let cipher = AesCipher::new(&key[..key_len])?;
+                let cipher = AesCipher::noxtls_new(&key[..key_len])?;
                 noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
             }
             CipherSuite::TlsEcdheRsaWithAes128GcmSha256
             | CipherSuite::TlsEcdheRsaWithAes256GcmSha384 => {
-                let cipher = AesCipher::new(&key[..16])?;
+                let cipher = AesCipher::noxtls_new(&key[..16])?;
                 noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
             }
         };
@@ -5271,8 +5677,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_own_record(&self, record: &ProtectedRecord, aad: &[u8]) -> Result<Vec<u8>> {
-        let suite = self.selected_cipher_suite.ok_or(Error::StateError(
+    pub fn noxtls_open_own_record(&self, record: &ProtectedRecord, aad: &[u8]) -> Result<Vec<u8>> {
+        let suite = self.noxtls_selected_cipher_suite.ok_or(Error::StateError(
             "cipher suite must be selected before opening own records",
         ))?;
         let key = self
@@ -5283,19 +5689,23 @@ impl Connection {
             .ok_or(Error::StateError("client write iv is not installed"))?;
         let nonce = noxtls_build_record_nonce(&iv, record.sequence);
         let plaintext = match suite {
-            CipherSuite::TlsChacha20Poly1305Sha256 => {
-                noxtls_chacha20_poly1305_decrypt(&key, &nonce, aad, &record.ciphertext, &record.tag)?
-            }
+            CipherSuite::TlsChacha20Poly1305Sha256 => noxtls_chacha20_poly1305_decrypt(
+                &key,
+                &nonce,
+                aad,
+                &record.ciphertext,
+                &record.tag,
+            )?,
             CipherSuite::TlsAes128GcmSha256 | CipherSuite::TlsAes256GcmSha384 => {
-                let key_len = suite.tls13_traffic_key_len().ok_or(Error::StateError(
+                let key_len = suite.noxtls_tls13_traffic_key_len().ok_or(Error::StateError(
                     "tls 1.3 aes suites must define traffic key length",
                 ))?;
-                let cipher = AesCipher::new(&key[..key_len])?;
+                let cipher = AesCipher::noxtls_new(&key[..key_len])?;
                 noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
             }
             CipherSuite::TlsEcdheRsaWithAes128GcmSha256
             | CipherSuite::TlsEcdheRsaWithAes256GcmSha384 => {
-                let cipher = AesCipher::new(&key[..16])?;
+                let cipher = AesCipher::noxtls_new(&key[..16])?;
                 noxtls_aes_gcm_decrypt(&cipher, &nonce, aad, &record.ciphertext, &record.tag)?
             }
         };
@@ -5323,16 +5733,16 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_tls12_record_packet(
+    pub fn noxtls_seal_tls12_record_packet(
         &mut self,
         plaintext: &[u8],
         content_type: RecordContentType,
     ) -> Result<Vec<u8>> {
-        self.ensure_tls12_wire_mode()?;
+        self.noxtls_ensure_tls12_wire_mode()?;
         let sequence = self.client_sequence;
-        let aad = self.build_tls12_record_aad(sequence, content_type, plaintext.len())?;
-        let record = self.seal_record(plaintext, &aad)?;
-        self.encode_tls12_record_packet(&record, content_type)
+        let aad = self.noxtls_build_tls12_record_aad(sequence, content_type, plaintext.len())?;
+        let record = self.noxtls_seal_record(plaintext, &aad)?;
+        self.noxtls_encode_tls12_record_packet(&record, content_type)
     }
 
     /// Opens one inbound TLS 1.2 wire record packet using server traffic keys.
@@ -5350,15 +5760,15 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_tls12_record_packet(
+    pub fn noxtls_open_tls12_record_packet(
         &mut self,
         packet: &[u8],
     ) -> Result<(RecordContentType, Vec<u8>)> {
-        self.ensure_tls12_wire_mode()?;
+        self.noxtls_ensure_tls12_wire_mode()?;
         let sequence = self.server_sequence;
-        let (record, content_type) = self.decode_tls12_record_packet(packet, sequence)?;
-        let aad = self.build_tls12_record_aad(sequence, content_type, record.ciphertext.len())?;
-        let plaintext = self.open_record(&record, &aad)?;
+        let (record, content_type) = self.noxtls_decode_tls12_record_packet(packet, sequence)?;
+        let aad = self.noxtls_build_tls12_record_aad(sequence, content_type, record.ciphertext.len())?;
+        let plaintext = self.noxtls_open_record(&record, &aad)?;
         Ok((content_type, plaintext))
     }
 
@@ -5378,15 +5788,15 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_own_tls12_record_packet(
+    pub fn noxtls_open_own_tls12_record_packet(
         &self,
         packet: &[u8],
         sequence: u64,
     ) -> Result<(RecordContentType, Vec<u8>)> {
-        self.ensure_tls12_wire_mode()?;
-        let (record, content_type) = self.decode_tls12_record_packet(packet, sequence)?;
-        let aad = self.build_tls12_record_aad(sequence, content_type, record.ciphertext.len())?;
-        let plaintext = self.open_own_record(&record, &aad)?;
+        self.noxtls_ensure_tls12_wire_mode()?;
+        let (record, content_type) = self.noxtls_decode_tls12_record_packet(packet, sequence)?;
+        let aad = self.noxtls_build_tls12_record_aad(sequence, content_type, record.ciphertext.len())?;
+        let plaintext = self.noxtls_open_own_record(&record, &aad)?;
         Ok((content_type, plaintext))
     }
 
@@ -5406,7 +5816,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_tls12_alert_packet(
+    pub fn noxtls_send_tls12_alert_packet(
         &mut self,
         level: AlertLevel,
         description: AlertDescription,
@@ -5416,7 +5826,7 @@ impl Connection {
                 "tls12 alert records require TLS 1.2 connection",
             ));
         }
-        self.seal_tls12_record_packet(
+        self.noxtls_seal_tls12_record_packet(
             &[level.to_u8(), description.to_u8()],
             RecordContentType::Alert,
         )
@@ -5437,9 +5847,9 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_tls12_alert_for_handshake_error(&mut self, error: &Error) -> Result<Vec<u8>> {
-        let (level, description) = Self::tls12_alert_for_handshake_error(error);
-        self.send_tls12_alert_packet(level, description)
+    pub fn noxtls_send_tls12_alert_for_handshake_error(&mut self, error: &Error) -> Result<Vec<u8>> {
+        let (level, description) = Self::noxtls_tls12_alert_for_handshake_error(error);
+        self.noxtls_send_tls12_alert_packet(level, description)
     }
 
     /// Opens a peer TLS 1.2 alert packet and parses `(level, description)` semantics.
@@ -5457,12 +5867,12 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_tls12_alert_packet(
+    pub fn noxtls_recv_tls12_alert_packet(
         &mut self,
         packet: &[u8],
     ) -> Result<(AlertLevel, AlertDescription)> {
-        let (content_type, payload) = self.open_tls12_record_packet(packet)?;
-        self.parse_tls12_alert_payload(content_type, &payload)
+        let (content_type, payload) = self.noxtls_open_tls12_record_packet(packet)?;
+        self.noxtls_parse_tls12_alert_payload(content_type, &payload)
     }
 
     /// Opens a locally-sealed TLS 1.2 alert packet for deterministic loopback tests.
@@ -5481,13 +5891,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_own_tls12_alert_packet(
+    pub fn noxtls_recv_own_tls12_alert_packet(
         &self,
         packet: &[u8],
         sequence: u64,
     ) -> Result<(AlertLevel, AlertDescription)> {
-        let (content_type, payload) = self.open_own_tls12_record_packet(packet, sequence)?;
-        self.parse_tls12_alert_payload(content_type, &payload)
+        let (content_type, payload) = self.noxtls_open_own_tls12_record_packet(packet, sequence)?;
+        self.noxtls_parse_tls12_alert_payload(content_type, &payload)
     }
 
     /// Parses TLS 1.2 alert payload shape from already-authenticated TLS record plaintext bytes.
@@ -5510,7 +5920,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn parse_tls12_alert_payload(
+    fn noxtls_parse_tls12_alert_payload(
         &self,
         content_type: RecordContentType,
         payload: &[u8],
@@ -5546,7 +5956,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_dtls12_record_packet(
+    pub fn noxtls_build_dtls12_record_packet(
         &self,
         content_type: RecordContentType,
         epoch: u16,
@@ -5576,7 +5986,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn parse_dtls12_record_packet(&self, packet: &[u8]) -> Result<(DtlsRecordHeader, Vec<u8>)> {
+    pub fn noxtls_parse_dtls12_record_packet(&self, packet: &[u8]) -> Result<(DtlsRecordHeader, Vec<u8>)> {
         if self.version != TlsVersion::Dtls12 {
             return Err(Error::StateError(
                 "dtls12 record packet parser requires DTLS1.2 connection",
@@ -5607,7 +6017,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn fragment_dtls12_handshake_message(
+    pub fn noxtls_fragment_dtls12_handshake_message(
         &self,
         handshake_type: u8,
         message_seq: u16,
@@ -5619,7 +6029,12 @@ impl Connection {
                 "dtls12 handshake fragmentation requires DTLS1.2 connection",
             ));
         }
-        noxtls_encode_dtls12_handshake_fragments(handshake_type, message_seq, body, max_fragment_len)
+        noxtls_encode_dtls12_handshake_fragments(
+            handshake_type,
+            message_seq,
+            body,
+            max_fragment_len,
+        )
     }
 
     /// Reassembles encoded DTLS1.2 handshake fragments into one complete message.
@@ -5664,7 +6079,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_dtls12_anti_amplification_enforced(&mut self, enforced: bool) {
+    pub fn noxtls_set_dtls12_anti_amplification_enforced(&mut self, enforced: bool) {
         self.dtls12_anti_amplification_enforced = enforced;
     }
 
@@ -5676,7 +6091,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn record_dtls12_inbound_datagram(&mut self, bytes: usize) {
+    pub fn noxtls_record_dtls12_inbound_datagram(&mut self, bytes: usize) {
         self.dtls12_inbound_bytes = self.dtls12_inbound_bytes.saturating_add(bytes as u64);
     }
 
@@ -5695,12 +6110,12 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn dtls12_can_send_datagram_bytes(&self, bytes: usize) -> bool {
+    pub fn noxtls_dtls12_can_send_datagram_bytes(&self, bytes: usize) -> bool {
         if !self.dtls12_anti_amplification_enforced {
             return true;
         }
         if matches!(
-            self.dtls12_handshake_phase,
+            self.noxtls_dtls12_handshake_phase,
             Dtls12HandshakePhase::AwaitingClientKeyExchange
                 | Dtls12HandshakePhase::AwaitingFinished
                 | Dtls12HandshakePhase::Connected
@@ -5728,8 +6143,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn record_dtls12_outbound_datagram(&mut self, bytes: usize) -> Result<()> {
-        if !self.dtls12_can_send_datagram_bytes(bytes) {
+    pub fn noxtls_record_dtls12_outbound_datagram(&mut self, bytes: usize) -> Result<()> {
+        if !self.noxtls_dtls12_can_send_datagram_bytes(bytes) {
             return Err(Error::StateError(
                 "dtls12 anti-amplification budget exceeded before cookie validation",
             ));
@@ -5754,7 +6169,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_dtls12_client_hello_without_cookie(
+    pub fn noxtls_process_dtls12_client_hello_without_cookie(
         &mut self,
         client_hello: &[u8],
         cookie_secret: &[u8],
@@ -5764,7 +6179,7 @@ impl Connection {
                 "dtls12 cookie exchange requires DTLS1.2 connection",
             ));
         }
-        if self.dtls12_handshake_phase != Dtls12HandshakePhase::AwaitingClientHello {
+        if self.noxtls_dtls12_handshake_phase != Dtls12HandshakePhase::AwaitingClientHello {
             return Err(Error::StateError(
                 "dtls12 cookie challenge requires initial client-hello phase",
             ));
@@ -5775,10 +6190,10 @@ impl Connection {
                 "dtls12 cookie exchange requires client hello message",
             ));
         }
-        let cookie = self.compute_dtls12_cookie(client_hello, cookie_secret)?;
+        let cookie = self.noxtls_compute_dtls12_cookie(client_hello, cookie_secret)?;
         self.dtls12_expected_cookie = Some(cookie.clone());
-        self.dtls12_handshake_phase = Dtls12HandshakePhase::AwaitingClientHelloWithCookie;
-        self.build_dtls12_hello_verify_request(&cookie)
+        self.noxtls_dtls12_handshake_phase = Dtls12HandshakePhase::AwaitingClientHelloWithCookie;
+        self.noxtls_build_dtls12_hello_verify_request(&cookie)
     }
 
     /// Processes second DTLS1.2 `ClientHello` containing verified cookie bytes.
@@ -5799,7 +6214,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_dtls12_client_hello_with_cookie(
+    pub fn noxtls_process_dtls12_client_hello_with_cookie(
         &mut self,
         client_hello: &[u8],
         cookie: &[u8],
@@ -5810,7 +6225,7 @@ impl Connection {
                 "dtls12 cookie exchange requires DTLS1.2 connection",
             ));
         }
-        if self.dtls12_handshake_phase != Dtls12HandshakePhase::AwaitingClientHelloWithCookie {
+        if self.noxtls_dtls12_handshake_phase != Dtls12HandshakePhase::AwaitingClientHelloWithCookie {
             return Err(Error::StateError(
                 "dtls12 cookie verification requires retry client-hello phase",
             ));
@@ -5826,17 +6241,17 @@ impl Connection {
                 "dtls12 cookie verification requires client hello message",
             ));
         }
-        let expected = self.compute_dtls12_cookie(client_hello, cookie_secret)?;
+        let expected = self.noxtls_compute_dtls12_cookie(client_hello, cookie_secret)?;
         let Some(challenge_cookie) = self.dtls12_expected_cookie.as_ref() else {
             return Err(Error::StateError(
                 "dtls12 cookie challenge must be issued before verification",
             ));
         };
-        if !constant_time_eq(challenge_cookie, cookie) || !constant_time_eq(&expected, cookie) {
+        if !noxtls_constant_time_eq(challenge_cookie, cookie) || !noxtls_constant_time_eq(&expected, cookie) {
             return Err(Error::ParseFailure("dtls12 client cookie mismatch"));
         }
         self.dtls12_expected_cookie = None;
-        self.dtls12_handshake_phase = Dtls12HandshakePhase::AwaitingClientKeyExchange;
+        self.noxtls_dtls12_handshake_phase = Dtls12HandshakePhase::AwaitingClientKeyExchange;
         self.state = HandshakeState::ClientHelloSent;
         Ok(())
     }
@@ -5863,21 +6278,21 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_dtls12_client_handshake_message(&mut self, message: &[u8]) -> Result<()> {
+    pub fn noxtls_process_dtls12_client_handshake_message(&mut self, message: &[u8]) -> Result<()> {
         if self.version != TlsVersion::Dtls12 {
             return Err(Error::StateError(
                 "dtls12 handshake sequencing requires DTLS1.2 connection",
             ));
         }
         let (message_type, _body) = noxtls_parse_handshake_message(message)?;
-        match self.dtls12_handshake_phase {
+        match self.noxtls_dtls12_handshake_phase {
             Dtls12HandshakePhase::AwaitingClientKeyExchange => {
                 if message_type != HANDSHAKE_CLIENT_KEY_EXCHANGE {
                     return Err(Error::ParseFailure(
                         "dtls12 expected client key exchange handshake message",
                     ));
                 }
-                self.dtls12_handshake_phase = Dtls12HandshakePhase::AwaitingFinished;
+                self.noxtls_dtls12_handshake_phase = Dtls12HandshakePhase::AwaitingFinished;
                 Ok(())
             }
             Dtls12HandshakePhase::AwaitingFinished => {
@@ -5886,7 +6301,7 @@ impl Connection {
                         "dtls12 expected finished handshake message",
                     ));
                 }
-                self.dtls12_handshake_phase = Dtls12HandshakePhase::Connected;
+                self.noxtls_dtls12_handshake_phase = Dtls12HandshakePhase::Connected;
                 self.state = HandshakeState::Finished;
                 Ok(())
             }
@@ -5910,8 +6325,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn dtls12_handshake_phase(&self) -> &'static str {
-        match self.dtls12_handshake_phase {
+    pub fn noxtls_dtls12_handshake_phase(&self) -> &'static str {
+        match self.noxtls_dtls12_handshake_phase {
             Dtls12HandshakePhase::AwaitingClientHello => "awaiting_client_hello",
             Dtls12HandshakePhase::AwaitingClientHelloWithCookie => {
                 "awaiting_client_hello_with_cookie"
@@ -5941,21 +6356,54 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn install_dtls13_traffic_keys(
+    pub fn noxtls_install_dtls13_traffic_keys(
         &mut self,
         client_key: [u8; 16],
         client_iv: [u8; 12],
         server_key: [u8; 16],
         server_iv: [u8; 12],
     ) -> Result<()> {
-        self.ensure_dtls13_mode()?;
+        self.noxtls_ensure_dtls13_mode()?;
         self.dtls13_client_write_key = Some(client_key);
         self.dtls13_client_write_iv = Some(client_iv);
         self.dtls13_server_write_key = Some(server_key);
         self.dtls13_server_write_iv = Some(server_iv);
-        self.dtls13_inbound_replay_tracker = DtlsEpochReplayTracker::new();
-        self.dtls13_client_inbound_replay_tracker = DtlsEpochReplayTracker::new();
+        self.dtls13_inbound_replay_tracker = DtlsEpochReplayTracker::noxtls_new();
+        self.dtls13_client_inbound_replay_tracker = DtlsEpochReplayTracker::noxtls_new();
         Ok(())
+    }
+
+    /// Returns the installed DTLS 1.3 AES-128-GCM **server** handshake write key and IV.
+    ///
+    /// Populated after [`Self::noxtls_derive_handshake_secret`] (or equivalent record-protection install)
+    /// for TLS 1.3 / DTLS 1.3. Intended for harnesses that seal synthetic server handshake records
+    /// with the same material [`Self::noxtls_open_dtls13_record`] expects.
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` — `&self`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok((key, iv))` when both values are installed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`noxtls_core::Error`] when the connection is not DTLS 1.3 or keys are absent.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    ///
+    pub fn noxtls_dtls13_handshake_server_write_material(&self) -> Result<([u8; 16], [u8; 12])> {
+        self.noxtls_ensure_dtls13_mode()?;
+        let key = self.dtls13_server_write_key.ok_or(Error::StateError(
+            "dtls13 server write key is not installed",
+        ))?;
+        let iv = self
+            .dtls13_server_write_iv
+            .ok_or(Error::StateError("dtls13 server write iv is not installed"))?;
+        Ok((key, iv))
     }
 
     /// Sets the outbound DTLS epoch and resets per-epoch sequence to zero.
@@ -5974,9 +6422,9 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_dtls13_outbound_epoch(&mut self, epoch: u16) -> Result<()> {
-        self.ensure_dtls13_mode()?;
-        if !self.dtls13_active_flight.is_empty() && !self.is_dtls13_active_flight_complete()? {
+    pub fn noxtls_set_dtls13_outbound_epoch(&mut self, epoch: u16) -> Result<()> {
+        self.noxtls_ensure_dtls13_mode()?;
+        if !self.dtls13_active_flight.is_empty() && !self.noxtls_is_dtls13_active_flight_complete()? {
             return Err(Error::StateError(
                 "cannot change dtls13 outbound epoch while active flight is incomplete",
             ));
@@ -6004,9 +6452,9 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_dtls13_record(&mut self, plaintext: &[u8]) -> Result<Vec<u8>> {
-        self.ensure_dtls13_mode()?;
-        self.ensure_dtls13_tx_sequence_available()?;
+    pub fn noxtls_seal_dtls13_record(&mut self, plaintext: &[u8]) -> Result<Vec<u8>> {
+        self.noxtls_ensure_dtls13_mode()?;
+        self.noxtls_ensure_dtls13_tx_sequence_available()?;
         let key = self.dtls13_client_write_key.ok_or(Error::StateError(
             "dtls13 client write key is not installed",
         ))?;
@@ -6040,13 +6488,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_dtls13_record_for_flight(
+    pub fn noxtls_seal_dtls13_record_for_flight(
         &mut self,
         plaintext: &[u8],
         now_ms: u64,
     ) -> Result<Vec<u8>> {
-        self.ensure_dtls13_mode()?;
-        let packet = self.seal_dtls13_record(plaintext)?;
+        self.noxtls_ensure_dtls13_mode()?;
+        let packet = self.noxtls_seal_dtls13_record(plaintext)?;
         let (header, _payload) = noxtls_parse_dtls_record_packet(&packet)?;
         self.dtls_retransmit_tracker.track_outbound_with_schedule(
             header.epoch,
@@ -6074,12 +6522,12 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_dtls13_record_flight(
+    pub fn noxtls_seal_dtls13_record_flight(
         &mut self,
         plaintext_records: &[&[u8]],
         now_ms: u64,
     ) -> Result<Vec<Vec<u8>>> {
-        self.ensure_dtls13_mode()?;
+        self.noxtls_ensure_dtls13_mode()?;
         if plaintext_records.is_empty() {
             return Err(Error::InvalidLength(
                 "dtls13 record flight must contain at least one payload",
@@ -6087,7 +6535,7 @@ impl Connection {
         }
         let mut packets = Vec::with_capacity(plaintext_records.len());
         for plaintext in plaintext_records {
-            packets.push(self.seal_dtls13_record_for_flight(plaintext, now_ms)?);
+            packets.push(self.noxtls_seal_dtls13_record_for_flight(plaintext, now_ms)?);
         }
         Ok(packets)
     }
@@ -6108,25 +6556,25 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn start_dtls13_active_flight(
+    pub fn noxtls_start_dtls13_active_flight(
         &mut self,
         plaintext_records: &[&[u8]],
         now_ms: u64,
     ) -> Result<Vec<Vec<u8>>> {
-        self.ensure_dtls13_mode()?;
-        if !self.dtls13_active_flight.is_empty() && !self.is_dtls13_active_flight_complete()? {
+        self.noxtls_ensure_dtls13_mode()?;
+        if !self.dtls13_active_flight.is_empty() && !self.noxtls_is_dtls13_active_flight_complete()? {
             return Err(Error::StateError(
-                "cannot start new dtls13 active flight while previous flight is incomplete",
+                "cannot start noxtls_new dtls13 active flight while previous flight is incomplete",
             ));
         }
-        let packets = self.seal_dtls13_record_flight(plaintext_records, now_ms)?;
+        let packets = self.noxtls_seal_dtls13_record_flight(plaintext_records, now_ms)?;
         self.dtls13_active_flight.clear();
         for packet in &packets {
             self.dtls13_active_flight
-                .push(self.parse_dtls_packet_key(packet)?);
+                .push(self.noxtls_parse_dtls_packet_key(packet)?);
         }
         self.dtls13_active_flight_started_at_ms = Some(now_ms);
-        self.dtls13_active_flight_failed = false;
+        self.noxtls_dtls13_active_flight_failed = false;
         Ok(packets)
     }
 
@@ -6146,8 +6594,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_dtls13_active_flight_timeout_ms(&mut self, timeout_ms: u64) -> Result<()> {
-        self.ensure_dtls13_mode()?;
+    pub fn noxtls_set_dtls13_active_flight_timeout_ms(&mut self, timeout_ms: u64) -> Result<()> {
+        self.noxtls_ensure_dtls13_mode()?;
         self.dtls13_active_flight_timeout_ms = timeout_ms.max(1);
         Ok(())
     }
@@ -6167,15 +6615,20 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_dtls13_record(&mut self, packet: &[u8]) -> Result<(DtlsRecordHeader, Vec<u8>)> {
-        self.ensure_dtls13_mode()?;
+    pub fn noxtls_open_dtls13_record(&mut self, packet: &[u8]) -> Result<(DtlsRecordHeader, Vec<u8>)> {
+        self.noxtls_ensure_dtls13_mode()?;
         let key = self.dtls13_server_write_key.ok_or(Error::StateError(
             "dtls13 server write key is not installed",
         ))?;
         let iv = self
             .dtls13_server_write_iv
             .ok_or(Error::StateError("dtls13 server write iv is not installed"))?;
-        noxtls_open_dtls13_aes128gcm_record(packet, &key, &iv, &mut self.dtls13_inbound_replay_tracker)
+        noxtls_open_dtls13_aes128gcm_record(
+            packet,
+            &key,
+            &iv,
+            &mut self.dtls13_inbound_replay_tracker,
+        )
     }
 
     /// Opens one DTLS1.3 protected record using installed client traffic keys.
@@ -6195,11 +6648,11 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_dtls13_client_record(
+    pub fn noxtls_open_dtls13_client_record(
         &mut self,
         packet: &[u8],
     ) -> Result<(DtlsRecordHeader, Vec<u8>)> {
-        self.ensure_dtls13_mode()?;
+        self.noxtls_ensure_dtls13_mode()?;
         let key = self.dtls13_client_write_key.ok_or(Error::StateError(
             "dtls13 client write key is not installed",
         ))?;
@@ -6236,11 +6689,11 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_dtls13_encrypted_server_flight_after_hello(
+    pub fn noxtls_process_dtls13_encrypted_server_flight_after_hello(
         &mut self,
         packets: &[Vec<u8>],
     ) -> Result<()> {
-        self.ensure_dtls13_mode()?;
+        self.noxtls_ensure_dtls13_mode()?;
         if self.state != HandshakeState::ServerHelloReceived {
             return Err(Error::StateError(
                 "dtls13 encrypted server flight requires server hello state",
@@ -6251,25 +6704,25 @@ impl Connection {
                 "dtls13 encrypted server flight is too short",
             ));
         }
+        self.noxtls_derive_handshake_secret()?;
         let mut messages = Vec::with_capacity(packets.len());
         for packet in packets {
-            let (_header, plaintext) = self.open_dtls13_record(packet)?;
+            let (_header, plaintext) = self.noxtls_open_dtls13_record(packet)?;
             messages.push(plaintext);
         }
         let mut index = 0_usize;
-        self.recv_encrypted_extensions(&messages[index])?;
+        self.noxtls_recv_encrypted_extensions(&messages[index])?;
         index += 1;
         let (next_type, _) = noxtls_parse_handshake_message(&messages[index])?;
         if next_type == HANDSHAKE_CERTIFICATE_REQUEST {
-            self.recv_certificate_request(&messages[index])?;
+            self.noxtls_recv_certificate_request(&messages[index])?;
             index += 1;
         }
-        self.recv_certificate(&messages[index])?;
+        self.noxtls_recv_certificate(&messages[index])?;
         index += 1;
-        self.recv_certificate_verify(&messages[index])?;
+        self.noxtls_recv_certificate_verify(&messages[index])?;
         index += 1;
-        self.derive_handshake_secret()?;
-        self.recv_finished_message(&messages[index])?;
+        self.noxtls_recv_finished_message(&messages[index])?;
         index += 1;
         if index != messages.len() {
             return Err(Error::ParseFailure(
@@ -6283,7 +6736,7 @@ impl Connection {
     ///
     /// Expected sequence:
     /// * `ServerHello` (plaintext handshake wrapper)
-    /// * encrypted post-hello packets consumed by `process_dtls13_encrypted_server_flight_after_hello`
+    /// * encrypted post-hello packets consumed by `noxtls_process_dtls13_encrypted_server_flight_after_hello`
     ///
     /// # Arguments
     /// * `server_hello`: Encoded ServerHello handshake message.
@@ -6299,14 +6752,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_dtls13_full_server_handshake_flight(
+    pub fn noxtls_process_dtls13_full_server_handshake_flight(
         &mut self,
         server_hello: &[u8],
         encrypted_packets: &[Vec<u8>],
     ) -> Result<()> {
-        self.ensure_dtls13_mode()?;
-        self.recv_server_hello(server_hello)?;
-        self.process_dtls13_encrypted_server_flight_after_hello(encrypted_packets)
+        self.noxtls_ensure_dtls13_mode()?;
+        self.noxtls_recv_server_hello(server_hello)?;
+        self.noxtls_process_dtls13_encrypted_server_flight_after_hello(encrypted_packets)
     }
 
     /// Processes encrypted DTLS client post-hello handshake flight with strict message ordering.
@@ -6328,11 +6781,11 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn process_dtls13_encrypted_client_flight_after_server_hello(
+    pub fn noxtls_process_dtls13_encrypted_client_flight_after_server_hello(
         &mut self,
         packets: &[Vec<u8>],
     ) -> Result<()> {
-        self.ensure_dtls13_mode()?;
+        self.noxtls_ensure_dtls13_mode()?;
         if packets.is_empty() {
             return Err(Error::ParseFailure(
                 "dtls13 encrypted client flight is too short",
@@ -6340,7 +6793,7 @@ impl Connection {
         }
         let mut message_types = Vec::with_capacity(packets.len());
         for packet in packets {
-            let (_header, plaintext) = self.open_dtls13_client_record(packet)?;
+            let (_header, plaintext) = self.noxtls_open_dtls13_client_record(packet)?;
             let (handshake_type, _body) = noxtls_parse_handshake_message(&plaintext)?;
             message_types.push(handshake_type);
         }
@@ -6381,12 +6834,12 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_dtls13_encrypted_client_flight_after_server_hello(
+    pub fn noxtls_build_dtls13_encrypted_client_flight_after_server_hello(
         &mut self,
         messages: &[Vec<u8>],
         now_ms: u64,
     ) -> Result<Vec<Vec<u8>>> {
-        self.ensure_dtls13_mode()?;
+        self.noxtls_ensure_dtls13_mode()?;
         if self.state != HandshakeState::ServerHelloReceived
             && self.state != HandshakeState::ServerCertificateVerified
             && self.state != HandshakeState::KeysDerived
@@ -6395,9 +6848,9 @@ impl Connection {
                 "dtls13 encrypted client flight requires post-server-hello state",
             ));
         }
-        self.validate_dtls13_client_post_hello_flight_order(messages)?;
+        self.noxtls_validate_dtls13_client_post_hello_flight_order(messages)?;
         let plaintext_refs: Vec<&[u8]> = messages.iter().map(Vec::as_slice).collect();
-        self.start_dtls13_active_flight(&plaintext_refs, now_ms)
+        self.noxtls_start_dtls13_active_flight(&plaintext_refs, now_ms)
     }
 
     /// Advances outbound DTLS epoch and resets per-epoch record sequence counter.
@@ -6416,9 +6869,9 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn advance_dtls13_outbound_epoch(&mut self) -> Result<u16> {
-        self.ensure_dtls13_mode()?;
-        if !self.dtls13_active_flight.is_empty() && !self.is_dtls13_active_flight_complete()? {
+    pub fn noxtls_advance_dtls13_outbound_epoch(&mut self) -> Result<u16> {
+        self.noxtls_ensure_dtls13_mode()?;
+        if !self.dtls13_active_flight.is_empty() && !self.noxtls_is_dtls13_active_flight_complete()? {
             return Err(Error::StateError(
                 "cannot advance dtls13 outbound epoch while active flight is incomplete",
             ));
@@ -6434,7 +6887,7 @@ impl Connection {
     /// Opens a locally sealed DTLS1.3 protected record using installed client traffic keys.
     ///
     /// This loopback helper is intended for local validation paths where records were produced
-    /// by `seal_dtls13_record` on the same connection instance.
+    /// by `noxtls_seal_dtls13_record` on the same connection instance.
     /// # Arguments
     ///
     /// * `&self` — `&self`.
@@ -6452,15 +6905,15 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_own_dtls13_record(&self, packet: &[u8]) -> Result<(DtlsRecordHeader, Vec<u8>)> {
-        self.ensure_dtls13_mode()?;
+    pub fn noxtls_open_own_dtls13_record(&self, packet: &[u8]) -> Result<(DtlsRecordHeader, Vec<u8>)> {
+        self.noxtls_ensure_dtls13_mode()?;
         let key = self.dtls13_client_write_key.ok_or(Error::StateError(
             "dtls13 client write key is not installed",
         ))?;
         let iv = self
             .dtls13_client_write_iv
             .ok_or(Error::StateError("dtls13 client write iv is not installed"))?;
-        let mut replay_tracker = DtlsEpochReplayTracker::new();
+        let mut replay_tracker = DtlsEpochReplayTracker::noxtls_new();
         noxtls_open_dtls13_aes128gcm_record(packet, &key, &iv, &mut replay_tracker)
     }
 
@@ -6479,8 +6932,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn mark_dtls13_record_acked_from_packet(&mut self, packet: &[u8]) -> Result<bool> {
-        self.ensure_dtls13_mode()?;
+    pub fn noxtls_mark_dtls13_record_acked_from_packet(&mut self, packet: &[u8]) -> Result<bool> {
+        self.noxtls_ensure_dtls13_mode()?;
         let (header, _payload) = noxtls_parse_dtls_record_packet(packet)?;
         if header.version != [0xFE, 0xFD] {
             return Err(Error::ParseFailure("dtls record version mismatch"));
@@ -6505,11 +6958,11 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn mark_dtls13_flight_acked_from_packets(&mut self, packets: &[Vec<u8>]) -> Result<usize> {
-        self.ensure_dtls13_mode()?;
+    pub fn noxtls_mark_dtls13_flight_acked_from_packets(&mut self, packets: &[Vec<u8>]) -> Result<usize> {
+        self.noxtls_ensure_dtls13_mode()?;
         let mut marked = 0_usize;
         for packet in packets {
-            if self.mark_dtls13_record_acked_from_packet(packet)? {
+            if self.noxtls_mark_dtls13_record_acked_from_packet(packet)? {
                 marked = marked.saturating_add(1);
             }
         }
@@ -6531,37 +6984,37 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn poll_dtls13_active_flight_due_packets(&mut self, now_ms: u64) -> Result<Vec<Vec<u8>>> {
-        self.ensure_dtls13_mode()?;
+    pub fn noxtls_poll_dtls13_active_flight_due_packets(&mut self, now_ms: u64) -> Result<Vec<Vec<u8>>> {
+        self.noxtls_ensure_dtls13_mode()?;
         if self.dtls13_active_flight.is_empty() {
             return Ok(Vec::new());
         }
-        if self.dtls13_active_flight_has_timed_out(now_ms) {
-            let _ = self.abort_dtls13_active_flight()?;
+        if self.noxtls_dtls13_active_flight_has_timed_out(now_ms) {
+            let _ = self.noxtls_abort_dtls13_active_flight()?;
             return Err(Error::StateError(
                 "dtls13 active flight timed out before completion",
             ));
         }
-        if self.dtls13_active_flight_missing_tracked_records() {
+        if self.noxtls_dtls13_active_flight_missing_tracked_records() {
             self.dtls13_active_flight.clear();
             self.dtls13_active_flight_started_at_ms = None;
-            self.dtls13_active_flight_failed = true;
+            self.noxtls_dtls13_active_flight_failed = true;
             return Err(Error::StateError(
                 "dtls13 active flight failed after retransmit budget exhausted",
             ));
         }
-        let due_packets = self.poll_dtls12_due_retransmit_packets(now_ms)?;
+        let due_packets = self.noxtls_poll_dtls12_due_retransmit_packets(now_ms)?;
         let mut filtered = Vec::new();
         for packet in due_packets {
-            let key = self.parse_dtls_packet_key(&packet)?;
+            let key = self.noxtls_parse_dtls_packet_key(&packet)?;
             if self.dtls13_active_flight.contains(&key) {
                 filtered.push(packet);
             }
         }
-        if self.dtls13_active_flight_missing_tracked_records() {
+        if self.noxtls_dtls13_active_flight_missing_tracked_records() {
             self.dtls13_active_flight.clear();
             self.dtls13_active_flight_started_at_ms = None;
-            self.dtls13_active_flight_failed = true;
+            self.noxtls_dtls13_active_flight_failed = true;
             return Err(Error::StateError(
                 "dtls13 active flight failed after retransmit budget exhausted",
             ));
@@ -6584,29 +7037,29 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn acknowledge_dtls13_active_flight_packets(
+    pub fn noxtls_acknowledge_dtls13_active_flight_packets(
         &mut self,
         packets: &[Vec<u8>],
     ) -> Result<usize> {
-        self.ensure_dtls13_mode()?;
+        self.noxtls_ensure_dtls13_mode()?;
         if self.dtls13_active_flight.is_empty() {
             return Ok(0);
         }
         let mut marked = 0_usize;
         for packet in packets {
-            let key = self.parse_dtls_packet_key(packet)?;
+            let key = self.noxtls_parse_dtls_packet_key(packet)?;
             if !self.dtls13_active_flight.contains(&key) {
                 continue;
             }
-            if self.mark_dtls12_record_acked(key.0, key.1)? {
+            if self.noxtls_mark_dtls12_record_acked(key.0, key.1)? {
                 marked = marked.saturating_add(1);
             }
         }
-        let _ = self.prune_dtls12_acked_records()?;
-        if self.is_dtls13_active_flight_complete()? {
+        let _ = self.noxtls_prune_dtls12_acked_records()?;
+        if self.noxtls_is_dtls13_active_flight_complete()? {
             self.dtls13_active_flight.clear();
             self.dtls13_active_flight_started_at_ms = None;
-            self.dtls13_active_flight_failed = false;
+            self.noxtls_dtls13_active_flight_failed = false;
         }
         Ok(marked)
     }
@@ -6627,18 +7080,18 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn abort_dtls13_active_flight(&mut self) -> Result<usize> {
-        self.ensure_dtls13_mode()?;
+    pub fn noxtls_abort_dtls13_active_flight(&mut self) -> Result<usize> {
+        self.noxtls_ensure_dtls13_mode()?;
         if self.dtls13_active_flight.is_empty() {
             return Ok(0);
         }
         for (epoch, sequence) in &self.dtls13_active_flight {
             let _ = self.dtls_retransmit_tracker.mark_acked(*epoch, *sequence);
         }
-        let removed = self.prune_dtls12_acked_records()?;
+        let removed = self.noxtls_prune_dtls12_acked_records()?;
         self.dtls13_active_flight.clear();
         self.dtls13_active_flight_started_at_ms = None;
-        self.dtls13_active_flight_failed = false;
+        self.noxtls_dtls13_active_flight_failed = false;
         Ok(removed)
     }
 
@@ -6656,14 +7109,14 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn dtls13_active_flight_failed(&self) -> bool {
-        self.dtls13_active_flight_failed
+    pub fn noxtls_dtls13_active_flight_failed(&self) -> bool {
+        self.noxtls_dtls13_active_flight_failed
     }
 
     /// Reports whether all packets from the current active DTLS1.3 flight are complete.
     ///
     /// A flight is complete when no tracked unacknowledged retransmit record remains
-    /// for any packet key registered in `start_dtls13_active_flight`.
+    /// for any packet key registered in `noxtls_start_dtls13_active_flight`.
     /// # Arguments
     ///
     /// * `&self` — `&self`.
@@ -6680,8 +7133,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn is_dtls13_active_flight_complete(&self) -> Result<bool> {
-        self.ensure_dtls13_mode()?;
+    pub fn noxtls_is_dtls13_active_flight_complete(&self) -> Result<bool> {
+        self.noxtls_ensure_dtls13_mode()?;
         if self.dtls13_active_flight.is_empty() {
             return Ok(true);
         }
@@ -6716,7 +7169,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn compute_dtls12_cookie(&self, client_hello: &[u8], cookie_secret: &[u8]) -> Result<Vec<u8>> {
+    fn noxtls_compute_dtls12_cookie(&self, client_hello: &[u8], cookie_secret: &[u8]) -> Result<Vec<u8>> {
         if cookie_secret.is_empty() {
             return Err(Error::InvalidLength(
                 "dtls12 cookie secret must not be empty",
@@ -6749,7 +7202,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn build_dtls12_hello_verify_request(&self, cookie: &[u8]) -> Result<Vec<u8>> {
+    fn noxtls_build_dtls12_hello_verify_request(&self, cookie: &[u8]) -> Result<Vec<u8>> {
         if cookie.is_empty() {
             return Err(Error::InvalidLength("dtls12 cookie must not be empty"));
         }
@@ -6787,7 +7240,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn parse_dtls_packet_key(&self, packet: &[u8]) -> Result<(u16, u64)> {
+    fn noxtls_parse_dtls_packet_key(&self, packet: &[u8]) -> Result<(u16, u64)> {
         let (header, _payload) = noxtls_parse_dtls_record_packet(packet)?;
         if header.version != [0xFE, 0xFD] {
             return Err(Error::ParseFailure("dtls record version mismatch"));
@@ -6810,7 +7263,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn dtls13_active_flight_has_timed_out(&self, now_ms: u64) -> bool {
+    fn noxtls_dtls13_active_flight_has_timed_out(&self, now_ms: u64) -> bool {
         let Some(started_at_ms) = self.dtls13_active_flight_started_at_ms else {
             return false;
         };
@@ -6831,7 +7284,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn dtls13_active_flight_missing_tracked_records(&self) -> bool {
+    fn noxtls_dtls13_active_flight_missing_tracked_records(&self) -> bool {
         self.dtls13_active_flight.iter().any(|(epoch, sequence)| {
             !self
                 .dtls_retransmit_tracker
@@ -6860,7 +7313,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn validate_dtls13_client_post_hello_flight_order(&self, messages: &[Vec<u8>]) -> Result<()> {
+    fn noxtls_validate_dtls13_client_post_hello_flight_order(&self, messages: &[Vec<u8>]) -> Result<()> {
         if messages.is_empty() {
             return Err(Error::InvalidLength(
                 "dtls13 encrypted client flight must contain at least one message",
@@ -6909,7 +7362,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn build_tls12_record_aad(
+    fn noxtls_build_tls12_record_aad(
         &self,
         sequence: u64,
         content_type: RecordContentType,
@@ -6920,7 +7373,7 @@ impl Connection {
         let mut aad = [0_u8; 13];
         aad[..8].copy_from_slice(&sequence.to_be_bytes());
         aad[8] = content_type.to_u8();
-        aad[9..11].copy_from_slice(&legacy_wire_version(self.version));
+        aad[9..11].copy_from_slice(&noxtls_legacy_wire_version(self.version));
         aad[11..13].copy_from_slice(&len.to_be_bytes());
         Ok(aad)
     }
@@ -6942,7 +7395,7 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    fn build_tls13_record_aad(&self, payload_len: usize) -> Result<[u8; 5]> {
+    fn noxtls_build_tls13_record_aad(&self, payload_len: usize) -> Result<[u8; 5]> {
         let len = u16::try_from(payload_len)
             .map_err(|_| Error::InvalidLength("tls13 record payload length exceeds u16 range"))?;
         let mut aad = [0_u8; 5];
@@ -6972,7 +7425,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn encode_tls12_record_packet(
+    fn noxtls_encode_tls12_record_packet(
         &self,
         record: &ProtectedRecord,
         content_type: RecordContentType,
@@ -6982,7 +7435,7 @@ impl Connection {
         payload.extend_from_slice(&record.tag);
         noxtls_encode_tls12_ciphertext_record(
             content_type.to_u8(),
-            legacy_wire_version(self.version),
+            noxtls_legacy_wire_version(self.version),
             &payload,
         )
     }
@@ -7007,13 +7460,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn decode_tls12_record_packet(
+    fn noxtls_decode_tls12_record_packet(
         &self,
         packet: &[u8],
         sequence: u64,
     ) -> Result<(ProtectedRecord, RecordContentType)> {
         let (content_type_u8, version, payload) = noxtls_decode_tls12_ciphertext_record(packet)?;
-        let strict_version = legacy_wire_version(self.version);
+        let strict_version = noxtls_legacy_wire_version(self.version);
         let legacy_compat_ok = self.tls12_allow_legacy_record_versions
             && (version == [0x03, 0x01] || version == [0x03, 0x02]);
         if version != strict_version && !legacy_compat_ok {
@@ -7058,7 +7511,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn encode_tls13_record_packet(&self, record: &ProtectedRecord) -> Result<Vec<u8>> {
+    fn noxtls_encode_tls13_record_packet(&self, record: &ProtectedRecord) -> Result<Vec<u8>> {
         let mut payload = Vec::with_capacity(record.ciphertext.len() + record.tag.len());
         payload.extend_from_slice(&record.ciphertext);
         payload.extend_from_slice(&record.tag);
@@ -7085,7 +7538,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn decode_tls13_record_packet(&self, packet: &[u8], sequence: u64) -> Result<ProtectedRecord> {
+    fn noxtls_decode_tls13_record_packet(&self, packet: &[u8], sequence: u64) -> Result<ProtectedRecord> {
         let payload = noxtls_decode_tls13_ciphertext_record(packet)?;
         let tag_offset = payload.len() - 16;
         let mut tag = [0_u8; 16];
@@ -7115,7 +7568,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn ensure_dtls13_tx_sequence_available(&self) -> Result<()> {
+    fn noxtls_ensure_dtls13_tx_sequence_available(&self) -> Result<()> {
         if self.dtls13_outbound_sequence > DTLS13_MAX_SEQUENCE {
             return Err(Error::StateError(
                 "dtls13 outbound record sequence exhausted",
@@ -7140,8 +7593,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_dtls12_retransmit_initial_timeout_ms(&mut self, timeout_ms: u64) -> Result<()> {
-        self.ensure_dtls12_mode()?;
+    pub fn noxtls_set_dtls12_retransmit_initial_timeout_ms(&mut self, timeout_ms: u64) -> Result<()> {
+        self.noxtls_ensure_dtls12_mode()?;
         self.dtls_retransmit_initial_timeout_ms = timeout_ms.max(1);
         Ok(())
     }
@@ -7162,8 +7615,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_dtls12_max_retransmit_attempts(&mut self, attempts: u8) -> Result<()> {
-        self.ensure_dtls12_mode()?;
+    pub fn noxtls_set_dtls12_max_retransmit_attempts(&mut self, attempts: u8) -> Result<()> {
+        self.noxtls_ensure_dtls12_mode()?;
         self.dtls_max_retransmit_attempts = attempts.max(1);
         Ok(())
     }
@@ -7187,7 +7640,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn build_dtls12_record_packet_for_flight(
+    pub fn noxtls_build_dtls12_record_packet_for_flight(
         &mut self,
         content_type: RecordContentType,
         epoch: u16,
@@ -7195,8 +7648,8 @@ impl Connection {
         payload: &[u8],
         now_ms: u64,
     ) -> Result<Vec<u8>> {
-        self.ensure_dtls12_mode()?;
-        let packet = self.build_dtls12_record_packet(content_type, epoch, sequence, payload)?;
+        self.noxtls_ensure_dtls12_mode()?;
+        let packet = self.noxtls_build_dtls12_record_packet(content_type, epoch, sequence, payload)?;
         self.dtls_retransmit_tracker.track_outbound_with_schedule(
             epoch,
             sequence,
@@ -7225,8 +7678,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn mark_dtls12_record_acked(&mut self, epoch: u16, sequence: u64) -> Result<bool> {
-        self.ensure_dtls12_mode()?;
+    pub fn noxtls_mark_dtls12_record_acked(&mut self, epoch: u16, sequence: u64) -> Result<bool> {
+        self.noxtls_ensure_dtls12_mode()?;
         Ok(self.dtls_retransmit_tracker.mark_acked(epoch, sequence))
     }
 
@@ -7245,8 +7698,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn poll_dtls12_due_retransmit_packets(&mut self, now_ms: u64) -> Result<Vec<Vec<u8>>> {
-        self.ensure_dtls12_mode()?;
+    pub fn noxtls_poll_dtls12_due_retransmit_packets(&mut self, now_ms: u64) -> Result<Vec<Vec<u8>>> {
+        self.noxtls_ensure_dtls12_mode()?;
         Ok(self
             .dtls_retransmit_tracker
             .collect_due_retransmit_packets(now_ms, self.dtls_max_retransmit_attempts))
@@ -7266,7 +7719,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn dtls12_pending_retransmit_packets(&self) -> Vec<Vec<u8>> {
+    pub fn noxtls_dtls12_pending_retransmit_packets(&self) -> Vec<Vec<u8>> {
         if !self.version.is_dtls() {
             return Vec::new();
         }
@@ -7289,8 +7742,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn prune_dtls12_acked_records(&mut self) -> Result<usize> {
-        self.ensure_dtls12_mode()?;
+    pub fn noxtls_prune_dtls12_acked_records(&mut self) -> Result<usize> {
+        self.noxtls_ensure_dtls12_mode()?;
         Ok(self.dtls_retransmit_tracker.prune_acked())
     }
 
@@ -7312,7 +7765,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn ensure_dtls12_mode(&self) -> Result<()> {
+    fn noxtls_ensure_dtls12_mode(&self) -> Result<()> {
         if !self.version.is_dtls() {
             return Err(Error::StateError(
                 "dtls retransmit scheduler requires DTLS connection",
@@ -7339,7 +7792,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn ensure_dtls13_mode(&self) -> Result<()> {
+    fn noxtls_ensure_dtls13_mode(&self) -> Result<()> {
         if !self.version.is_dtls() {
             return Err(Error::StateError("dtls13 APIs require DTLS connection"));
         }
@@ -7364,7 +7817,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn ensure_tls12_wire_mode(&self) -> Result<()> {
+    fn noxtls_ensure_tls12_wire_mode(&self) -> Result<()> {
         if self.version == TlsVersion::Tls10
             || self.version == TlsVersion::Tls11
             || self.version == TlsVersion::Tls12
@@ -7393,7 +7846,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_record_fragments(
+    pub fn noxtls_seal_record_fragments(
         &mut self,
         plaintext: &[u8],
         aad: &[u8],
@@ -7428,7 +7881,7 @@ impl Connection {
         let mut offset = 0_usize;
         while offset < plaintext.len() {
             let end = (offset + fragment_len).min(plaintext.len());
-            out.push(self.seal_record(&plaintext[offset..end], aad)?);
+            out.push(self.noxtls_seal_record(&plaintext[offset..end], aad)?);
             offset = end;
         }
         Ok(out)
@@ -7450,7 +7903,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_record_fragments(
+    pub fn noxtls_open_record_fragments(
         &mut self,
         records: &[ProtectedRecord],
         aad: &[u8],
@@ -7471,7 +7924,7 @@ impl Connection {
         }
         let mut out = Vec::new();
         for record in records {
-            out.extend_from_slice(&self.open_record(record, aad)?);
+            out.extend_from_slice(&self.noxtls_open_record(record, aad)?);
         }
         Ok(out)
     }
@@ -7479,7 +7932,7 @@ impl Connection {
     /// Opens locally-sealed fragments with client keys and reassembles plaintext.
     ///
     /// # Arguments
-    /// * `records`: Ordered local record fragments produced by `seal_record_fragments`.
+    /// * `records`: Ordered local record fragments produced by `noxtls_seal_record_fragments`.
     /// * `aad`: Additional authenticated data reused for each fragment.
     ///
     /// # Returns
@@ -7492,7 +7945,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_own_record_fragments(
+    pub fn noxtls_open_own_record_fragments(
         &self,
         records: &[ProtectedRecord],
         aad: &[u8],
@@ -7513,7 +7966,7 @@ impl Connection {
         }
         let mut out = Vec::new();
         for record in records {
-            out.extend_from_slice(&self.open_own_record(record, aad)?);
+            out.extend_from_slice(&self.noxtls_open_own_record(record, aad)?);
         }
         Ok(out)
     }
@@ -7536,7 +7989,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_tls13_inner_record(
+    pub fn noxtls_seal_tls13_inner_record(
         &mut self,
         content: &[u8],
         content_type: u8,
@@ -7549,7 +8002,7 @@ impl Connection {
             ));
         }
         let inner = noxtls_encode_tls13_inner_plaintext(content, content_type, padding_len);
-        self.seal_record(&inner, aad)
+        self.noxtls_seal_record(&inner, aad)
     }
 
     /// Opens a TLS 1.3 record and decodes TLSInnerPlaintext into content and content type.
@@ -7568,7 +8021,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_tls13_inner_record(
+    pub fn noxtls_open_tls13_inner_record(
         &mut self,
         record: &ProtectedRecord,
         aad: &[u8],
@@ -7578,14 +8031,14 @@ impl Connection {
                 "tls13 inner plaintext records require TLS 1.3 connection",
             ));
         }
-        let inner = self.open_record(record, aad)?;
+        let inner = self.noxtls_open_record(record, aad)?;
         noxtls_decode_tls13_inner_plaintext(&inner)
     }
 
     /// Opens a locally-sealed TLS 1.3 record and decodes TLSInnerPlaintext for tests.
     ///
     /// # Arguments
-    /// * `record`: Protected record sealed via `seal_tls13_inner_record`.
+    /// * `record`: Protected record sealed via `noxtls_seal_tls13_inner_record`.
     /// * `aad`: Additional authenticated data used during sealing.
     ///
     /// # Returns
@@ -7598,7 +8051,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_own_tls13_inner_record(
+    pub fn noxtls_open_own_tls13_inner_record(
         &self,
         record: &ProtectedRecord,
         aad: &[u8],
@@ -7608,7 +8061,7 @@ impl Connection {
                 "tls13 inner plaintext records require TLS 1.3 connection",
             ));
         }
-        let inner = self.open_own_record(record, aad)?;
+        let inner = self.noxtls_open_own_record(record, aad)?;
         noxtls_decode_tls13_inner_plaintext(&inner)
     }
 
@@ -7630,7 +8083,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn seal_tls13_record_packet(
+    pub fn noxtls_seal_tls13_record_packet(
         &mut self,
         content: &[u8],
         content_type: u8,
@@ -7642,8 +8095,8 @@ impl Connection {
                 "tls13 record packets require TLS 1.3 connection",
             ));
         }
-        let record = self.seal_tls13_inner_record(content, content_type, aad, padding_len)?;
-        self.encode_tls13_record_packet(&record)
+        let record = self.noxtls_seal_tls13_inner_record(content, content_type, aad, padding_len)?;
+        self.noxtls_encode_tls13_record_packet(&record)
     }
 
     /// Opens one inbound TLS 1.3 wire record packet and decodes TLSInnerPlaintext.
@@ -7662,14 +8115,30 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_tls13_record_packet(&mut self, packet: &[u8], aad: &[u8]) -> Result<(Vec<u8>, u8)> {
+    pub fn noxtls_open_tls13_record_packet(&mut self, packet: &[u8], aad: &[u8]) -> Result<(Vec<u8>, u8)> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Err(Error::StateError(
                 "tls13 record packets require TLS 1.3 connection",
             ));
         }
-        let record = self.decode_tls13_record_packet(packet, self.server_sequence)?;
-        self.open_tls13_inner_record(&record, aad)
+        let record = self.noxtls_decode_tls13_record_packet(packet, self.server_sequence)?;
+        match self.noxtls_open_tls13_inner_record(&record, aad) {
+            Ok(inner) => Ok(inner),
+            Err(error) => {
+                noxtls_tls13_debug_log("tls13.open_record.error", "failed to decrypt record");
+                noxtls_tls13_debug_log_bytes("tls13.open_record.aad", aad);
+                noxtls_tls13_debug_log_bytes("tls13.open_record.ciphertext", &record.ciphertext);
+                noxtls_tls13_debug_log_bytes("tls13.open_record.tag", &record.tag);
+                if let Some(key) = self.server_write_key.as_ref() {
+                    noxtls_tls13_debug_log_bytes("tls13.open_record.server_write_key", key);
+                }
+                if let Some(iv) = self.server_write_iv.as_ref() {
+                    noxtls_tls13_debug_log_bytes("tls13.open_record.server_write_iv", iv);
+                }
+                self.noxtls_debug_probe_tls13_open_record_failure(&record, aad);
+                Err(error)
+            }
+        }
     }
 
     /// Opens one locally-sealed TLS 1.3 wire packet using client traffic keys.
@@ -7689,7 +8158,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn open_own_tls13_record_packet(
+    pub fn noxtls_open_own_tls13_record_packet(
         &self,
         packet: &[u8],
         sequence: u64,
@@ -7700,8 +8169,8 @@ impl Connection {
                 "tls13 record packets require TLS 1.3 connection",
             ));
         }
-        let record = self.decode_tls13_record_packet(packet, sequence)?;
-        self.open_own_tls13_inner_record(&record, aad)
+        let record = self.noxtls_decode_tls13_record_packet(packet, sequence)?;
+        self.noxtls_open_own_tls13_inner_record(&record, aad)
     }
 
     /// Seals a TLS 1.3 alert as TLSInnerPlaintext with alert content type.
@@ -7721,7 +8190,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_tls13_alert(
+    pub fn noxtls_send_tls13_alert(
         &mut self,
         level: AlertLevel,
         description: AlertDescription,
@@ -7734,8 +8203,8 @@ impl Connection {
         }
         let payload = [level.to_u8(), description.to_u8()];
         let record =
-            self.seal_tls13_inner_record(&payload, RecordContentType::Alert.to_u8(), aad, 0)?;
-        self.apply_tls13_alert_effects(level, description, true);
+            self.noxtls_seal_tls13_inner_record(&payload, RecordContentType::Alert.to_u8(), aad, 0)?;
+        self.noxtls_apply_tls13_alert_effects(level, description, true);
         Ok(record)
     }
 
@@ -7756,7 +8225,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn send_tls13_alert_packet(
+    pub fn noxtls_send_tls13_alert_packet(
         &mut self,
         level: AlertLevel,
         description: AlertDescription,
@@ -7767,8 +8236,8 @@ impl Connection {
                 "tls13 alert records require TLS 1.3 connection",
             ));
         }
-        let record = self.send_tls13_alert(level, description, aad)?;
-        self.encode_tls13_record_packet(&record)
+        let record = self.noxtls_send_tls13_alert(level, description, aad)?;
+        self.noxtls_encode_tls13_record_packet(&record)
     }
 
     /// Opens and parses a peer TLS 1.3 alert record.
@@ -7787,7 +8256,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_tls13_alert(
+    pub fn noxtls_recv_tls13_alert(
         &mut self,
         record: &ProtectedRecord,
         aad: &[u8],
@@ -7797,14 +8266,14 @@ impl Connection {
                 "tls13 alert records require TLS 1.3 connection",
             ));
         }
-        let (payload, content_type) = self.open_tls13_inner_record(record, aad)?;
-        self.process_parsed_tls13_alert(payload, content_type)
+        let (payload, content_type) = self.noxtls_open_tls13_inner_record(record, aad)?;
+        self.noxtls_process_parsed_tls13_alert(payload, content_type)
     }
 
     /// Opens and parses a locally-sealed TLS 1.3 alert record for loopback tests.
     ///
     /// # Arguments
-    /// * `record`: Protected record sealed via `send_tls13_alert`.
+    /// * `record`: Protected record sealed via `noxtls_send_tls13_alert`.
     /// * `aad`: Additional authenticated data used during sealing.
     ///
     /// # Returns
@@ -7817,7 +8286,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_own_tls13_alert(
+    pub fn noxtls_recv_own_tls13_alert(
         &mut self,
         record: &ProtectedRecord,
         aad: &[u8],
@@ -7827,8 +8296,8 @@ impl Connection {
                 "tls13 alert records require TLS 1.3 connection",
             ));
         }
-        let (payload, content_type) = self.open_own_tls13_inner_record(record, aad)?;
-        self.process_parsed_tls13_alert(payload, content_type)
+        let (payload, content_type) = self.noxtls_open_own_tls13_inner_record(record, aad)?;
+        self.noxtls_process_parsed_tls13_alert(payload, content_type)
     }
 
     /// Opens and parses a peer TLS 1.3 alert TLSCiphertext packet.
@@ -7847,7 +8316,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_tls13_alert_packet(
+    pub fn noxtls_recv_tls13_alert_packet(
         &mut self,
         packet: &[u8],
         aad: &[u8],
@@ -7857,8 +8326,8 @@ impl Connection {
                 "tls13 alert records require TLS 1.3 connection",
             ));
         }
-        let (payload, content_type) = self.open_tls13_record_packet(packet, aad)?;
-        self.process_parsed_tls13_alert(payload, content_type)
+        let (payload, content_type) = self.noxtls_open_tls13_record_packet(packet, aad)?;
+        self.noxtls_process_parsed_tls13_alert(payload, content_type)
     }
 
     /// Opens and parses a locally-sealed TLS 1.3 alert TLSCiphertext packet for loopback tests.
@@ -7878,7 +8347,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn recv_own_tls13_alert_packet(
+    pub fn noxtls_recv_own_tls13_alert_packet(
         &mut self,
         packet: &[u8],
         sequence: u64,
@@ -7889,8 +8358,8 @@ impl Connection {
                 "tls13 alert records require TLS 1.3 connection",
             ));
         }
-        let (payload, content_type) = self.open_own_tls13_record_packet(packet, sequence, aad)?;
-        self.process_parsed_tls13_alert(payload, content_type)
+        let (payload, content_type) = self.noxtls_open_own_tls13_record_packet(packet, sequence, aad)?;
+        self.noxtls_process_parsed_tls13_alert(payload, content_type)
     }
 
     /// Applies decoded alert payload semantics to connection state.
@@ -7913,7 +8382,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn process_parsed_tls13_alert(
+    fn noxtls_process_parsed_tls13_alert(
         &mut self,
         payload: Vec<u8>,
         content_type: u8,
@@ -7928,7 +8397,7 @@ impl Connection {
             AlertLevel::from_u8(payload[0]).ok_or(Error::ParseFailure("unknown alert level"))?;
         let description = AlertDescription::from_u8(payload[1])
             .ok_or(Error::ParseFailure("unknown alert description"))?;
-        self.apply_tls13_alert_effects(level, description, false);
+        self.noxtls_apply_tls13_alert_effects(level, description, false);
         Ok((level, description))
     }
 
@@ -7945,7 +8414,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn apply_tls13_alert_effects(
+    fn noxtls_apply_tls13_alert_effects(
         &mut self,
         level: AlertLevel,
         description: AlertDescription,
@@ -7953,9 +8422,9 @@ impl Connection {
     ) {
         if description == AlertDescription::CloseNotify {
             if from_local_send {
-                self.tls13_local_close_notify_sent = true;
+                self.noxtls_tls13_local_close_notify_sent = true;
             } else {
-                self.tls13_peer_close_notify_received = true;
+                self.noxtls_tls13_peer_close_notify_received = true;
             }
         }
         if level == AlertLevel::Fatal {
@@ -7977,8 +8446,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn tls13_peer_close_notify_received(&self) -> bool {
-        self.tls13_peer_close_notify_received
+    pub fn noxtls_tls13_peer_close_notify_received(&self) -> bool {
+        self.noxtls_tls13_peer_close_notify_received
     }
 
     /// Reports whether this endpoint has sent a close_notify alert.
@@ -7995,11 +8464,11 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn tls13_local_close_notify_sent(&self) -> bool {
-        self.tls13_local_close_notify_sent
+    pub fn noxtls_tls13_local_close_notify_sent(&self) -> bool {
+        self.noxtls_tls13_local_close_notify_sent
     }
 
-    /// Resets per-handshake certificate-auth tracking before a new ClientHello.
+    /// Resets per-handshake certificate-auth tracking before a noxtls_new ClientHello.
     ///
     /// # Arguments
     ///
@@ -8009,13 +8478,13 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn reset_tls13_certificate_auth_state(&mut self) {
+    fn noxtls_reset_tls13_certificate_auth_state(&mut self) {
         self.tls13_server_leaf_public_key_der = None;
         self.tls13_server_certificate_chain_validated = false;
-        self.tls13_server_name_acknowledged = false;
-        self.tls13_selected_alpn_protocol = None;
-        self.tls13_server_ocsp_staple = None;
-        self.tls13_server_ocsp_staple_verified = false;
+        self.noxtls_tls13_server_name_acknowledged = false;
+        self.noxtls_tls13_selected_alpn_protocol = None;
+        self.noxtls_tls13_server_ocsp_staple = None;
+        self.noxtls_tls13_server_ocsp_staple_verified = false;
     }
 
     /// Validates modeled HRR retry-group support before sending a second ClientHello.
@@ -8036,7 +8505,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn validate_tls13_hrr_retry_group_support(&self) -> Result<()> {
+    fn noxtls_validate_tls13_hrr_retry_group_support(&self) -> Result<()> {
         if !self.version.uses_tls13_handshake_semantics() || !self.tls13_hrr_seen {
             return Ok(());
         }
@@ -8070,28 +8539,28 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn derive_tls13_early_data_record_key_iv(&self, psk: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
-        let hash_algorithm = self.negotiated_hash_algorithm();
-        let hash_len = hash_algorithm.output_len();
-        let transcript_hash = noxtls_hash_bytes_for_algorithm(hash_algorithm, &self.transcript);
-        let early_secret = noxtls_hkdf_extract_for_hash(hash_algorithm, psk);
+    fn noxtls_derive_tls13_early_data_record_key_iv(&self, psk: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+        let hash_len = noxtls_hash_algorithm.output_len();
+        let noxtls_transcript_hash = noxtls_hash_bytes_for_algorithm(noxtls_hash_algorithm, &self.transcript);
+        let early_secret = noxtls_hkdf_extract_for_hash(noxtls_hash_algorithm, psk);
         let client_early_traffic_secret = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             &early_secret,
             b"c e traffic",
-            &transcript_hash,
+            &noxtls_transcript_hash,
             hash_len,
         )?;
-        let key_len = self.tls13_early_data_key_len();
+        let key_len = self.noxtls_tls13_early_data_key_len();
         let key = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             &client_early_traffic_secret,
             b"key",
             &[],
             key_len,
         )?;
         let iv: [u8; 12] = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             &client_early_traffic_secret,
             b"iv",
             &[],
@@ -8111,8 +8580,8 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    fn tls13_early_data_key_len(&self) -> usize {
-        match self.selected_cipher_suite {
+    fn noxtls_tls13_early_data_key_len(&self) -> usize {
+        match self.noxtls_selected_cipher_suite {
             Some(CipherSuite::TlsAes256GcmSha384 | CipherSuite::TlsChacha20Poly1305Sha256) => 32,
             _ => 16,
         }
@@ -8127,9 +8596,9 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    fn tls13_early_data_uses_chacha20_poly1305(&self) -> bool {
+    fn noxtls_tls13_early_data_uses_chacha20_poly1305(&self) -> bool {
         matches!(
-            self.selected_cipher_suite,
+            self.noxtls_selected_cipher_suite,
             Some(CipherSuite::TlsChacha20Poly1305Sha256)
         )
     }
@@ -8153,7 +8622,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn validate_tls13_server_certificate_chain(&mut self, certificates: &[Vec<u8>]) -> Result<()> {
+    fn noxtls_validate_tls13_server_certificate_chain(&mut self, certificates: &[Vec<u8>]) -> Result<()> {
         if certificates.is_empty() {
             return Err(Error::ParseFailure(
                 "certificate list must include leaf certificate",
@@ -8234,7 +8703,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn verify_tls13_server_certificate_verify_signature(
+    fn noxtls_verify_tls13_server_certificate_verify_signature(
         &self,
         signature_scheme: u16,
         signature: &[u8],
@@ -8245,30 +8714,30 @@ impl Connection {
                 .ok_or(Error::StateError(
                     "server leaf public key is unavailable for certificate verify",
                 ))?;
-        let signed_message = build_tls13_server_certificate_verify_message(&self.transcript_hash());
+        let signed_message = noxtls_build_tls13_server_certificate_verify_message(&self.noxtls_transcript_hash());
         match signature_scheme {
             TLS13_SIGALG_ECDSA_SECP256R1_SHA256 => {
                 let public_key = P256PublicKey::from_uncompressed(leaf_spki)?;
                 let (r, s) = noxtls_parse_ecdsa_signature_der(signature)?;
-                noxtls_p256_ecdsa_verify_sha256(&public_key, &signed_message, &r, &s).map_err(|_| {
-                    Error::CryptoFailure("tls13 certificate verify signature validation failed")
-                })
+                noxtls_p256_ecdsa_verify_sha256(&public_key, &signed_message, &r, &s).map_err(
+                    |_| {
+                        Error::CryptoFailure("tls13 certificate verify signature validation failed")
+                    },
+                )
             }
             TLS13_SIGALG_RSA_PSS_RSAE_SHA256 => {
-                let public_key = parse_rsa_public_key_der(leaf_spki)?;
-                noxtls_rsassa_pss_sha256_verify(&public_key, &signed_message, signature, 32).map_err(
-                    |_| {
+                let public_key = noxtls_parse_rsa_public_key_der(leaf_spki)?;
+                noxtls_rsassa_pss_sha256_verify(&public_key, &signed_message, signature, 32)
+                    .map_err(|_| {
                         Error::CryptoFailure("tls13 certificate verify signature validation failed")
-                    },
-                )
+                    })
             }
             TLS13_SIGALG_RSA_PSS_RSAE_SHA384 => {
-                let public_key = parse_rsa_public_key_der(leaf_spki)?;
-                noxtls_rsassa_pss_sha384_verify(&public_key, &signed_message, signature, 48).map_err(
-                    |_| {
+                let public_key = noxtls_parse_rsa_public_key_der(leaf_spki)?;
+                noxtls_rsassa_pss_sha384_verify(&public_key, &signed_message, signature, 48)
+                    .map_err(|_| {
                         Error::CryptoFailure("tls13 certificate verify signature validation failed")
-                    },
-                )
+                    })
             }
             TLS13_SIGALG_ED25519 => {
                 let public_key = noxtls_ed25519_public_key_from_subject_public_key_info(leaf_spki)?;
@@ -8301,7 +8770,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_record_sequences_for_test(&mut self, client_sequence: u64, server_sequence: u64) {
+    pub fn noxtls_set_record_sequences_for_test(&mut self, client_sequence: u64, server_sequence: u64) {
         self.client_sequence = client_sequence;
         self.server_sequence = server_sequence;
     }
@@ -8316,7 +8785,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn set_tls13_certificate_verify_material_for_test(&mut self, leaf_spki_der: Vec<u8>) {
+    pub fn noxtls_set_tls13_certificate_verify_material_for_test(&mut self, leaf_spki_der: Vec<u8>) {
         self.tls13_server_leaf_public_key_der = Some(leaf_spki_der);
         self.tls13_server_certificate_chain_validated = true;
     }
@@ -8334,8 +8803,8 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    pub fn tls13_server_certificate_verify_message_for_test(&self) -> Vec<u8> {
-        build_tls13_server_certificate_verify_message(&self.transcript_hash())
+    pub fn noxtls_tls13_server_certificate_verify_message_for_test(&self) -> Vec<u8> {
+        noxtls_build_tls13_server_certificate_verify_message(&self.noxtls_transcript_hash())
     }
 
     /// Installs client/server traffic keys derived from handshake PRK.
@@ -8343,9 +8812,9 @@ impl Connection {
     /// # Arguments
     ///
     /// * `self` — `&mut self`.
-    /// * `hash_algorithm` — `hash_algorithm: HashAlgorithm`.
+    /// * `noxtls_hash_algorithm` — `noxtls_hash_algorithm: HashAlgorithm`.
     /// * `secret` — `secret: &[u8]`.
-    /// * `transcript_hash` — `transcript_hash: &[u8]`.
+    /// * `noxtls_transcript_hash` — `noxtls_transcript_hash: &[u8]`.
     ///
     /// # Returns
     ///
@@ -8359,33 +8828,33 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn install_traffic_keys(
+    fn noxtls_install_traffic_keys(
         &mut self,
-        hash_algorithm: HashAlgorithm,
+        noxtls_hash_algorithm: HashAlgorithm,
         secret: &[u8],
-        transcript_hash: &[u8],
+        noxtls_transcript_hash: &[u8],
     ) -> Result<()> {
         let (client_key, server_key, client_iv, server_iv) = match self.version {
             TlsVersion::Tls13 | TlsVersion::Dtls13 => {
-                let hash_len = hash_algorithm.output_len();
+                let hash_len = noxtls_hash_algorithm.output_len();
                 let client_hs_traffic = noxtls_tls13_expand_label_for_hash(
-                    hash_algorithm,
+                    noxtls_hash_algorithm,
                     secret,
                     b"c hs traffic",
-                    transcript_hash,
+                    noxtls_transcript_hash,
                     hash_len,
                 )?;
                 let server_hs_traffic = noxtls_tls13_expand_label_for_hash(
-                    hash_algorithm,
+                    noxtls_hash_algorithm,
                     secret,
                     b"s hs traffic",
-                    transcript_hash,
+                    noxtls_transcript_hash,
                     hash_len,
                 )?;
                 self.tls13_client_handshake_traffic_secret = Some(client_hs_traffic.clone());
                 self.tls13_server_handshake_traffic_secret = Some(server_hs_traffic.clone());
-                self.install_tls13_record_protection_keys(
-                    hash_algorithm,
+                self.noxtls_install_tls13_record_protection_keys(
+                    noxtls_hash_algorithm,
                     &client_hs_traffic,
                     &server_hs_traffic,
                 )?;
@@ -8393,11 +8862,11 @@ impl Connection {
             }
             TlsVersion::Tls10 | TlsVersion::Tls11 | TlsVersion::Tls12 | TlsVersion::Dtls12 => {
                 let client_key_16: [u8; 16] =
-                    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, b"client_write_key", 16)?
+                    noxtls_hkdf_expand_for_hash(noxtls_hash_algorithm, secret, b"client_write_key", 16)?
                         .try_into()
                         .expect("hkdf output length should be 16");
                 let server_key_16: [u8; 16] =
-                    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, b"server_write_key", 16)?
+                    noxtls_hkdf_expand_for_hash(noxtls_hash_algorithm, secret, b"server_write_key", 16)?
                         .try_into()
                         .expect("hkdf output length should be 16");
                 let mut client_key = [0_u8; 32];
@@ -8405,11 +8874,11 @@ impl Connection {
                 client_key[..16].copy_from_slice(&client_key_16);
                 server_key[..16].copy_from_slice(&server_key_16);
                 let client_iv: [u8; 12] =
-                    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, b"client_write_iv", 12)?
+                    noxtls_hkdf_expand_for_hash(noxtls_hash_algorithm, secret, b"client_write_iv", 12)?
                         .try_into()
                         .expect("hkdf output length should be 12");
                 let server_iv: [u8; 12] =
-                    noxtls_hkdf_expand_for_hash(hash_algorithm, secret, b"server_write_iv", 12)?
+                    noxtls_hkdf_expand_for_hash(noxtls_hash_algorithm, secret, b"server_write_iv", 12)?
                         .try_into()
                         .expect("hkdf output length should be 12");
                 (client_key, server_key, client_iv, server_iv)
@@ -8419,7 +8888,7 @@ impl Connection {
         self.server_write_key = Some(server_key);
         self.client_write_iv = Some(client_iv);
         self.server_write_iv = Some(server_iv);
-        self.sync_dtls13_traffic_keys_from_record_protection_state();
+        self.noxtls_sync_dtls13_traffic_keys_from_record_protection_state();
         Ok(())
     }
 
@@ -8441,48 +8910,49 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn install_tls13_application_traffic_keys(&mut self) -> Result<()> {
+    fn noxtls_install_tls13_application_traffic_keys(&mut self) -> Result<()> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Ok(());
         }
-        let hash_algorithm = self.negotiated_hash_algorithm();
-        let hash_len = hash_algorithm.output_len();
-        let transcript_hash = self.transcript_hash();
+        let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+        let hash_len = noxtls_hash_algorithm.output_len();
+        let noxtls_transcript_hash = self.noxtls_transcript_hash();
         let handshake_secret = self.handshake_secret.as_ref().ok_or(Error::StateError(
             "handshake secret must be available before tls13 application traffic keys",
         ))?;
         let derived = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             handshake_secret,
             b"derived",
-            &[],
+            &noxtls_hash_bytes_for_algorithm(noxtls_hash_algorithm, &[]),
             hash_len,
         )?;
         let zero_ikm = vec![0_u8; hash_len];
-        let master_secret = noxtls_hkdf_extract_with_salt_for_hash(hash_algorithm, &derived, &zero_ikm);
+        let master_secret =
+            noxtls_hkdf_extract_with_salt_for_hash(noxtls_hash_algorithm, &derived, &zero_ikm);
         let client_app_secret = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             &master_secret,
             b"c ap traffic",
-            &transcript_hash,
+            &noxtls_transcript_hash,
             hash_len,
         )?;
         let server_app_secret = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             &master_secret,
             b"s ap traffic",
-            &transcript_hash,
+            &noxtls_transcript_hash,
             hash_len,
         )?;
-        self.install_tls13_record_protection_keys(
-            hash_algorithm,
+        self.noxtls_install_tls13_record_protection_keys(
+            noxtls_hash_algorithm,
             &client_app_secret,
             &server_app_secret,
         )?;
-        self.install_tls13_exporter_and_resumption_secrets(
-            hash_algorithm,
+        self.noxtls_install_tls13_exporter_and_resumption_secrets(
+            noxtls_hash_algorithm,
             &master_secret,
-            &transcript_hash,
+            &noxtls_transcript_hash,
         )?;
         self.tls13_master_secret = Some(master_secret);
         self.tls13_client_application_traffic_secret = Some(client_app_secret);
@@ -8497,9 +8967,9 @@ impl Connection {
     /// # Arguments
     ///
     /// * `self` — `&mut self`.
-    /// * `hash_algorithm` — `hash_algorithm: HashAlgorithm`.
+    /// * `noxtls_hash_algorithm` — `noxtls_hash_algorithm: HashAlgorithm`.
     /// * `master_secret` — `master_secret: &[u8]`.
-    /// * `transcript_hash` — `transcript_hash: &[u8]`.
+    /// * `noxtls_transcript_hash` — `noxtls_transcript_hash: &[u8]`.
     ///
     /// # Returns
     ///
@@ -8513,25 +8983,25 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn install_tls13_exporter_and_resumption_secrets(
+    fn noxtls_install_tls13_exporter_and_resumption_secrets(
         &mut self,
-        hash_algorithm: HashAlgorithm,
+        noxtls_hash_algorithm: HashAlgorithm,
         master_secret: &[u8],
-        transcript_hash: &[u8],
+        noxtls_transcript_hash: &[u8],
     ) -> Result<()> {
-        let hash_len = hash_algorithm.output_len();
+        let hash_len = noxtls_hash_algorithm.output_len();
         self.tls13_exporter_master_secret = Some(noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             master_secret,
             b"exp master",
-            transcript_hash,
+            noxtls_transcript_hash,
             hash_len,
         )?);
-        self.tls13_resumption_master_secret = Some(noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+        self.noxtls_tls13_resumption_master_secret = Some(noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
             master_secret,
             b"res master",
-            transcript_hash,
+            noxtls_transcript_hash,
             hash_len,
         )?);
         Ok(())
@@ -8542,7 +9012,7 @@ impl Connection {
     /// # Arguments
     ///
     /// * `self` — `&mut self`.
-    /// * `hash_algorithm` — `hash_algorithm: HashAlgorithm`.
+    /// * `noxtls_hash_algorithm` — `noxtls_hash_algorithm: HashAlgorithm`.
     /// * `client_traffic_secret` — `client_traffic_secret: &[u8]`.
     /// * `server_traffic_secret` — `server_traffic_secret: &[u8]`.
     ///
@@ -8558,27 +9028,27 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn install_tls13_record_protection_keys(
+    fn noxtls_install_tls13_record_protection_keys(
         &mut self,
-        hash_algorithm: HashAlgorithm,
+        noxtls_hash_algorithm: HashAlgorithm,
         client_traffic_secret: &[u8],
         server_traffic_secret: &[u8],
     ) -> Result<()> {
-        let suite = self.selected_cipher_suite.ok_or(Error::StateError(
+        let suite = self.noxtls_selected_cipher_suite.ok_or(Error::StateError(
             "cipher suite must be selected before tls13 record protection keys",
         ))?;
-        let key_len = suite.tls13_traffic_key_len().ok_or(Error::StateError(
+        let key_len = suite.noxtls_tls13_traffic_key_len().ok_or(Error::StateError(
             "tls 1.3 record protection requires a tls 1.3 AEAD cipher suite",
         ))?;
         let client_key_material = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             client_traffic_secret,
             b"key",
             &[],
             key_len,
         )?;
         let server_key_material = noxtls_tls13_expand_label_for_hash(
-            hash_algorithm,
+            noxtls_hash_algorithm,
             server_traffic_secret,
             b"key",
             &[],
@@ -8588,19 +9058,29 @@ impl Connection {
         let mut server_key = [0_u8; 32];
         client_key[..key_len].copy_from_slice(&client_key_material);
         server_key[..key_len].copy_from_slice(&server_key_material);
-        let client_iv: [u8; 12] =
-            noxtls_tls13_expand_label_for_hash(hash_algorithm, client_traffic_secret, b"iv", &[], 12)?
-                .try_into()
-                .expect("tls13 iv length should be 12");
-        let server_iv: [u8; 12] =
-            noxtls_tls13_expand_label_for_hash(hash_algorithm, server_traffic_secret, b"iv", &[], 12)?
-                .try_into()
-                .expect("tls13 iv length should be 12");
+        let client_iv: [u8; 12] = noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
+            client_traffic_secret,
+            b"iv",
+            &[],
+            12,
+        )?
+        .try_into()
+        .expect("tls13 iv length should be 12");
+        let server_iv: [u8; 12] = noxtls_tls13_expand_label_for_hash(
+            noxtls_hash_algorithm,
+            server_traffic_secret,
+            b"iv",
+            &[],
+            12,
+        )?
+        .try_into()
+        .expect("tls13 iv length should be 12");
         self.client_write_key = Some(client_key);
         self.server_write_key = Some(server_key);
         self.client_write_iv = Some(client_iv);
         self.server_write_iv = Some(server_iv);
-        self.sync_dtls13_traffic_keys_from_record_protection_state();
+        self.noxtls_sync_dtls13_traffic_keys_from_record_protection_state();
         Ok(())
     }
 
@@ -8614,7 +9094,7 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn sync_dtls13_traffic_keys_from_record_protection_state(&mut self) {
+    fn noxtls_sync_dtls13_traffic_keys_from_record_protection_state(&mut self) {
         if !self.version.is_dtls() {
             return;
         }
@@ -8632,51 +9112,126 @@ impl Connection {
         self.dtls13_server_write_iv = self.server_write_iv;
         self.dtls13_outbound_epoch = 0;
         self.dtls13_outbound_sequence = 0;
-        self.dtls13_inbound_replay_tracker = DtlsEpochReplayTracker::new();
-        self.dtls13_client_inbound_replay_tracker = DtlsEpochReplayTracker::new();
+        self.dtls13_inbound_replay_tracker = DtlsEpochReplayTracker::noxtls_new();
+        self.dtls13_client_inbound_replay_tracker = DtlsEpochReplayTracker::noxtls_new();
     }
 
-    /// Installs TLS 1.3 Finished key derived from current handshake secret material.
+    /// Probes alternate decrypt hypotheses for TLS 1.3 record-open failures when debug is enabled.
     ///
     /// # Arguments
     ///
-    /// * `self` — `&mut self`.
-    /// * `hash_algorithm` — `hash_algorithm: HashAlgorithm`.
-    /// * `prk` — `prk: &[u8]`.
+    /// * `record` — Decoded protected TLSCiphertext components.
+    /// * `aad` — Additional authenticated data used for AEAD authentication.
     ///
     /// # Returns
     ///
-    /// On success, the `Ok` payload described by the return type; see the function body for the concrete value.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`noxtls_core::Error`] when inputs or handshake state invalidate the operation; see the function body for specific error construction sites.
+    /// `()` after emitting optional debug hints.
     ///
     /// # Panics
     ///
     /// This function does not panic.
-    ///
-    fn install_tls13_finished_key(
-        &mut self,
-        hash_algorithm: HashAlgorithm,
-        prk: &[u8],
-    ) -> Result<()> {
-        self.tls13_finished_key = match self.version {
-            TlsVersion::Tls13 | TlsVersion::Dtls13 => {
-                let finished_len = hash_algorithm.output_len();
-                Some(noxtls_hkdf_expand_for_hash(
-                    hash_algorithm,
-                    prk,
-                    b"tls13 finished",
-                    finished_len,
-                )?)
-            }
-            TlsVersion::Tls10 | TlsVersion::Tls11 | TlsVersion::Tls12 | TlsVersion::Dtls12 => None,
+    fn noxtls_debug_probe_tls13_open_record_failure(&self, record: &ProtectedRecord, aad: &[u8]) {
+        if !noxtls_tls13_debug_enabled() {
+            return;
+        }
+        let Some(suite) = self.noxtls_selected_cipher_suite else {
+            return;
         };
-        Ok(())
+        let Some(key_len) = suite.noxtls_tls13_traffic_key_len() else {
+            return;
+        };
+        let probe_key = |label: &str, key: &[u8; 32], iv: &[u8; 12], seq: u64| {
+            let nonce = noxtls_build_record_nonce(iv, seq);
+            let status = match AesCipher::noxtls_new(&key[..key_len]) {
+                Ok(cipher) => noxtls_aes_gcm_decrypt(
+                    &cipher,
+                    &nonce,
+                    aad,
+                    &record.ciphertext,
+                    &record.tag,
+                )
+                .is_ok(),
+                Err(_) => false,
+            };
+            if status {
+                noxtls_tls13_debug_log(label, "success");
+            } else {
+                noxtls_tls13_debug_log(label, "fail");
+            }
+        };
+        if let (Some(key), Some(iv)) = (self.server_write_key.as_ref(), self.server_write_iv.as_ref()) {
+            probe_key("tls13.open_record.probe.server_seq+1", key, iv, record.sequence.saturating_add(1));
+            probe_key("tls13.open_record.probe.server_seq+2", key, iv, record.sequence.saturating_add(2));
+            let mut nonce_first8_be = *iv;
+            for (idx, byte) in record.sequence.to_be_bytes().iter().enumerate() {
+                nonce_first8_be[idx] ^= *byte;
+            }
+            let first8_be_ok = match AesCipher::noxtls_new(&key[..key_len]) {
+                Ok(cipher) => noxtls_aes_gcm_decrypt(
+                    &cipher,
+                    &nonce_first8_be,
+                    aad,
+                    &record.ciphertext,
+                    &record.tag,
+                )
+                .is_ok(),
+                Err(_) => false,
+            };
+            noxtls_tls13_debug_log(
+                "tls13.open_record.probe.server_nonce_first8_be",
+                if first8_be_ok { "success" } else { "fail" },
+            );
+            let mut nonce_last8_le = *iv;
+            for (idx, byte) in record.sequence.to_le_bytes().iter().enumerate() {
+                nonce_last8_le[4 + idx] ^= *byte;
+            }
+            let last8_le_ok = match AesCipher::noxtls_new(&key[..key_len]) {
+                Ok(cipher) => noxtls_aes_gcm_decrypt(
+                    &cipher,
+                    &nonce_last8_le,
+                    aad,
+                    &record.ciphertext,
+                    &record.tag,
+                )
+                .is_ok(),
+                Err(_) => false,
+            };
+            noxtls_tls13_debug_log(
+                "tls13.open_record.probe.server_nonce_last8_le",
+                if last8_le_ok { "success" } else { "fail" },
+            );
+            let mut nonce_first8_le = *iv;
+            for (idx, byte) in record.sequence.to_le_bytes().iter().enumerate() {
+                nonce_first8_le[idx] ^= *byte;
+            }
+            let first8_le_ok = match AesCipher::noxtls_new(&key[..key_len]) {
+                Ok(cipher) => noxtls_aes_gcm_decrypt(
+                    &cipher,
+                    &nonce_first8_le,
+                    aad,
+                    &record.ciphertext,
+                    &record.tag,
+                )
+                .is_ok(),
+                Err(_) => false,
+            };
+            noxtls_tls13_debug_log(
+                "tls13.open_record.probe.server_nonce_first8_le",
+                if first8_le_ok { "success" } else { "fail" },
+            );
+        }
+        if let (Some(key), Some(iv)) = (self.client_write_key.as_ref(), self.client_write_iv.as_ref()) {
+            probe_key("tls13.open_record.probe.client_seq+0", key, iv, record.sequence);
+        }
     }
 
-    /// Computes version-appropriate expected Finished verify_data bytes.
+    /// Computes version-appropriate expected **peer** Finished `verify_data` bytes.
+    ///
+    /// For TLS 1.3 this expands the Finished key from the **server** handshake traffic
+    /// secret and HMACs the current transcript hash — i.e. the value a **client**
+    /// `Connection` expects from the server's `Finished` message after handshake keys
+    /// are installed. TLS 1.2 uses the PRF `client finished` label over the master
+    /// secret for the same peer-verification role in modeled tests.
     ///
     /// # Arguments
     ///
@@ -8694,15 +9249,15 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn compute_expected_finished(&self) -> Result<Vec<u8>> {
-        let hash = self.transcript_hash();
+    pub fn noxtls_compute_expected_finished(&self) -> Result<Vec<u8>> {
+        let hash = self.noxtls_transcript_hash();
         match self.version {
             TlsVersion::Tls12 | TlsVersion::Dtls12 => {
                 let secret = self.handshake_secret.as_ref().ok_or(Error::StateError(
                     "handshake secret must be available before finished",
                 ))?;
-                tls12_prf_for_hash(
-                    self.negotiated_hash_algorithm(),
+                noxtls_tls12_prf_for_hash(
+                    self.noxtls_negotiated_hash_algorithm(),
                     secret,
                     b"client finished",
                     &hash,
@@ -8710,17 +9265,29 @@ impl Connection {
                 )
             }
             TlsVersion::Tls13 | TlsVersion::Dtls13 => {
-                let key = self.tls13_finished_key.as_ref().ok_or(Error::StateError(
-                    "tls13 finished key must be available before finished",
-                ))?;
+                let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
+                let hash_len = noxtls_hash_algorithm.output_len();
+                let server_hs = self
+                    .tls13_server_handshake_traffic_secret
+                    .as_ref()
+                    .ok_or(Error::StateError(
+                        "tls13 server handshake traffic secret must be installed before finished verify",
+                    ))?;
+                let finished_key = noxtls_tls13_expand_label_for_hash(
+                    noxtls_hash_algorithm,
+                    server_hs,
+                    b"finished",
+                    &[],
+                    hash_len,
+                )?;
                 Ok(noxtls_finished_hmac_for_hash(
-                    self.negotiated_hash_algorithm(),
-                    key,
+                    noxtls_hash_algorithm,
+                    &finished_key,
                     &hash,
                 ))
             }
             TlsVersion::Tls10 | TlsVersion::Tls11 => Ok(noxtls_finished_hmac_for_hash(
-                self.negotiated_hash_algorithm(),
+                self.noxtls_negotiated_hash_algorithm(),
                 b"finished",
                 &hash,
             )),
@@ -8738,19 +9305,19 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn append_transcript(&mut self, message: &[u8]) {
+    fn noxtls_append_transcript(&mut self, message: &[u8]) {
         self.transcript.extend_from_slice(message);
-        self.transcript_hash.update(message);
+        self.noxtls_transcript_hash.noxtls_update(message);
     }
 
-    /// Resets transcript bytes/hash for a new handshake flight from `Idle`.
+    /// Resets transcript bytes/hash for a noxtls_new handshake flight from `Idle`.
     ///
     /// # Panics
     ///
     /// This function does not panic.
-    fn reset_transcript_for_new_handshake(&mut self) {
+    fn noxtls_reset_transcript_for_new_handshake(&mut self) {
         self.transcript.clear();
-        self.transcript_hash = TranscriptHashState::for_version(self.version);
+        self.noxtls_transcript_hash = TranscriptHashState::noxtls_for_version(self.version);
     }
 
     /// Resets transcript context to a single ClientHello for modeled 0-RTT server decrypt.
@@ -8766,10 +9333,10 @@ impl Connection {
     /// # Panics
     ///
     /// This function does not panic.
-    fn reset_tls13_early_data_transcript_to_client_hello(&mut self, client_hello: &[u8]) {
+    fn noxtls_reset_tls13_early_data_transcript_to_client_hello(&mut self, client_hello: &[u8]) {
         self.transcript.clear();
-        self.transcript_hash = TranscriptHashState::for_version(self.version);
-        self.append_transcript(client_hello);
+        self.noxtls_transcript_hash = TranscriptHashState::noxtls_for_version(self.version);
+        self.noxtls_append_transcript(client_hello);
     }
 
     /// Derives deterministic X25519 and P-256 key shares for TLS 1.3 ClientHello interop.
@@ -8791,32 +9358,43 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn prepare_client_key_share(&mut self, random: &[u8]) -> Result<Tls13ClientPublicKeyShares> {
+    fn noxtls_prepare_client_key_share(&mut self, random: &[u8]) -> Result<Tls13ClientPublicKeyShares> {
         if !self.version.uses_tls13_handshake_semantics() {
             return Ok(Tls13ClientPublicKeyShares::default());
         }
-        let x25519_private = noxtls_derive_deterministic_x25519_private(random, b"tls13 client x25519");
+        let x25519_private =
+            noxtls_derive_deterministic_x25519_private(random, b"tls13 client x25519");
         let x25519_public = x25519_private.clone().public_key().bytes;
+        noxtls_tls13_debug_log_bytes("tls13.client_key_share.x25519_private", &x25519_private.to_bytes());
+        noxtls_tls13_debug_log_bytes("tls13.client_key_share.x25519_public", &x25519_public);
         self.tls13_client_x25519_private = Some(x25519_private);
 
-        let p256_private = noxtls_derive_deterministic_p256_private(random, b"tls13 client secp256r1")?;
+        let p256_private =
+            noxtls_derive_deterministic_p256_private(random, b"tls13 client secp256r1")?;
         let p256_public = p256_private.public_key()?.to_uncompressed()?;
         self.tls13_client_p256_private = Some(p256_private);
 
-        let (mlkem_private, mlkem_public) =
-            noxtls_derive_deterministic_mlkem768_keypair(random, b"tls13 client mlkem768")?;
-        self.tls13_client_mlkem768_private = Some(mlkem_private);
-        let mlkem_public = mlkem_public.as_bytes().to_vec();
-
-        let mut hybrid_public = Vec::with_capacity(32 + mlkem_public.len());
-        hybrid_public.extend_from_slice(&x25519_public);
-        hybrid_public.extend_from_slice(&mlkem_public);
+        let mut mlkem_public = None;
+        let mut hybrid_public = None;
+        if self.tls13_client_offer_pq_key_shares {
+            let (mlkem_private, mlkem_pub) =
+                noxtls_derive_deterministic_mlkem768_keypair(random, b"tls13 client mlkem768")?;
+            self.tls13_client_mlkem768_private = Some(mlkem_private);
+            let mlkem_pub = mlkem_pub.as_bytes().to_vec();
+            let mut hybrid_pub = Vec::with_capacity(32 + mlkem_pub.len());
+            hybrid_pub.extend_from_slice(&x25519_public);
+            hybrid_pub.extend_from_slice(&mlkem_pub);
+            mlkem_public = Some(mlkem_pub);
+            hybrid_public = Some(hybrid_pub);
+        } else {
+            self.tls13_client_mlkem768_private = None;
+        }
 
         Ok(Tls13ClientPublicKeyShares {
             x25519: Some(x25519_public),
             secp256r1_uncompressed: Some(p256_public),
-            mlkem768: Some(mlkem_public),
-            x25519_mlkem768_hybrid: Some(hybrid_public),
+            mlkem768: mlkem_public,
+            x25519_mlkem768_hybrid: hybrid_public,
         })
     }
 
@@ -8830,12 +9408,12 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn rebuild_transcript_hash_from_selected_suite(&mut self) {
-        let Some(suite) = self.selected_cipher_suite else {
+    fn noxtls_rebuild_transcript_hash_from_selected_suite(&mut self) {
+        let Some(suite) = self.noxtls_selected_cipher_suite else {
             return;
         };
-        self.transcript_hash = suite.transcript_hash_state();
-        self.transcript_hash.update(&self.transcript);
+        self.noxtls_transcript_hash = suite.noxtls_transcript_hash_state();
+        self.noxtls_transcript_hash.noxtls_update(&self.transcript);
     }
 
     /// Applies TLS 1.3 HRR transcript reset via synthetic message_hash entry.
@@ -8848,19 +9426,19 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn reset_transcript_for_hrr(&mut self) {
-        let prior_hash = self.transcript_hash();
+    fn noxtls_reset_transcript_for_hrr(&mut self) {
+        let prior_hash = self.noxtls_transcript_hash();
         self.transcript.clear();
-        if let Some(suite) = self.selected_cipher_suite {
-            self.transcript_hash = suite.transcript_hash_state();
+        if let Some(suite) = self.noxtls_selected_cipher_suite {
+            self.noxtls_transcript_hash = suite.noxtls_transcript_hash_state();
         } else {
-            self.transcript_hash = TranscriptHashState::for_version(self.version);
+            self.noxtls_transcript_hash = TranscriptHashState::noxtls_for_version(self.version);
         }
         let message_hash = noxtls_encode_handshake_message(0xFE, &prior_hash);
-        self.append_transcript(&message_hash);
+        self.noxtls_append_transcript(&message_hash);
     }
 
-    /// Resolves hash algorithm from negotiated suite or current transcript state fallback.
+    /// Resolves hash noxtls_algorithm from negotiated suite or current transcript state fallback.
     ///
     /// # Arguments
     ///
@@ -8874,10 +9452,10 @@ impl Connection {
     ///
     /// This function does not panic.
     ///
-    fn negotiated_hash_algorithm(&self) -> HashAlgorithm {
-        self.selected_cipher_suite
-            .map(CipherSuite::hash_algorithm)
-            .unwrap_or_else(|| self.transcript_hash.algorithm())
+    fn noxtls_negotiated_hash_algorithm(&self) -> HashAlgorithm {
+        self.noxtls_selected_cipher_suite
+            .map(CipherSuite::noxtls_hash_algorithm)
+            .unwrap_or_else(|| self.noxtls_transcript_hash.noxtls_algorithm())
     }
 }
 
@@ -8885,7 +9463,7 @@ impl Connection {
 ///
 /// # Arguments
 ///
-/// * `hash_algorithm` — `hash_algorithm: HashAlgorithm`.
+/// * `noxtls_hash_algorithm` — `noxtls_hash_algorithm: HashAlgorithm`.
 /// * `shared_secret` — `shared_secret: &[u8]`.
 /// * `suite` — `suite: Option<CipherSuite>`.
 ///
@@ -8901,22 +9479,34 @@ impl Connection {
 ///
 /// This function does not panic.
 ///
-fn derive_tls13_handshake_secret(
-    hash_algorithm: HashAlgorithm,
+fn noxtls_derive_tls13_handshake_secret(
+    noxtls_hash_algorithm: HashAlgorithm,
     shared_secret: &[u8],
     suite: Option<CipherSuite>,
 ) -> Result<Vec<u8>> {
-    let hash_len = hash_algorithm.output_len();
-    let zero_ikm = vec![0_u8; hash_len];
-    let early_secret = noxtls_hkdf_extract_for_hash(hash_algorithm, &zero_ikm);
-    let derived =
-        noxtls_tls13_expand_label_for_hash(hash_algorithm, &early_secret, b"derived", &[], hash_len)?;
+    let hash_len = noxtls_hash_algorithm.output_len();
+    // RFC 8446: when PSK is not in use, psk is a zero-filled Hash.length string.
+    let zero_psk = vec![0_u8; hash_len];
+    let early_secret = noxtls_hkdf_extract_for_hash(noxtls_hash_algorithm, &zero_psk);
+    noxtls_tls13_debug_log_bytes("tls13.kdf.early_secret", &early_secret);
+    let empty_hash = noxtls_hash_bytes_for_algorithm(noxtls_hash_algorithm, &[]);
+    let derived = noxtls_tls13_expand_label_for_hash(
+        noxtls_hash_algorithm,
+        &early_secret,
+        b"derived",
+        &empty_hash,
+        hash_len,
+    )?;
+    noxtls_tls13_debug_log_bytes("tls13.kdf.derived_secret", &derived);
     let mut handshake_secret =
-        noxtls_hkdf_extract_with_salt_for_hash(hash_algorithm, &derived, shared_secret);
+        noxtls_hkdf_extract_with_salt_for_hash(noxtls_hash_algorithm, &derived, shared_secret);
     if let Some(selected) = suite {
-        if selected.hash_algorithm() != hash_algorithm {
-            handshake_secret =
-                noxtls_hkdf_extract_with_salt_for_hash(selected.hash_algorithm(), &derived, shared_secret);
+        if selected.noxtls_hash_algorithm() != noxtls_hash_algorithm {
+            handshake_secret = noxtls_hkdf_extract_with_salt_for_hash(
+                selected.noxtls_hash_algorithm(),
+                &derived,
+                shared_secret,
+            );
         }
     }
     Ok(handshake_secret)
@@ -8937,7 +9527,7 @@ fn derive_tls13_handshake_secret(
 ///
 /// This function does not panic.
 ///
-fn combine_tls13_hybrid_shared_secret(classical: &[u8; 32], pq: &[u8; 32]) -> [u8; 32] {
+fn noxtls_combine_tls13_hybrid_shared_secret(classical: &[u8; 32], pq: &[u8; 32]) -> [u8; 32] {
     noxtls_sha256(&[classical.as_slice(), pq.as_slice()].concat())
 }
 
@@ -8945,7 +9535,7 @@ fn combine_tls13_hybrid_shared_secret(classical: &[u8; 32], pq: &[u8; 32]) -> [u
 ///
 /// # Arguments
 ///
-/// * `hash_algorithm` — `hash_algorithm: HashAlgorithm`.
+/// * `noxtls_hash_algorithm` — `noxtls_hash_algorithm: HashAlgorithm`.
 /// * `secret` — `secret: &[u8]`.
 /// * `label` — `label: &[u8]`.
 /// * `seed` — `seed: &[u8]`.
@@ -8963,14 +9553,14 @@ fn combine_tls13_hybrid_shared_secret(classical: &[u8; 32], pq: &[u8; 32]) -> [u
 ///
 /// This function does not panic.
 ///
-fn tls12_prf_for_hash(
-    hash_algorithm: HashAlgorithm,
+fn noxtls_tls12_prf_for_hash(
+    noxtls_hash_algorithm: HashAlgorithm,
     secret: &[u8],
     label: &[u8],
     seed: &[u8],
     len: usize,
 ) -> Result<Vec<u8>> {
-    match hash_algorithm {
+    match noxtls_hash_algorithm {
         HashAlgorithm::Sha256 => noxtls_tls12_prf_sha256(secret, label, seed, len),
         HashAlgorithm::Sha384 => noxtls_tls12_prf_sha384(secret, label, seed, len),
     }
@@ -8991,7 +9581,7 @@ fn tls12_prf_for_hash(
 ///
 /// This function does not panic.
 ///
-fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
+fn noxtls_constant_time_eq(left: &[u8], right: &[u8]) -> bool {
     let max_len = left.len().max(right.len());
     let mut diff = left.len() ^ right.len();
     for idx in 0..max_len {
@@ -9020,8 +9610,8 @@ fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
 ///
 /// This function does not panic.
 ///
-fn extract_first_psk_binder_from_client_hello(client_hello: &[u8]) -> Result<Vec<u8>> {
-    let info = parse_client_hello_info(client_hello)?;
+fn noxtls_extract_first_psk_binder_from_client_hello(client_hello: &[u8]) -> Result<Vec<u8>> {
+    let info = noxtls_parse_client_hello_info(client_hello)?;
     info.extensions
         .psk_binders
         .first()
@@ -9049,7 +9639,7 @@ fn extract_first_psk_binder_from_client_hello(client_hello: &[u8]) -> Result<Vec
 ///
 /// This function does not panic.
 ///
-fn zero_client_hello_psk_binders(client_hello: &[u8]) -> Result<Vec<u8>> {
+fn noxtls_zero_client_hello_psk_binders(client_hello: &[u8]) -> Result<Vec<u8>> {
     let (handshake_type, body) = noxtls_parse_handshake_message(client_hello)?;
     if handshake_type != HANDSHAKE_CLIENT_HELLO {
         return Err(Error::ParseFailure("invalid client hello type"));
@@ -9158,7 +9748,7 @@ fn zero_client_hello_psk_binders(client_hello: &[u8]) -> Result<Vec<u8>> {
 ///
 /// This function does not panic.
 ///
-fn default_client_cipher_suites(version: TlsVersion) -> Vec<CipherSuite> {
+fn noxtls_default_client_cipher_suites(version: TlsVersion) -> Vec<CipherSuite> {
     match version {
         TlsVersion::Tls13 | TlsVersion::Dtls13 => vec![
             CipherSuite::TlsAes256GcmSha384,
@@ -9199,7 +9789,7 @@ fn default_client_cipher_suites(version: TlsVersion) -> Vec<CipherSuite> {
 ///
 /// This function does not panic.
 #[allow(clippy::too_many_arguments)]
-fn encode_client_hello_body(
+fn noxtls_encode_client_hello_body(
     version: TlsVersion,
     random: &[u8],
     suites: &[CipherSuite],
@@ -9207,9 +9797,10 @@ fn encode_client_hello_body(
     sni_server_name: Option<&str>,
     alpn_protocols: &[Vec<u8>],
     request_ocsp_stapling: bool,
+    offer_mldsa_signature: bool,
     offer_early_data: bool,
     psk_offer: Option<&PskClientOffer<'_>>,
-    tls12_session_id: Option<&[u8]>,
+    noxtls_tls12_session_id: Option<&[u8]>,
 ) -> Result<Vec<u8>> {
     if random.len() != 32 {
         return Err(Error::InvalidLength("client hello random must be 32 bytes"));
@@ -9220,10 +9811,10 @@ fn encode_client_hello_body(
         ));
     }
     let mut body = Vec::new();
-    body.extend_from_slice(&legacy_wire_version(version));
+    body.extend_from_slice(&noxtls_legacy_wire_version(version));
     body.extend_from_slice(random);
     if version == TlsVersion::Tls12 {
-        let session_id = tls12_session_id.unwrap_or(&[]);
+        let session_id = noxtls_tls12_session_id.unwrap_or(&[]);
         if session_id.len() > 32 {
             return Err(Error::InvalidLength(
                 "tls12 session id must not exceed 32 bytes",
@@ -9236,15 +9827,16 @@ fn encode_client_hello_body(
     }
     body.extend_from_slice(&((suites.len() * 2) as u16).to_be_bytes());
     for suite in suites {
-        body.extend_from_slice(&suite.to_u16().to_be_bytes());
+        body.extend_from_slice(&suite.noxtls_to_u16().to_be_bytes());
     }
     body.extend_from_slice(&[0x01, 0x00]); // compression_methods: null
-    let extensions = build_client_hello_extensions(
+    let extensions = noxtls_build_client_hello_extensions(
         version,
         key_shares,
         sni_server_name,
         alpn_protocols,
         request_ocsp_stapling,
+        offer_mldsa_signature,
         offer_early_data,
         psk_offer,
     )?;
@@ -9273,12 +9865,12 @@ fn encode_client_hello_body(
 ///
 /// This function does not panic.
 ///
-fn encode_server_hello_body(
+fn noxtls_encode_server_hello_body(
     version: TlsVersion,
     suite: CipherSuite,
     random: &[u8],
 ) -> Result<Vec<u8>> {
-    encode_server_hello_body_with_key_share(version, suite, random, None)
+    noxtls_encode_server_hello_body_with_key_share(version, suite, random, None)
 }
 
 /// Encodes ServerHello with optional explicit `key_share` bytes (for tests and tooling).
@@ -9302,7 +9894,7 @@ fn encode_server_hello_body(
 ///
 /// This function does not panic.
 ///
-fn encode_server_hello_body_with_key_share(
+fn noxtls_encode_server_hello_body_with_key_share(
     version: TlsVersion,
     suite: CipherSuite,
     random: &[u8],
@@ -9312,14 +9904,14 @@ fn encode_server_hello_body_with_key_share(
         return Err(Error::InvalidLength("server hello random must be 32 bytes"));
     }
     let mut body = Vec::new();
-    body.extend_from_slice(&legacy_wire_version(version));
+    body.extend_from_slice(&noxtls_legacy_wire_version(version));
     body.extend_from_slice(random);
     body.push(0x00); // session_id length
-    body.extend_from_slice(&suite.to_u16().to_be_bytes());
+    body.extend_from_slice(&suite.noxtls_to_u16().to_be_bytes());
     body.push(0x00); // compression method
     let mut extensions = Vec::new();
     if version.uses_tls13_handshake_semantics() {
-        push_extension(
+        noxtls_push_extension(
             &mut extensions,
             EXT_SUPPORTED_VERSIONS,
             &0x0304_u16.to_be_bytes(),
@@ -9359,13 +9951,14 @@ fn encode_server_hello_body_with_key_share(
             key_share.extend_from_slice(&(bytes.len() as u16).to_be_bytes());
             key_share.extend_from_slice(bytes);
         } else {
-            let private = noxtls_derive_deterministic_x25519_private(random, b"tls13 server x25519");
+            let private =
+                noxtls_derive_deterministic_x25519_private(random, b"tls13 server x25519");
             let public = private.public_key().bytes;
             key_share.extend_from_slice(&TLS13_KEY_SHARE_GROUP_X25519.to_be_bytes());
             key_share.extend_from_slice(&32_u16.to_be_bytes());
             key_share.extend_from_slice(&public);
         }
-        push_extension(&mut extensions, EXT_KEY_SHARE, &key_share);
+        noxtls_push_extension(&mut extensions, EXT_KEY_SHARE, &key_share);
     }
     body.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
     body.extend_from_slice(&extensions);
@@ -9390,10 +9983,10 @@ fn encode_server_hello_body_with_key_share(
 ///
 /// This function does not panic.
 ///
-fn parse_server_hello(msg: &[u8]) -> Result<ParsedServerHello> {
+fn noxtls_parse_server_hello(msg: &[u8]) -> Result<ParsedServerHello> {
     if msg.len() == 3 && msg.first().copied() == Some(HANDSHAKE_SERVER_HELLO) {
         let suite_id = u16::from_be_bytes([msg[1], msg[2]]);
-        let suite = CipherSuite::from_u16(suite_id)
+        let suite = CipherSuite::noxtls_from_u16(suite_id)
             .ok_or(Error::ParseFailure("unsupported cipher suite"))?;
         return Ok(ParsedServerHello {
             suite,
@@ -9418,9 +10011,9 @@ fn parse_server_hello(msg: &[u8]) -> Result<ParsedServerHello> {
     }
     let suite_id = u16::from_be_bytes([body[suite_start], body[suite_start + 1]]);
     let suite =
-        CipherSuite::from_u16(suite_id).ok_or(Error::ParseFailure("unsupported cipher suite"))?;
+        CipherSuite::noxtls_from_u16(suite_id).ok_or(Error::ParseFailure("unsupported cipher suite"))?;
     let legacy_version = u16::from_be_bytes([body[0], body[1]]);
-    if is_tls13_suite(suite) && legacy_version != 0x0303 && legacy_version != 0xFEFD {
+    if noxtls_is_tls13_suite(suite) && legacy_version != 0x0303 && legacy_version != 0xFEFD {
         return Err(Error::ParseFailure(
             "invalid tls13 server hello legacy_version",
         ));
@@ -9555,7 +10148,7 @@ fn parse_server_hello(msg: &[u8]) -> Result<ParsedServerHello> {
         return Err(Error::ParseFailure("hrr missing key_share extension"));
     }
     if !hello_retry_request
-        && is_tls13_suite(suite)
+        && noxtls_is_tls13_suite(suite)
         && legacy_version == 0x0303
         && !seen_supported_versions_extension
     {
@@ -9563,14 +10156,14 @@ fn parse_server_hello(msg: &[u8]) -> Result<ParsedServerHello> {
             "tls13 server hello missing supported_versions extension",
         ));
     }
-    if !hello_retry_request && is_tls13_suite(suite) && legacy_version == 0x0303 && !supports_tls13
+    if !hello_retry_request && noxtls_is_tls13_suite(suite) && legacy_version == 0x0303 && !supports_tls13
     {
         return Err(Error::ParseFailure(
             "invalid tls13 server hello supported_versions value",
         ));
     }
     if !hello_retry_request
-        && is_tls13_suite(suite)
+        && noxtls_is_tls13_suite(suite)
         && legacy_version == 0x0303
         && !seen_key_share_extension
     {
@@ -9600,7 +10193,7 @@ fn parse_server_hello(msg: &[u8]) -> Result<ParsedServerHello> {
 ///
 /// This function does not panic.
 ///
-fn is_tls13_suite(suite: CipherSuite) -> bool {
+fn noxtls_is_tls13_suite(suite: CipherSuite) -> bool {
     matches!(
         suite,
         CipherSuite::TlsAes128GcmSha256
@@ -9627,7 +10220,7 @@ fn is_tls13_suite(suite: CipherSuite) -> bool {
 ///
 /// This function does not panic.
 ///
-fn parse_client_hello_info(msg: &[u8]) -> Result<ClientHelloInfo> {
+fn noxtls_parse_client_hello_info(msg: &[u8]) -> Result<ClientHelloInfo> {
     let (handshake_type, body) = noxtls_parse_handshake_message(msg)?;
     if handshake_type != HANDSHAKE_CLIENT_HELLO {
         return Err(Error::ParseFailure("invalid client hello type"));
@@ -9658,7 +10251,7 @@ fn parse_client_hello_info(msg: &[u8]) -> Result<ClientHelloInfo> {
     let mut suites = Vec::new();
     for chunk in body[suites_start..suites_end].chunks_exact(2) {
         let codepoint = u16::from_be_bytes([chunk[0], chunk[1]]);
-        if let Some(suite) = CipherSuite::from_u16(codepoint) {
+        if let Some(suite) = CipherSuite::noxtls_from_u16(codepoint) {
             suites.push(suite);
         }
     }
@@ -9688,7 +10281,7 @@ fn parse_client_hello_info(msg: &[u8]) -> Result<ClientHelloInfo> {
     if body.len() != extensions_end {
         return Err(Error::ParseFailure("client hello has trailing bytes"));
     }
-    let extensions = parse_client_hello_extensions(&body[extensions_start..extensions_end])?;
+    let extensions = noxtls_parse_client_hello_extensions(&body[extensions_start..extensions_end])?;
 
     Ok(ClientHelloInfo {
         offered_cipher_suites: suites,
@@ -9716,7 +10309,7 @@ fn parse_client_hello_info(msg: &[u8]) -> Result<ClientHelloInfo> {
 ///
 /// This function does not panic.
 ///
-fn pick_intersection_suite(
+fn noxtls_pick_intersection_suite(
     hello: &ClientHelloInfo,
     preferred: &[CipherSuite],
     version: TlsVersion,
@@ -9725,10 +10318,10 @@ fn pick_intersection_suite(
         if !hello.offered_cipher_suites.contains(suite) {
             continue;
         }
-        if !suite_supported_by_version(*suite, version) {
+        if !noxtls_suite_supported_by_version(*suite, version) {
             continue;
         }
-        if suite_allowed_by_extensions(*suite, version, &hello.extensions) {
+        if noxtls_suite_allowed_by_extensions(*suite, version, &hello.extensions) {
             return Ok(*suite);
         }
     }
@@ -9750,7 +10343,7 @@ fn pick_intersection_suite(
 ///
 /// This function does not panic.
 ///
-fn suite_supported_by_version(suite: CipherSuite, version: TlsVersion) -> bool {
+fn noxtls_suite_supported_by_version(suite: CipherSuite, version: TlsVersion) -> bool {
     match version {
         TlsVersion::Tls13 | TlsVersion::Dtls13 => matches!(
             suite,
@@ -9784,7 +10377,7 @@ fn suite_supported_by_version(suite: CipherSuite, version: TlsVersion) -> bool {
 ///
 /// This function does not panic.
 ///
-fn suite_allowed_by_extensions(
+fn noxtls_suite_allowed_by_extensions(
     suite: CipherSuite,
     version: TlsVersion,
     extensions: &ClientHelloExtensions,
@@ -9807,6 +10400,235 @@ fn suite_allowed_by_extensions(
         }
         TlsVersion::Tls10 | TlsVersion::Tls11 | TlsVersion::Tls12 | TlsVersion::Dtls12 => true,
     }
+}
+
+/// Returns whether TLS13 debug tracing is enabled at runtime.
+///
+/// # Arguments
+///
+/// * _(none)_ — This function takes no parameters.
+///
+/// # Returns
+///
+/// `true` when environment variable `NOXTLS_TLS13_DEBUG` is present; `false` otherwise.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_tls13_debug_enabled() -> bool {
+    #[cfg(feature = "std")]
+    {
+        std::env::var_os("NOXTLS_TLS13_DEBUG").is_some()
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        false
+    }
+}
+
+/// Logs one TLS13 debug key/value pair when debug tracing is enabled.
+///
+/// # Arguments
+///
+/// * `label` — Short field identifier describing the logged value.
+/// * `value` — Human-readable value string to print.
+///
+/// # Returns
+///
+/// `()` after optionally emitting one debug line.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_tls13_debug_log(label: &str, value: &str) {
+    if !noxtls_tls13_debug_enabled() {
+        return;
+    }
+    #[cfg(feature = "std")]
+    {
+        eprintln!("tls13_debug::{label}={value}");
+    }
+}
+
+/// Logs one TLS13 debug byte slice as lowercase hexadecimal.
+///
+/// # Arguments
+///
+/// * `label` — Short field identifier describing the logged bytes.
+/// * `bytes` — Opaque bytes to encode in hexadecimal.
+///
+/// # Returns
+///
+/// `()` after optionally emitting one debug line.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_tls13_debug_log_bytes(label: &str, bytes: &[u8]) {
+    if !noxtls_tls13_debug_enabled() {
+        return;
+    }
+    noxtls_tls13_debug_log(label, &noxtls_encode_hex(bytes));
+}
+
+/// Formats a byte slice as lowercase hexadecimal without separators.
+///
+/// # Arguments
+///
+/// * `bytes` — Byte slice to encode.
+///
+/// # Returns
+///
+/// Lowercase hexadecimal string with length `bytes.len() * 2`.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_encode_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        out.push(HEX[(byte >> 4) as usize] as char);
+        out.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    out
+}
+
+/// Returns a stable display label for hash algorithms used in TLS key schedule logs.
+///
+/// # Arguments
+///
+/// * `noxtls_hash_algorithm` — Hash algorithm enum value to render.
+///
+/// # Returns
+///
+/// Static string label for the provided algorithm.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_hash_algorithm_name(noxtls_hash_algorithm: HashAlgorithm) -> &'static str {
+    match noxtls_hash_algorithm {
+        HashAlgorithm::Sha256 => "sha256",
+        HashAlgorithm::Sha384 => "sha384",
+    }
+}
+
+/// Extracts TLS 1.3 ClientHello X25519 key_share bytes from encoded handshake message.
+///
+/// # Arguments
+///
+/// * `message` — Encoded `ClientHello` handshake message bytes (`type || len || body`).
+///
+/// # Returns
+///
+/// `Ok(Some(key_exchange))` when one X25519 key share is present, `Ok(None)` when absent.
+///
+/// # Errors
+///
+/// Returns [`noxtls_core::Error`] when the handshake shape or extension encoding is malformed.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_extract_tls13_client_hello_x25519_key_share(message: &[u8]) -> Result<Option<[u8; 32]>> {
+    let (handshake_type, body) = noxtls_parse_handshake_message(message)?;
+    if handshake_type != HANDSHAKE_CLIENT_HELLO {
+        return Err(Error::ParseFailure(
+            "expected client hello while extracting x25519 key share",
+        ));
+    }
+    if body.len() < 39 {
+        return Err(Error::ParseFailure("client hello body too short"));
+    }
+    let mut offset = 0_usize;
+    offset = offset.saturating_add(2); // legacy_version
+    offset = offset.saturating_add(32); // random
+    let session_id_len = body
+        .get(offset)
+        .copied()
+        .ok_or(Error::ParseFailure("client hello missing session_id length"))?
+        as usize;
+    offset = offset.saturating_add(1 + session_id_len);
+    if body.len().saturating_sub(offset) < 2 {
+        return Err(Error::ParseFailure(
+            "client hello missing cipher_suites length",
+        ));
+    }
+    let suites_len = u16::from_be_bytes([body[offset], body[offset + 1]]) as usize;
+    offset = offset.saturating_add(2 + suites_len);
+    if body.len().saturating_sub(offset) < 1 {
+        return Err(Error::ParseFailure(
+            "client hello missing compression_methods length",
+        ));
+    }
+    let compression_len = body[offset] as usize;
+    offset = offset.saturating_add(1 + compression_len);
+    if body.len().saturating_sub(offset) < 2 {
+        return Err(Error::ParseFailure("client hello missing extensions length"));
+    }
+    let extensions_len = u16::from_be_bytes([body[offset], body[offset + 1]]) as usize;
+    offset = offset.saturating_add(2);
+    if body.len().saturating_sub(offset) < extensions_len {
+        return Err(Error::ParseFailure("client hello extensions truncated"));
+    }
+    let mut cursor = &body[offset..offset + extensions_len];
+    while !cursor.is_empty() {
+        if cursor.len() < 4 {
+            return Err(Error::ParseFailure(
+                "client hello extension header truncated",
+            ));
+        }
+        let extension_type = u16::from_be_bytes([cursor[0], cursor[1]]);
+        let extension_len = u16::from_be_bytes([cursor[2], cursor[3]]) as usize;
+        cursor = &cursor[4..];
+        if cursor.len() < extension_len {
+            return Err(Error::ParseFailure("client hello extension truncated"));
+        }
+        let extension_data = &cursor[..extension_len];
+        if extension_type == EXT_KEY_SHARE {
+            if extension_data.len() < 2 {
+                return Err(Error::ParseFailure(
+                    "client hello key_share extension missing vector length",
+                ));
+            }
+            let key_share_list_len =
+                u16::from_be_bytes([extension_data[0], extension_data[1]]) as usize;
+            if extension_data.len() != key_share_list_len + 2 {
+                return Err(Error::ParseFailure(
+                    "client hello key_share extension length mismatch",
+                ));
+            }
+            let mut shares = &extension_data[2..];
+            while !shares.is_empty() {
+                if shares.len() < 4 {
+                    return Err(Error::ParseFailure("client hello key_share entry truncated"));
+                }
+                let group = u16::from_be_bytes([shares[0], shares[1]]);
+                let key_exchange_len = u16::from_be_bytes([shares[2], shares[3]]) as usize;
+                shares = &shares[4..];
+                if shares.len() < key_exchange_len {
+                    return Err(Error::ParseFailure(
+                        "client hello key_share key_exchange truncated",
+                    ));
+                }
+                if group == TLS13_KEY_SHARE_GROUP_X25519 {
+                    if key_exchange_len != 32 {
+                        return Err(Error::ParseFailure(
+                            "client hello x25519 key_share length must be 32",
+                        ));
+                    }
+                    let mut key_exchange = [0_u8; 32];
+                    key_exchange.copy_from_slice(&shares[..32]);
+                    return Ok(Some(key_exchange));
+                }
+                shares = &shares[key_exchange_len..];
+            }
+            return Ok(None);
+        }
+        cursor = &cursor[extension_len..];
+    }
+    Ok(None)
 }
 
 /// Builds minimally required ClientHello extensions per protocol version.
@@ -9832,12 +10654,13 @@ fn suite_allowed_by_extensions(
 ///
 /// This function does not panic.
 ///
-fn build_client_hello_extensions(
+fn noxtls_build_client_hello_extensions(
     version: TlsVersion,
     key_shares: &Tls13ClientPublicKeyShares,
     sni_server_name: Option<&str>,
     alpn_protocols: &[Vec<u8>],
     request_ocsp_stapling: bool,
+    offer_mldsa_signature: bool,
     offer_early_data: bool,
     psk_offer: Option<&PskClientOffer<'_>>,
 ) -> Result<Vec<u8>> {
@@ -9849,22 +10672,51 @@ fn build_client_hello_extensions(
             supported_versions.push(4_u8);
             supported_versions.extend_from_slice(&0x0304_u16.to_be_bytes());
             supported_versions.extend_from_slice(&0x0303_u16.to_be_bytes());
-            push_extension(&mut extensions, EXT_SUPPORTED_VERSIONS, &supported_versions);
+            noxtls_push_extension(&mut extensions, EXT_SUPPORTED_VERSIONS, &supported_versions);
 
             // signature_algorithms: modeled TLS 1.3 schemes aligned with verify support.
             let mut sigalgs = Vec::new();
-            let supported_sigalgs = [
+            let mut supported_sigalgs = vec![
                 TLS13_SIGALG_ECDSA_SECP256R1_SHA256,
                 TLS13_SIGALG_RSA_PSS_RSAE_SHA256,
                 TLS13_SIGALG_RSA_PSS_RSAE_SHA384,
                 TLS13_SIGALG_ED25519,
-                TLS13_SIGALG_MLDSA65,
             ];
+            if offer_mldsa_signature {
+                supported_sigalgs.push(TLS13_SIGALG_MLDSA65);
+            }
             sigalgs.extend_from_slice(&((supported_sigalgs.len() * 2) as u16).to_be_bytes());
             for sigalg in supported_sigalgs {
                 sigalgs.extend_from_slice(&sigalg.to_be_bytes());
             }
-            push_extension(&mut extensions, EXT_SIGNATURE_ALGORITHMS, &sigalgs);
+            noxtls_push_extension(&mut extensions, EXT_SIGNATURE_ALGORITHMS, &sigalgs);
+
+            // supported_groups: advertise all groups we may select in key_share.
+            let mut supported_groups = Vec::new();
+            let mut supported_group_ids = Vec::new();
+            if key_shares.x25519.is_some() {
+                supported_group_ids.push(TLS13_KEY_SHARE_GROUP_X25519);
+            }
+            if key_shares.secp256r1_uncompressed.is_some() {
+                supported_group_ids.push(TLS13_KEY_SHARE_GROUP_SECP256R1);
+            }
+            if key_shares.mlkem768.is_some() {
+                supported_group_ids.push(TLS13_KEY_SHARE_GROUP_MLKEM768);
+            }
+            if key_shares.x25519_mlkem768_hybrid.is_some() {
+                supported_group_ids.push(TLS13_KEY_SHARE_GROUP_X25519_MLKEM768_HYBRID);
+            }
+            if supported_group_ids.is_empty() {
+                return Err(Error::InvalidLength(
+                    "tls13 client hello supported_groups extension must not be empty",
+                ));
+            }
+            supported_groups
+                .extend_from_slice(&((supported_group_ids.len() * 2) as u16).to_be_bytes());
+            for group in supported_group_ids {
+                supported_groups.extend_from_slice(&group.to_be_bytes());
+            }
+            noxtls_push_extension(&mut extensions, EXT_SUPPORTED_GROUPS, &supported_groups);
 
             // key_share: X25519 and optional secp256r1 entries for modeled ECDHE breadth.
             let mut key_share_list = Vec::new();
@@ -9897,22 +10749,22 @@ fn build_client_hello_extensions(
             let mut key_share_ext = Vec::new();
             key_share_ext.extend_from_slice(&(key_share_list.len() as u16).to_be_bytes());
             key_share_ext.extend_from_slice(&key_share_list);
-            push_extension(&mut extensions, EXT_KEY_SHARE, &key_share_ext);
+            noxtls_push_extension(&mut extensions, EXT_KEY_SHARE, &key_share_ext);
             if let Some(server_name) = sni_server_name {
-                let server_name_extension_data = encode_server_name_extension_data(server_name)?;
-                push_extension(
+                let server_name_extension_data = noxtls_encode_server_name_extension_data(server_name)?;
+                noxtls_push_extension(
                     &mut extensions,
                     EXT_SERVER_NAME,
                     &server_name_extension_data,
                 );
             }
             if request_ocsp_stapling {
-                let status_request_data = encode_status_request_ocsp_extension_data()?;
-                push_extension(&mut extensions, EXT_STATUS_REQUEST, &status_request_data);
+                let status_request_data = noxtls_encode_status_request_ocsp_extension_data()?;
+                noxtls_push_extension(&mut extensions, EXT_STATUS_REQUEST, &status_request_data);
             }
             if !alpn_protocols.is_empty() {
-                let alpn_extension_data = encode_alpn_extension_data(alpn_protocols)?;
-                push_extension(&mut extensions, EXT_ALPN, &alpn_extension_data);
+                let alpn_extension_data = noxtls_encode_alpn_extension_data(alpn_protocols)?;
+                noxtls_push_extension(&mut extensions, EXT_ALPN, &alpn_extension_data);
             }
             if offer_early_data {
                 if psk_offer.is_none() {
@@ -9920,17 +10772,17 @@ fn build_client_hello_extensions(
                         "tls13 early_data extension requires pre_shared_key offer",
                     ));
                 }
-                push_extension(&mut extensions, EXT_EARLY_DATA, &[]);
+                noxtls_push_extension(&mut extensions, EXT_EARLY_DATA, &[]);
             }
             if let Some(psk) = psk_offer {
                 let psk_key_exchange_modes = [1_u8, TLS13_PSK_KEY_EXCHANGE_MODE_PSK_DHE_KE];
-                push_extension(
+                noxtls_push_extension(
                     &mut extensions,
                     EXT_PSK_KEY_EXCHANGE_MODES,
                     &psk_key_exchange_modes,
                 );
-                let psk_extension = encode_pre_shared_key_extension(psk)?;
-                push_extension(&mut extensions, EXT_PRE_SHARED_KEY, &psk_extension);
+                let psk_extension = noxtls_encode_pre_shared_key_extension(psk)?;
+                noxtls_push_extension(&mut extensions, EXT_PRE_SHARED_KEY, &psk_extension);
             }
         }
         TlsVersion::Tls10 | TlsVersion::Tls11 | TlsVersion::Tls12 | TlsVersion::Dtls12 => {
@@ -9938,7 +10790,7 @@ fn build_client_hello_extensions(
             let mut sigalgs = Vec::new();
             sigalgs.extend_from_slice(&2_u16.to_be_bytes());
             sigalgs.extend_from_slice(&0x0401_u16.to_be_bytes());
-            push_extension(&mut extensions, EXT_SIGNATURE_ALGORITHMS, &sigalgs);
+            noxtls_push_extension(&mut extensions, EXT_SIGNATURE_ALGORITHMS, &sigalgs);
         }
     }
     Ok(extensions)
@@ -9956,7 +10808,7 @@ fn build_client_hello_extensions(
 ///
 /// This function does not panic.
 ///
-fn push_extension(out: &mut Vec<u8>, ext_type: u16, ext_data: &[u8]) {
+fn noxtls_push_extension(out: &mut Vec<u8>, ext_type: u16, ext_data: &[u8]) {
     out.extend_from_slice(&ext_type.to_be_bytes());
     out.extend_from_slice(&(ext_data.len() as u16).to_be_bytes());
     out.extend_from_slice(ext_data);
@@ -9980,7 +10832,7 @@ fn push_extension(out: &mut Vec<u8>, ext_type: u16, ext_data: &[u8]) {
 ///
 /// This function does not panic.
 ///
-fn parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExtensions> {
+fn noxtls_parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExtensions> {
     let mut out = ClientHelloExtensions::default();
     let mut cursor = input;
     let mut seen_supported_versions = false;
@@ -10019,7 +10871,7 @@ fn parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExtensions> 
                         "duplicate supported_versions extension",
                     ));
                 }
-                out.supported_versions = parse_supported_versions_extension(ext_data)?;
+                out.supported_versions = noxtls_parse_supported_versions_extension(ext_data)?;
                 seen_supported_versions = true;
             }
             EXT_SIGNATURE_ALGORITHMS => {
@@ -10028,7 +10880,7 @@ fn parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExtensions> 
                         "duplicate signature_algorithms extension",
                     ));
                 }
-                out.signature_algorithms = parse_u16_vector_with_len(ext_data)?;
+                out.signature_algorithms = noxtls_parse_u16_vector_with_len(ext_data)?;
                 if out.signature_algorithms.is_empty() {
                     return Err(Error::ParseFailure(
                         "signature_algorithms extension must not be empty",
@@ -10040,17 +10892,17 @@ fn parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExtensions> 
                 if seen_key_share {
                     return Err(Error::ParseFailure("duplicate key_share extension"));
                 }
-                out.key_share_groups = parse_key_share_groups_extension(ext_data)?;
+                out.key_share_groups = noxtls_parse_key_share_groups_extension(ext_data)?;
                 seen_key_share = true;
             }
             EXT_SERVER_NAME => {
-                out.sni_server_name = Some(parse_server_name_extension(ext_data)?);
+                out.sni_server_name = Some(noxtls_parse_server_name_extension(ext_data)?);
             }
             EXT_ALPN => {
-                out.alpn_protocols = parse_alpn_protocol_name_list(ext_data)?;
+                out.alpn_protocols = noxtls_parse_alpn_protocol_name_list(ext_data)?;
             }
             EXT_STATUS_REQUEST => {
-                out.status_request_ocsp = parse_status_request_ocsp_extension(ext_data)?;
+                out.status_request_ocsp = noxtls_parse_status_request_ocsp_extension(ext_data)?;
             }
             EXT_PSK_KEY_EXCHANGE_MODES => {
                 if seen_psk_key_exchange_modes {
@@ -10058,7 +10910,7 @@ fn parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExtensions> 
                         "duplicate psk_key_exchange_modes extension",
                     ));
                 }
-                out.psk_key_exchange_modes = parse_u8_vector_with_len(ext_data)?;
+                out.psk_key_exchange_modes = noxtls_parse_u8_vector_with_len(ext_data)?;
                 if !out
                     .psk_key_exchange_modes
                     .contains(&TLS13_PSK_KEY_EXCHANGE_MODE_PSK_DHE_KE)
@@ -10074,7 +10926,7 @@ fn parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExtensions> 
                     return Err(Error::ParseFailure("duplicate pre_shared_key extension"));
                 }
                 let (identity_count, identities, obfuscated_ages, binders) =
-                    parse_pre_shared_key_extension(ext_data)?;
+                    noxtls_parse_pre_shared_key_extension(ext_data)?;
                 out.psk_identity_count = identity_count;
                 out.psk_identities = identities;
                 out.psk_obfuscated_ticket_ages = obfuscated_ages;
@@ -10162,7 +11014,7 @@ fn parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExtensions> 
 ///
 /// This function does not panic.
 ///
-fn parse_supported_versions_extension(input: &[u8]) -> Result<Vec<u16>> {
+fn noxtls_parse_supported_versions_extension(input: &[u8]) -> Result<Vec<u16>> {
     if input.is_empty() {
         return Err(Error::ParseFailure("supported_versions extension is empty"));
     }
@@ -10199,7 +11051,7 @@ fn parse_supported_versions_extension(input: &[u8]) -> Result<Vec<u16>> {
 ///
 /// This function does not panic.
 ///
-fn is_valid_sni_dns_name(name: &str) -> bool {
+fn noxtls_is_valid_sni_dns_name(name: &str) -> bool {
     if name.is_empty() || !name.is_ascii() {
         return false;
     }
@@ -10254,7 +11106,7 @@ fn is_valid_sni_dns_name(name: &str) -> bool {
 ///
 /// This function does not panic.
 ///
-fn parse_server_name_extension(input: &[u8]) -> Result<String> {
+fn noxtls_parse_server_name_extension(input: &[u8]) -> Result<String> {
     if input.len() < 5 {
         return Err(Error::ParseFailure("server_name extension too short"));
     }
@@ -10271,7 +11123,7 @@ fn parse_server_name_extension(input: &[u8]) -> Result<String> {
     }
     let name = core::str::from_utf8(&input[5..])
         .map_err(|_| Error::ParseFailure("invalid sni server_name"))?;
-    if !is_valid_sni_dns_name(name) {
+    if !noxtls_is_valid_sni_dns_name(name) {
         return Err(Error::ParseFailure("invalid sni server_name"));
     }
     Ok(name.to_owned())
@@ -10295,8 +11147,8 @@ fn parse_server_name_extension(input: &[u8]) -> Result<String> {
 ///
 /// This function does not panic.
 ///
-fn encode_server_name_extension_data(server_name: &str) -> Result<Vec<u8>> {
-    if !is_valid_sni_dns_name(server_name) {
+fn noxtls_encode_server_name_extension_data(server_name: &str) -> Result<Vec<u8>> {
+    if !noxtls_is_valid_sni_dns_name(server_name) {
         return Err(Error::ParseFailure("invalid sni server_name"));
     }
     let name_bytes = server_name.as_bytes();
@@ -10311,7 +11163,7 @@ fn encode_server_name_extension_data(server_name: &str) -> Result<Vec<u8>> {
 }
 
 /// Encodes RFC 6066/8446 `status_request` data for OCSP stapling support.
-fn encode_status_request_ocsp_extension_data() -> Result<Vec<u8>> {
+fn noxtls_encode_status_request_ocsp_extension_data() -> Result<Vec<u8>> {
     let mut out = Vec::new();
     out.push(0x01); // status_type=ocsp
     out.extend_from_slice(&0_u16.to_be_bytes()); // responder_id_list length
@@ -10320,7 +11172,7 @@ fn encode_status_request_ocsp_extension_data() -> Result<Vec<u8>> {
 }
 
 /// Parses `status_request` extension and accepts the OCSP form.
-fn parse_status_request_ocsp_extension(input: &[u8]) -> Result<bool> {
+fn noxtls_parse_status_request_ocsp_extension(input: &[u8]) -> Result<bool> {
     if input.len() != 5 {
         return Err(Error::ParseFailure(
             "invalid status_request extension length",
@@ -10359,7 +11211,7 @@ fn parse_status_request_ocsp_extension(input: &[u8]) -> Result<bool> {
 ///
 /// This function does not panic.
 ///
-fn parse_alpn_protocol_name_list(input: &[u8]) -> Result<Vec<Vec<u8>>> {
+fn noxtls_parse_alpn_protocol_name_list(input: &[u8]) -> Result<Vec<Vec<u8>>> {
     if input.len() < 2 {
         return Err(Error::ParseFailure(
             "alpn extension missing protocol_name_list",
@@ -10408,7 +11260,7 @@ fn parse_alpn_protocol_name_list(input: &[u8]) -> Result<Vec<Vec<u8>>> {
 ///
 /// This function does not panic.
 ///
-fn encode_alpn_extension_data(protocols: &[Vec<u8>]) -> Result<Vec<u8>> {
+fn noxtls_encode_alpn_extension_data(protocols: &[Vec<u8>]) -> Result<Vec<u8>> {
     if protocols.is_empty() {
         return Err(Error::InvalidLength(
             "alpn extension must include at least one protocol",
@@ -10456,7 +11308,7 @@ fn encode_alpn_extension_data(protocols: &[Vec<u8>]) -> Result<Vec<u8>> {
 ///
 /// This function does not panic.
 ///
-fn parse_u16_vector_with_len(input: &[u8]) -> Result<Vec<u16>> {
+fn noxtls_parse_u16_vector_with_len(input: &[u8]) -> Result<Vec<u16>> {
     if input.len() < 2 {
         return Err(Error::ParseFailure("u16 vector missing length prefix"));
     }
@@ -10493,7 +11345,7 @@ fn parse_u16_vector_with_len(input: &[u8]) -> Result<Vec<u16>> {
 ///
 /// This function does not panic.
 ///
-fn parse_u8_vector_with_len(input: &[u8]) -> Result<Vec<u8>> {
+fn noxtls_parse_u8_vector_with_len(input: &[u8]) -> Result<Vec<u8>> {
     if input.is_empty() {
         return Err(Error::ParseFailure("u8 vector missing length prefix"));
     }
@@ -10532,7 +11384,7 @@ fn parse_u8_vector_with_len(input: &[u8]) -> Result<Vec<u8>> {
 ///
 /// This function does not panic.
 ///
-fn parse_certificate_request_body(body: &[u8]) -> Result<()> {
+fn noxtls_parse_certificate_request_body(body: &[u8]) -> Result<()> {
     if body.len() < 3 {
         return Err(Error::ParseFailure("certificate request body too short"));
     }
@@ -10548,7 +11400,7 @@ fn parse_certificate_request_body(body: &[u8]) -> Result<()> {
             "certificate request extensions truncated",
         ));
     }
-    parse_certificate_request_extensions(&body[ext_start..])?;
+    noxtls_parse_certificate_request_extensions(&body[ext_start..])?;
     Ok(())
 }
 
@@ -10570,7 +11422,7 @@ fn parse_certificate_request_body(body: &[u8]) -> Result<()> {
 ///
 /// This function does not panic.
 ///
-fn parse_certificate_request_extensions(input: &[u8]) -> Result<()> {
+fn noxtls_parse_certificate_request_extensions(input: &[u8]) -> Result<()> {
     let mut cursor = input;
     let mut seen_extension_types = Vec::new();
     let mut seen_signature_algorithms = false;
@@ -10607,7 +11459,7 @@ fn parse_certificate_request_extensions(input: &[u8]) -> Result<()> {
             ));
         }
         if ext_type == EXT_SIGNATURE_ALGORITHMS {
-            let signature_algorithms = parse_u16_vector_with_len(&cursor[..ext_len])?;
+            let signature_algorithms = noxtls_parse_u16_vector_with_len(&cursor[..ext_len])?;
             if signature_algorithms.is_empty() {
                 return Err(Error::ParseFailure(
                     "certificate request signature_algorithms must not be empty",
@@ -10643,7 +11495,7 @@ fn parse_certificate_request_extensions(input: &[u8]) -> Result<()> {
 ///
 /// This function does not panic.
 ///
-fn parse_encrypted_extensions_body(body: &[u8]) -> Result<ParsedEncryptedExtensions> {
+fn noxtls_parse_encrypted_extensions_body(body: &[u8]) -> Result<ParsedEncryptedExtensions> {
     if body.len() < 2 {
         return Err(Error::ParseFailure("encrypted extensions body too short"));
     }
@@ -10688,7 +11540,7 @@ fn parse_encrypted_extensions_body(body: &[u8]) -> Result<ParsedEncryptedExtensi
                 server_name_acknowledged = true;
             }
             EXT_ALPN => {
-                let protocols = parse_alpn_protocol_name_list(ext_data)?;
+                let protocols = noxtls_parse_alpn_protocol_name_list(ext_data)?;
                 if protocols.len() != 1 {
                     return Err(Error::ParseFailure(
                         "encrypted extensions alpn must select exactly one protocol",
@@ -10741,7 +11593,7 @@ fn parse_encrypted_extensions_body(body: &[u8]) -> Result<ParsedEncryptedExtensi
 ///
 /// This function does not panic.
 ///
-fn parse_certificate_body(body: &[u8]) -> Result<ParsedTls13CertificateBody> {
+fn noxtls_parse_certificate_body(body: &[u8]) -> Result<ParsedTls13CertificateBody> {
     if body.len() < 4 {
         return Err(Error::ParseFailure("certificate body too short"));
     }
@@ -10781,7 +11633,7 @@ fn parse_certificate_body(body: &[u8]) -> Result<ParsedTls13CertificateBody> {
                 "certificate entry extensions truncated",
             ));
         }
-        let parsed_staple = parse_certificate_entry_extensions(&cursor[cert_end + 2..ext_end])?;
+        let parsed_staple = noxtls_parse_certificate_entry_extensions(&cursor[cert_end + 2..ext_end])?;
         if certificates.len() == 1 {
             leaf_ocsp_staple = parsed_staple;
         }
@@ -10816,7 +11668,7 @@ fn parse_certificate_body(body: &[u8]) -> Result<ParsedTls13CertificateBody> {
 /// # Panics
 ///
 /// This function does not panic.
-fn parse_tls12_certificate_list(body: &[u8]) -> Result<Vec<Vec<u8>>> {
+fn noxtls_parse_tls12_certificate_list(body: &[u8]) -> Result<Vec<Vec<u8>>> {
     if body.len() < 3 {
         return Err(Error::ParseFailure(
             "tls12 certificate message is malformed",
@@ -10874,7 +11726,7 @@ fn parse_tls12_certificate_list(body: &[u8]) -> Result<Vec<Vec<u8>>> {
 /// # Panics
 ///
 /// This function does not panic.
-fn parse_tls12_server_key_exchange_body(body: &[u8]) -> Result<()> {
+fn noxtls_parse_tls12_server_key_exchange_body(body: &[u8]) -> Result<()> {
     if body.len() < 8 {
         return Err(Error::ParseFailure(
             "tls12 server key exchange body must include key share and signature fields",
@@ -10901,7 +11753,7 @@ fn parse_tls12_server_key_exchange_body(body: &[u8]) -> Result<()> {
         body[signature_header_offset],
         body[signature_header_offset + 1],
     ]);
-    if !tls12_signature_scheme_is_modern(signature_scheme) {
+    if !noxtls_tls12_signature_scheme_is_modern(signature_scheme) {
         return Err(Error::ParseFailure(
             "tls12 server key exchange uses unsupported signature scheme",
         ));
@@ -10940,14 +11792,14 @@ fn parse_tls12_server_key_exchange_body(body: &[u8]) -> Result<()> {
 /// # Panics
 ///
 /// This function does not panic.
-fn parse_tls12_certificate_verify_body(body: &[u8]) -> Result<()> {
+fn noxtls_parse_tls12_certificate_verify_body(body: &[u8]) -> Result<()> {
     if body.len() < 4 {
         return Err(Error::ParseFailure(
             "tls12 client certificate verify body must include signature scheme and length",
         ));
     }
     let signature_scheme = u16::from_be_bytes([body[0], body[1]]);
-    if !tls12_signature_scheme_is_modern(signature_scheme) {
+    if !noxtls_tls12_signature_scheme_is_modern(signature_scheme) {
         return Err(Error::ParseFailure(
             "tls12 client certificate verify uses unsupported signature scheme",
         ));
@@ -10966,7 +11818,7 @@ fn parse_tls12_certificate_verify_body(body: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// Returns whether TLS 1.2 signature algorithm is allowed by default-safe policy.
+/// Returns whether TLS 1.2 signature noxtls_algorithm is allowed by default-safe policy.
 ///
 /// # Arguments
 ///
@@ -10979,7 +11831,7 @@ fn parse_tls12_certificate_verify_body(body: &[u8]) -> Result<()> {
 /// # Panics
 ///
 /// This function does not panic.
-fn tls12_signature_scheme_is_modern(signature_scheme: u16) -> bool {
+fn noxtls_tls12_signature_scheme_is_modern(signature_scheme: u16) -> bool {
     matches!(
         signature_scheme,
         TLS13_SIGALG_ECDSA_SECP256R1_SHA256
@@ -11008,7 +11860,7 @@ fn tls12_signature_scheme_is_modern(signature_scheme: u16) -> bool {
 ///
 /// This function does not panic.
 ///
-fn parse_certificate_entry_extensions(input: &[u8]) -> Result<Option<Vec<u8>>> {
+fn noxtls_parse_certificate_entry_extensions(input: &[u8]) -> Result<Option<Vec<u8>>> {
     let mut cursor = input;
     let mut seen_extension_types = Vec::new();
     let mut status_request_ocsp = None;
@@ -11037,7 +11889,7 @@ fn parse_certificate_entry_extensions(input: &[u8]) -> Result<Option<Vec<u8>>> {
                     "duplicate certificate entry status_request extension",
                 ));
             }
-            status_request_ocsp = Some(parse_certificate_entry_status_request_extension(ext_data)?);
+            status_request_ocsp = Some(noxtls_parse_certificate_entry_status_request_extension(ext_data)?);
         }
         cursor = &cursor[ext_len..];
     }
@@ -11045,7 +11897,7 @@ fn parse_certificate_entry_extensions(input: &[u8]) -> Result<Option<Vec<u8>>> {
 }
 
 /// Encodes one CertificateEntry `status_request` extension with OCSP staple payload.
-fn encode_certificate_entry_status_request_extension(ocsp_staple: &[u8]) -> Result<Vec<u8>> {
+fn noxtls_encode_certificate_entry_status_request_extension(ocsp_staple: &[u8]) -> Result<Vec<u8>> {
     if ocsp_staple.is_empty() {
         return Err(Error::InvalidLength("ocsp staple must not be empty"));
     }
@@ -11066,7 +11918,7 @@ fn encode_certificate_entry_status_request_extension(ocsp_staple: &[u8]) -> Resu
 }
 
 /// Parses one CertificateEntry `status_request` extension and extracts OCSP staple bytes.
-fn parse_certificate_entry_status_request_extension(input: &[u8]) -> Result<Vec<u8>> {
+fn noxtls_parse_certificate_entry_status_request_extension(input: &[u8]) -> Result<Vec<u8>> {
     if input.len() < 4 {
         return Err(Error::ParseFailure(
             "certificate entry status_request extension is truncated",
@@ -11109,7 +11961,7 @@ fn parse_certificate_entry_status_request_extension(input: &[u8]) -> Result<Vec<
 ///
 /// This function does not panic.
 ///
-fn parse_certificate_verify_fields(body: &[u8]) -> Result<(u16, &[u8])> {
+fn noxtls_parse_certificate_verify_fields(body: &[u8]) -> Result<(u16, &[u8])> {
     if body.len() < 4 {
         return Err(Error::ParseFailure("certificate verify body too short"));
     }
@@ -11137,7 +11989,7 @@ fn parse_certificate_verify_fields(body: &[u8]) -> Result<(u16, &[u8])> {
 ///
 /// This function does not panic.
 ///
-fn tls13_supported_certificate_verify_signature_scheme(signature_scheme: u16) -> bool {
+fn noxtls_tls13_supported_certificate_verify_signature_scheme(signature_scheme: u16) -> bool {
     matches!(
         signature_scheme,
         TLS13_SIGALG_ECDSA_SECP256R1_SHA256
@@ -11166,25 +12018,25 @@ fn tls13_supported_certificate_verify_signature_scheme(signature_scheme: u16) ->
 ///
 /// This function does not panic.
 ///
-fn parse_new_session_ticket_body(body: &[u8]) -> Result<()> {
+fn noxtls_parse_new_session_ticket_body(body: &[u8]) -> Result<()> {
     if body.len() < 11 {
-        return Err(Error::ParseFailure("new session ticket body too short"));
+        return Err(Error::ParseFailure("noxtls_new session ticket body too short"));
     }
     let nonce_len = body[8] as usize;
     let ticket_len_offset = 9 + nonce_len;
     if body.len() < ticket_len_offset + 2 {
-        return Err(Error::ParseFailure("new session ticket nonce truncated"));
+        return Err(Error::ParseFailure("noxtls_new session ticket nonce truncated"));
     }
     let ticket_len =
         u16::from_be_bytes([body[ticket_len_offset], body[ticket_len_offset + 1]]) as usize;
     let ext_len_offset = ticket_len_offset + 2 + ticket_len;
     if body.len() < ext_len_offset + 2 {
-        return Err(Error::ParseFailure("new session ticket bytes truncated"));
+        return Err(Error::ParseFailure("noxtls_new session ticket bytes truncated"));
     }
     let ext_len = u16::from_be_bytes([body[ext_len_offset], body[ext_len_offset + 1]]) as usize;
     if body.len() != ext_len_offset + 2 + ext_len {
         return Err(Error::ParseFailure(
-            "new session ticket extensions truncated",
+            "noxtls_new session ticket extensions truncated",
         ));
     }
     Ok(())
@@ -11194,7 +12046,7 @@ fn parse_new_session_ticket_body(body: &[u8]) -> Result<()> {
 ///
 /// # Arguments
 ///
-/// * `transcript_hash` — `transcript_hash: &[u8]`.
+/// * `noxtls_transcript_hash` — `noxtls_transcript_hash: &[u8]`.
 ///
 /// # Returns
 ///
@@ -11204,14 +12056,14 @@ fn parse_new_session_ticket_body(body: &[u8]) -> Result<()> {
 ///
 /// This function does not panic.
 ///
-fn build_tls13_server_certificate_verify_message(transcript_hash: &[u8]) -> Vec<u8> {
+fn noxtls_build_tls13_server_certificate_verify_message(noxtls_transcript_hash: &[u8]) -> Vec<u8> {
     const PREFIX_LEN: usize = 64;
     const CONTEXT: &[u8] = b"TLS 1.3, server CertificateVerify";
-    let mut out = Vec::with_capacity(PREFIX_LEN + CONTEXT.len() + 1 + transcript_hash.len());
+    let mut out = Vec::with_capacity(PREFIX_LEN + CONTEXT.len() + 1 + noxtls_transcript_hash.len());
     out.extend(core::iter::repeat_n(0x20_u8, PREFIX_LEN));
     out.extend_from_slice(CONTEXT);
     out.push(0x00);
-    out.extend_from_slice(transcript_hash);
+    out.extend_from_slice(noxtls_transcript_hash);
     out
 }
 
@@ -11233,7 +12085,7 @@ fn build_tls13_server_certificate_verify_message(transcript_hash: &[u8]) -> Vec<
 ///
 /// This function does not panic.
 ///
-fn parse_rsa_public_key_der(public_key_der: &[u8]) -> Result<RsaPublicKey> {
+fn noxtls_parse_rsa_public_key_der(public_key_der: &[u8]) -> Result<RsaPublicKey> {
     let (rsa_seq, rem) = noxtls_parse_der_node(public_key_der)
         .map_err(|_| Error::ParseFailure("failed to parse server RSA public key"))?;
     if rsa_seq.tag != 0x30 || !rem.is_empty() {
@@ -11272,7 +12124,7 @@ fn parse_rsa_public_key_der(public_key_der: &[u8]) -> Result<RsaPublicKey> {
 ///
 /// This function does not panic.
 ///
-fn parse_key_share_groups_extension(input: &[u8]) -> Result<Vec<u16>> {
+fn noxtls_parse_key_share_groups_extension(input: &[u8]) -> Result<Vec<u16>> {
     if input.len() < 2 {
         return Err(Error::ParseFailure(
             "key_share extension missing list length",
@@ -11326,7 +12178,7 @@ fn parse_key_share_groups_extension(input: &[u8]) -> Result<Vec<u16>> {
 ///
 /// This function does not panic.
 ///
-fn encode_pre_shared_key_extension(offer: &PskClientOffer<'_>) -> Result<Vec<u8>> {
+fn noxtls_encode_pre_shared_key_extension(offer: &PskClientOffer<'_>) -> Result<Vec<u8>> {
     if offer.identities.is_empty() || offer.binders.is_empty() {
         return Err(Error::InvalidLength(
             "psk identity/binder list must not be empty",
@@ -11381,7 +12233,7 @@ fn encode_pre_shared_key_extension(offer: &PskClientOffer<'_>) -> Result<Vec<u8>
 ///
 /// This function does not panic.
 ///
-fn parse_pre_shared_key_extension(
+fn noxtls_parse_pre_shared_key_extension(
     input: &[u8],
 ) -> Result<(usize, Vec<Vec<u8>>, Vec<u32>, Vec<Vec<u8>>)> {
     if input.len() < 4 {
@@ -11480,7 +12332,7 @@ fn parse_pre_shared_key_extension(
 ///
 /// This function does not panic.
 ///
-fn legacy_wire_version(version: TlsVersion) -> [u8; 2] {
+fn noxtls_legacy_wire_version(version: TlsVersion) -> [u8; 2] {
     match version {
         TlsVersion::Tls10 => [0x03, 0x01],
         TlsVersion::Tls11 => [0x03, 0x02],

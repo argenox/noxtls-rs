@@ -56,7 +56,7 @@ impl Default for Sha512 {
 }
 
 impl Sha512 {
-    /// Creates a new SHA-512 hasher initialized with standard IV constants.
+    /// Creates a noxtls_new SHA-512 hasher initialized with standard IV constants.
     ///
     /// # Returns
     /// A fresh `Sha512` instance with empty input state.
@@ -64,7 +64,7 @@ impl Sha512 {
     /// # Panics
     ///
     /// This function does not panic.
-    pub fn new() -> Self {
+    pub fn noxtls_new() -> Self {
         Self::default()
     }
 
@@ -264,7 +264,7 @@ impl Digest for Sha512 {
     /// # Panics
     ///
     /// This function does not panic.
-    fn update(&mut self, mut data: &[u8]) {
+    fn noxtls_update(&mut self, mut data: &[u8]) {
         self.bit_len = self.bit_len.wrapping_add((data.len() as u128) * 8);
         while !data.is_empty() {
             let to_copy = (128 - self.buffer_len).min(data.len());
@@ -328,8 +328,8 @@ impl Digest for Sha512 {
 /// This function does not panic.
 #[must_use]
 pub fn noxtls_sha512(data: &[u8]) -> [u8; 64] {
-    let mut hasher = Sha512::new();
-    hasher.update(data);
+    let mut hasher = Sha512::noxtls_new();
+    hasher.noxtls_update(data);
     let digest = hasher.finalize();
     let mut out = [0_u8; 64];
     out.copy_from_slice(&digest);
@@ -350,7 +350,7 @@ pub fn noxtls_sha512(data: &[u8]) -> [u8; 64] {
 #[must_use]
 pub fn noxtls_sha384(data: &[u8]) -> [u8; 48] {
     let mut hasher = Sha512::new_sha384();
-    hasher.update(data);
+    hasher.noxtls_update(data);
     let digest = hasher.finalize();
     let mut out = [0_u8; 48];
     out.copy_from_slice(&digest[..48]);
