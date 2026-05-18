@@ -113,15 +113,22 @@ impl Connection {
             TlsVersion::Tls13 | TlsVersion::Dtls13 => {
                 let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
                 let hash_len = noxtls_hash_algorithm.output_len();
-                let server_hs = self
-                    .tls13_server_handshake_traffic_secret
-                    .as_ref()
-                    .ok_or(Error::StateError(
-                        "tls13 server handshake traffic secret must be installed before finished verify",
-                    ))?;
+                let peer_hs = if self.tls_role == TlsRole::Server {
+                    self.tls13_client_handshake_traffic_secret
+                        .as_ref()
+                        .ok_or(Error::StateError(
+                            "tls13 client handshake traffic secret must be installed before finished verify",
+                        ))?
+                } else {
+                    self.tls13_server_handshake_traffic_secret
+                        .as_ref()
+                        .ok_or(Error::StateError(
+                            "tls13 server handshake traffic secret must be installed before finished verify",
+                        ))?
+                };
                 let finished_key = noxtls_tls13_expand_label_for_hash(
                     noxtls_hash_algorithm,
-                    server_hs,
+                    peer_hs,
                     b"finished",
                     &[],
                     hash_len,
@@ -138,6 +145,27 @@ impl Connection {
                 &hash,
             )),
         }
+    }
+
+    /// Computes expected client Finished verify data for TLS 1.3 server-role connections.
+    ///
+    /// # Arguments
+    ///
+    /// * `&self` — Server connection with client handshake traffic secret installed.
+    ///
+    /// # Returns
+    ///
+    /// On success, expected client `verify_data` bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`noxtls_core::Error`] when TLS 1.3 handshake traffic secrets are unavailable.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    pub fn noxtls_compute_expected_client_finished(&self) -> Result<Vec<u8>> {
+        self.noxtls_compute_expected_finished()
     }
 
     /// Appends bytes to transcript log and selected transcript hash context.

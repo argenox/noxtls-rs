@@ -12,7 +12,7 @@ Available examples:
 - `dtls_server`: receives one UDP datagram and sends one response.
 - `tls_client`: demonstrates a simple TLS 1.3 client flow with noxtls APIs.
 - `tls_trace_curl`: curl-like HTTPS probe with verbose packet/handshake diagnostics; uses `noxtls::TlsRecordDeframer` for partial reads over TCP (see also `Connection::process_tls13_server_encrypted_handshake_flight` for modeled TLS 1.3 encrypted server flights).
-- `tls_server`: serves one fixed HTTP response over TCP.
+- `tls_server`: TLS 1.3 HTTPS server that accepts `--cert` and `--key` and returns HTML showing the negotiated cipher suite.
 - `cert_app`: validates a generated certificate chain and hostname.
 - `cert_req`: generates a P-256 CSR and prints PEM output.
 - `cert_write`: writes a self-signed P-256 certificate in PEM.
@@ -45,4 +45,11 @@ cargo run -p noxtls --example noxtls-rs -- pkcs8 --in .\p256-key.pem --outform h
 cargo run -p noxtls --example noxtls-rs -- req --new --key-hex 1111111111111111111111111111111111111111111111111111111111111111 --subj "client.noxtls.local" --out .\client.csr.pem
 cargo run -p noxtls --example noxtls-rs -- x509 --selfsign --key-hex 1111111111111111111111111111111111111111111111111111111111111111 --subj "client.noxtls.local" --out .\client.crt.pem
 cargo run -p noxtls --example noxtls-rs -- verify --cert .\client.crt.pem --ca .\client.crt.pem --hostname client.noxtls.local --time 20260101000000Z
+```
+
+HTTPS server example:
+
+```powershell
+cargo run -p noxtls --example tls_server -- --cert .\server.pem --key .\server.key --bind=127.0.0.1:8443 --once
+curl -k https://127.0.0.1:8443/
 ```

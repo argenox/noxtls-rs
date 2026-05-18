@@ -61,7 +61,7 @@ pub use protocol::{
     Tls13EarlyDataOperationalPolicy, Tls13EarlyDataOperationalProfile, Tls13EarlyDataReplayState,
     Tls13EarlyDataTelemetry, Tls13OcspStapleVerification, Tls13OcspStapleVerifier,
     Tls13QuicInitialSecrets, Tls13QuicNextTrafficSecrets, Tls13QuicPacketProtectionKeys,
-    Tls13QuicTrafficSecretSnapshot, TlsRecordDeframer, TlsVersion,
+    Tls13QuicTrafficSecretSnapshot, Tls13ServerIdentityKey, TlsRecordDeframer, TlsRole, TlsVersion,
     TLS13_QUIC_EXPORTER_LABEL_CLIENT_1RTT, TLS13_QUIC_EXPORTER_LABEL_SERVER_1RTT,
     TLS_MAX_RECORD_PAYLOAD_LEN, TLS_RECORD_HEADER_LEN,
 };

@@ -39,7 +39,8 @@ pub use connection::{
     Tls13EarlyDataOperationalProfile, Tls13EarlyDataReplayState, Tls13EarlyDataTelemetry,
     Tls13OcspStapleVerification, Tls13OcspStapleVerifier, Tls13QuicInitialSecrets,
     Tls13QuicNextTrafficSecrets, Tls13QuicPacketProtectionKeys, Tls13QuicTrafficSecretSnapshot,
-    TLS13_QUIC_EXPORTER_LABEL_CLIENT_1RTT, TLS13_QUIC_EXPORTER_LABEL_SERVER_1RTT,
+    Tls13ServerIdentityKey, TLS13_QUIC_EXPORTER_LABEL_CLIENT_1RTT,
+    TLS13_QUIC_EXPORTER_LABEL_SERVER_1RTT,
 };
 pub use dtls::{
     noxtls_dtls13_aes128gcm_record_size, noxtls_encode_dtls_record_header,
@@ -67,7 +68,8 @@ pub use keyshare::{
 pub use psa_provider::PsaExternalKeyProvider;
 pub use psk::{ResumptionTicket, TicketStore, TicketUsagePolicy};
 pub use state::{
-    AlertDescription, AlertLevel, CipherSuite, HandshakeState, RecordContentType, TlsVersion,
+    AlertDescription, AlertLevel, CipherSuite, HandshakeState, RecordContentType, TlsRole,
+    TlsVersion,
 };
 pub use tls_wire::{
     split_tls13_handshake_payload, TlsRecordDeframer, TLS_MAX_RECORD_PAYLOAD_LEN,

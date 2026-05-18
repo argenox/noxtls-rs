@@ -44,7 +44,8 @@ use super::record::{
     noxtls_encode_tls13_inner_plaintext,
 };
 use super::state::{
-    AlertDescription, AlertLevel, CipherSuite, HandshakeState, RecordContentType, TlsVersion,
+    AlertDescription, AlertLevel, CipherSuite, HandshakeState, RecordContentType, TlsRole,
+    TlsVersion,
 };
 use super::tls_wire::split_tls13_handshake_payload;
 #[cfg(not(feature = "std"))]
@@ -55,10 +56,10 @@ use noxtls_crypto::{
     noxtls_aes_gcm_decrypt, noxtls_aes_gcm_encrypt, noxtls_chacha20_poly1305_decrypt,
     noxtls_chacha20_poly1305_encrypt, noxtls_ed25519_public_key_from_subject_public_key_info,
     noxtls_ed25519_verify, noxtls_hkdf_extract_sha256, noxtls_mldsa_verify,
-    noxtls_p256_ecdsa_verify_sha256, noxtls_rsassa_pss_sha256_verify,
-    noxtls_rsassa_pss_sha384_verify, noxtls_tls12_prf_sha256,
-    noxtls_tls12_prf_sha384, AesCipher, HmacDrbgSha256, MlDsaPublicKey, MlKemPrivateKey,
-    P256PrivateKey, P256PublicKey, RsaPublicKey, TlsTranscriptSha256, TlsTranscriptSha384,
+    noxtls_p256_ecdsa_sign_sha256, noxtls_p256_ecdsa_verify_sha256, noxtls_rsassa_pss_sha256_sign,
+    noxtls_rsassa_pss_sha256_verify, noxtls_rsassa_pss_sha384_verify,
+    noxtls_tls12_prf_sha256, noxtls_tls12_prf_sha384, AesCipher, HmacDrbgSha256, MlDsaPublicKey, MlKemPrivateKey,
+    P256PrivateKey, P256PublicKey, RsaPrivateKey, RsaPublicKey, TlsTranscriptSha256, TlsTranscriptSha384,
     X25519PrivateKey, MLKEM_CIPHERTEXT_LEN,
 };
 use noxtls_x509::{
@@ -69,10 +70,20 @@ use p384::ecdsa::{
     signature::Verifier as _, Signature as P384EcdsaSignature, VerifyingKey as P384VerifyingKey,
 };
 
+/// Holds configured TLS 1.3 server identity signing material for CertificateVerify.
+#[derive(Debug, Clone)]
+pub enum Tls13ServerIdentityKey {
+    /// P-256 ECDSA private key used with `ecdsa_secp256r1_sha256`.
+    P256(P256PrivateKey),
+    /// RSA private key used with RSASSA-PSS and SHA-256.
+    Rsa(RsaPrivateKey),
+}
+
 /// Holds connection version, handshake state, and transcript bytes.
 #[derive(Debug, Clone)]
 pub struct Connection {
     pub version: TlsVersion,
+    pub tls_role: TlsRole,
     pub state: HandshakeState,
     noxtls_selected_cipher_suite: Option<CipherSuite>,
     tls13_client_cipher_suites: Option<Vec<CipherSuite>>,
@@ -120,6 +131,12 @@ pub struct Connection {
     tls13_client_offer_mldsa_signature: bool,
     tls13_server_leaf_public_key_der: Option<Vec<u8>>,
     tls13_server_certificate_chain_validated: bool,
+    tls13_server_certificate_chain_der: Vec<Vec<u8>>,
+    tls13_server_signing_key: Option<Tls13ServerIdentityKey>,
+    tls13_server_preferred_cipher_suites: Vec<CipherSuite>,
+    tls13_server_alpn_protocols: Vec<Vec<u8>>,
+    tls13_server_x25519_private: Option<X25519PrivateKey>,
+    tls13_server_p256_private: Option<P256PrivateKey>,
     tls13_early_data_require_acceptance: bool,
     tls13_early_data_accepted_psk: Option<Vec<u8>>,
     tls13_early_data_max_bytes: Option<u32>,
@@ -623,11 +640,13 @@ mod dtls12;
 mod dtls13;
 mod quic;
 mod record_common;
+mod record_server;
 mod tls_kdf;
 mod tls_key_exchange;
 mod tls13_client;
 mod tls13_handshake;
 mod tls13_server;
+mod tls13_server_role;
 
 use self::tls_kdf::{noxtls_derive_tls13_handshake_secret, noxtls_tls12_prf_for_hash};
 use self::tls_key_exchange::noxtls_combine_tls13_hybrid_shared_secret;
@@ -648,6 +667,7 @@ impl Connection {
     pub fn noxtls_new(version: TlsVersion) -> Self {
         Self {
             version,
+            tls_role: TlsRole::Client,
             state: HandshakeState::Idle,
             noxtls_selected_cipher_suite: None,
             tls13_client_cipher_suites: None,
@@ -694,6 +714,12 @@ impl Connection {
             tls13_client_offer_mldsa_signature: true,
             tls13_server_leaf_public_key_der: None,
             tls13_server_certificate_chain_validated: false,
+            tls13_server_certificate_chain_der: Vec::new(),
+            tls13_server_signing_key: None,
+            tls13_server_preferred_cipher_suites: Vec::new(),
+            tls13_server_alpn_protocols: Vec::new(),
+            tls13_server_x25519_private: None,
+            tls13_server_p256_private: None,
             tls13_early_data_require_acceptance: false,
             tls13_early_data_accepted_psk: None,
             tls13_early_data_max_bytes: None,
@@ -2600,7 +2626,15 @@ impl Connection {
         match signature_scheme {
             TLS13_SIGALG_ECDSA_SECP256R1_SHA256 => {
                 let public_key = P256PublicKey::from_uncompressed(leaf_spki)?;
-                let (r, s) = noxtls_parse_ecdsa_signature_der(signature)?;
+                let (r, s) = if signature.len() == 64 {
+                    let mut r = [0_u8; 32];
+                    let mut s = [0_u8; 32];
+                    r.copy_from_slice(&signature[..32]);
+                    s.copy_from_slice(&signature[32..]);
+                    (r, s)
+                } else {
+                    noxtls_parse_ecdsa_signature_der(signature)?
+                };
                 noxtls_p256_ecdsa_verify_sha256(&public_key, &signed_message, &r, &s).map_err(
                     |_| {
                         Error::CryptoFailure("tls13 certificate verify signature validation failed")
@@ -3089,7 +3123,7 @@ fn noxtls_encode_server_hello_body(
     suite: CipherSuite,
     random: &[u8],
 ) -> Result<Vec<u8>> {
-    noxtls_encode_server_hello_body_with_key_share(version, suite, random, None)
+    noxtls_encode_server_hello_body_with_key_share(version, suite, random, None, None)
 }
 
 /// Encodes ServerHello with optional explicit `key_share` bytes (for tests and tooling).
@@ -3118,6 +3152,7 @@ fn noxtls_encode_server_hello_body_with_key_share(
     suite: CipherSuite,
     random: &[u8],
     key_share_override: Option<(u16, &[u8])>,
+    legacy_session_id_echo: Option<&[u8]>,
 ) -> Result<Vec<u8>> {
     if random.len() != 32 {
         return Err(Error::InvalidLength("server hello random must be 32 bytes"));
@@ -3125,7 +3160,14 @@ fn noxtls_encode_server_hello_body_with_key_share(
     let mut body = Vec::new();
     body.extend_from_slice(&noxtls_legacy_wire_version(version));
     body.extend_from_slice(random);
-    body.push(0x00); // session_id length
+    let session_id = legacy_session_id_echo.unwrap_or(&[]);
+    if session_id.len() > 32 {
+        return Err(Error::InvalidLength(
+            "server hello session_id echo must not exceed 32 bytes",
+        ));
+    }
+    body.push(session_id.len() as u8);
+    body.extend_from_slice(session_id);
     body.extend_from_slice(&suite.noxtls_to_u16().to_be_bytes());
     body.push(0x00); // compression method
     let mut extensions = Vec::new();
@@ -3182,6 +3224,42 @@ fn noxtls_encode_server_hello_body_with_key_share(
     body.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
     body.extend_from_slice(&extensions);
     Ok(body)
+}
+
+/// Extracts the legacy `session_id` field from a ClientHello handshake body.
+///
+/// # Arguments
+///
+/// * `body` — ClientHello handshake body bytes (without the four-byte handshake header).
+///
+/// # Returns
+///
+/// On success, the offered legacy session identifier bytes (possibly empty).
+///
+/// # Errors
+///
+/// Returns [`noxtls_core::Error`] when the body is truncated or the session id length is invalid.
+///
+/// # Panics
+///
+/// This function does not panic.
+fn noxtls_extract_client_hello_legacy_session_id(body: &[u8]) -> Result<&[u8]> {
+    if body.len() < 35 {
+        return Err(Error::ParseFailure("client hello body too short for session_id"));
+    }
+    let session_id_len = body[34] as usize;
+    if session_id_len > 32 {
+        return Err(Error::ParseFailure(
+            "client hello legacy session_id exceeds 32 bytes",
+        ));
+    }
+    let end = 35_usize.saturating_add(session_id_len);
+    if body.len() < end {
+        return Err(Error::ParseFailure(
+            "client hello legacy session_id bytes truncated",
+        ));
+    }
+    Ok(&body[35..end])
 }
 
 /// Parses supported server hello encoding and extracts selected cipher suite.
@@ -4177,11 +4255,6 @@ fn noxtls_parse_client_hello_extensions(input: &[u8]) -> Result<ClientHelloExten
     if seen_early_data && !seen_pre_shared_key {
         return Err(Error::ParseFailure(
             "early_data extension requires pre_shared_key extension",
-        ));
-    }
-    if seen_psk_key_exchange_modes && !seen_pre_shared_key {
-        return Err(Error::ParseFailure(
-            "psk_key_exchange_modes extension requires pre_shared_key extension",
         ));
     }
     if seen_key_share && out.key_share_groups.is_empty() {

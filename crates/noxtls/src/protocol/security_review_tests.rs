@@ -22,8 +22,13 @@
 use super::dtls::noxtls_encode_dtls12_handshake_fragments;
 use super::dtls::noxtls_reassemble_dtls12_handshake_fragments;
 use super::record::noxtls_build_record_nonce;
-use super::{CipherSuite, Connection, HandshakeState, ProtectedRecord, TlsVersion};
+use super::{
+    CipherSuite, Connection, HandshakeState, ProtectedRecord, RecordContentType,
+    Tls13ServerIdentityKey, TlsVersion,
+};
 use noxtls_core::Error;
+use noxtls_crypto::P256PrivateKey;
+use noxtls_x509::noxtls_write_self_signed_certificate_p256_sha256;
 
 /// Builds one DTLS 1.2 handshake fragment wire encoding for tests.
 ///
@@ -197,4 +202,89 @@ fn tls13_application_key_activation_requires_finished_state() {
         }
         other => panic!("unexpected error variant: {other:?}"),
     }
+}
+
+/// Verifies TLS 1.3 server-role APIs complete a handshake roundtrip with a noxtls client.
+///
+/// # Panics
+///
+/// This function does not panic.
+#[test]
+fn tls13_server_role_handshake_roundtrip_with_noxtls_client() {
+    let private_key =
+        P256PrivateKey::from_bytes([0x11_u8; 32]).expect("p256 private key fixture should parse");
+    let public_key = private_key.public_key().expect("p256 public key");
+    let cert_der = noxtls_write_self_signed_certificate_p256_sha256(
+        &[0x01],
+        "localhost",
+        "20200101000000Z",
+        "20300101000000Z",
+        &public_key,
+        &private_key,
+    )
+    .expect("self-signed certificate should build");
+
+    let mut client = Connection::noxtls_new(TlsVersion::Tls13);
+    client.noxtls_set_tls13_client_offer_pq_key_shares(false);
+    client
+        .noxtls_set_tls13_client_cipher_suites(&[CipherSuite::TlsAes128GcmSha256])
+        .expect("set client cipher suites");
+    let client_hello = client
+        .noxtls_send_client_hello(&[0x22_u8; 32])
+        .expect("client hello should build");
+
+    let mut server = Connection::noxtls_new_tls13_server();
+    server
+        .noxtls_configure_tls13_server_identity(
+            &[cert_der],
+            Tls13ServerIdentityKey::P256(private_key),
+        )
+        .expect("server identity should configure");
+    let server_hello = server
+        .noxtls_accept_tls13_client_hello(&client_hello, &[0x33_u8; 32])
+        .expect("server should accept client hello");
+
+    client
+        .noxtls_recv_server_hello(&server_hello)
+        .expect("client should process server hello");
+    server
+        .noxtls_derive_handshake_secret()
+        .expect("server should derive handshake secret");
+    let flight_packet = server
+        .noxtls_build_tls13_server_handshake_flight()
+        .expect("server handshake flight should build");
+    let flight_aad = Connection::noxtls_tls13_packet_header_aad(&flight_packet)
+        .expect("server flight packet header should parse");
+    client
+        .noxtls_process_tls13_server_encrypted_handshake_flight(&[flight_packet.clone()], &flight_aad)
+        .expect("client should process encrypted server flight");
+    assert_eq!(client.state, HandshakeState::Finished);
+
+    let client_finished = client
+        .noxtls_prepare_tls13_client_finished_message()
+        .expect("client finished should build");
+    let inner_len = client_finished
+        .len()
+        .checked_add(1)
+        .expect("client finished inner length");
+    let payload_len = inner_len
+        .checked_add(16)
+        .expect("client finished ciphertext length");
+    let mut client_finished_aad = [0_u8; 5];
+    client_finished_aad[0] = RecordContentType::ApplicationData.to_u8();
+    client_finished_aad[1] = 0x03;
+    client_finished_aad[2] = 0x03;
+    client_finished_aad[3..5].copy_from_slice(&(payload_len as u16).to_be_bytes());
+    let client_finished_packet = client
+        .noxtls_seal_tls13_record_packet(
+            &client_finished,
+            RecordContentType::Handshake.to_u8(),
+            &client_finished_aad,
+            0,
+        )
+        .expect("client finished packet should seal");
+    server
+        .noxtls_recv_client_finished_packet(&client_finished_packet)
+        .expect("server should accept client finished");
+    assert_eq!(server.state, HandshakeState::Finished);
 }

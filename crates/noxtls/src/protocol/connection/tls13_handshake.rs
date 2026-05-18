@@ -188,9 +188,14 @@ impl Connection {
     ///
     pub fn noxtls_derive_handshake_secret(&mut self) -> Result<[u8; 32]> {
         if self.version.uses_tls13_handshake_semantics() {
-            if self.state != HandshakeState::ServerHelloReceived {
+            let allowed_state = if self.tls_role == TlsRole::Server {
+                self.state == HandshakeState::ServerHelloSent
+            } else {
+                self.state == HandshakeState::ServerHelloReceived
+            };
+            if !allowed_state {
                 return Err(Error::StateError(
-                    "tls13 handshake traffic keys require server hello received state",
+                    "tls13 handshake traffic keys require server hello processing",
                 ));
             }
         } else if self.state != HandshakeState::ServerHelloReceived

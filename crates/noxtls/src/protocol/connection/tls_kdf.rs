@@ -39,15 +39,22 @@ impl Connection {
             TlsVersion::Tls13 | TlsVersion::Dtls13 => {
                 let noxtls_hash_algorithm = self.noxtls_negotiated_hash_algorithm();
                 let hash_len = noxtls_hash_algorithm.output_len();
-                let client_hs = self
-                    .tls13_client_handshake_traffic_secret
-                    .as_ref()
-                    .ok_or(Error::StateError(
-                        "tls13 client handshake traffic secret must be installed before client finished",
-                    ))?;
+                let traffic_secret = if self.tls_role == TlsRole::Server {
+                    self.tls13_server_handshake_traffic_secret
+                        .as_ref()
+                        .ok_or(Error::StateError(
+                            "tls13 server handshake traffic secret must be installed before server finished",
+                        ))?
+                } else {
+                    self.tls13_client_handshake_traffic_secret
+                        .as_ref()
+                        .ok_or(Error::StateError(
+                            "tls13 client handshake traffic secret must be installed before client finished",
+                        ))?
+                };
                 let finished_key = noxtls_tls13_expand_label_for_hash(
                     noxtls_hash_algorithm,
-                    client_hs,
+                    traffic_secret,
                     b"finished",
                     &[],
                     hash_len,

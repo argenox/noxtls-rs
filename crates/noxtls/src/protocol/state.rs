@@ -64,10 +64,21 @@ impl TlsVersion {
     }
 }
 
+/// Identifies whether a connection endpoint acts as TLS client or server.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum TlsRole {
+    Client,
+    Server,
+}
+
 /// Represents coarse handshake phases used by the prototype state machine.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum HandshakeState {
     Idle,
+    /// Server received and accepted a ClientHello (server role only).
+    ClientHelloReceived,
+    /// Server transmitted ServerHello (server role only).
+    ServerHelloSent,
     ClientHelloSent,
     ServerHelloReceived,
     ServerEncryptedExtensionsReceived,

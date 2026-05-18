@@ -542,7 +542,7 @@ fn run_trace_probe(
         return Ok(());
     }
 
-    let client_finished = conn.noxtls_build_finished_message()?;
+    let client_finished = conn.noxtls_prepare_tls13_client_finished_message()?;
     let client_finished_packet = seal_tls13_wire_packet(
         &mut conn,
         &client_finished,

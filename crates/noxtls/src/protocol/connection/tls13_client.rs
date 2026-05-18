@@ -1295,4 +1295,37 @@ impl Connection {
         self.noxtls_transcript_hash = TranscriptHashState::noxtls_for_version(self.version);
         self.noxtls_append_transcript(client_hello);
     }
+
+    /// Builds the client Finished handshake message and appends it to the transcript.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` — Client connection that has already processed the server Finished message.
+    ///
+    /// # Returns
+    ///
+    /// On success, encoded Finished handshake message bytes ready for sealing.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`noxtls_core::Error`] when called outside client role or before server Finished.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    pub fn noxtls_prepare_tls13_client_finished_message(&mut self) -> Result<Vec<u8>> {
+        if self.tls_role == TlsRole::Server {
+            return Err(Error::StateError(
+                "client finished preparation requires client-role connection",
+            ));
+        }
+        if self.state != HandshakeState::Finished {
+            return Err(Error::StateError(
+                "client finished can only be prepared after server finished is processed",
+            ));
+        }
+        let finished = self.noxtls_build_finished_message()?;
+        self.noxtls_append_transcript(&finished);
+        Ok(finished)
+    }
 }

@@ -45,6 +45,7 @@ impl Connection {
         random: &[u8],
         named_group: u16,
         key_exchange: &[u8],
+        legacy_session_id_echo: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
         if random.len() != 32 {
             return Err(Error::InvalidLength("server hello random must be 32 bytes"));
@@ -54,6 +55,7 @@ impl Connection {
             suite,
             random,
             Some((named_group, key_exchange)),
+            legacy_session_id_echo,
         )?;
         Ok(noxtls_encode_handshake_message(
             HANDSHAKE_SERVER_HELLO,
